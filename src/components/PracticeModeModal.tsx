@@ -29,6 +29,7 @@ import {
   Gauge,
   Shield,
   ArrowRight,
+  Minimize2,
   Info,
   Lock,
   Unlock,
@@ -141,6 +142,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 }) => {
   // Current active sub-mode (starts in editor with playable board)
   const [activeTab, setActiveTab] = useState<PracticeTab>('editor');
+  const [isEngineBoardFullscreen, setIsEngineBoardFullscreen] = useState(false);
 
   // Callback ref for puzzles move attempt
   const onPuzzleMoveAttemptRef = useRef<((san: string, nextFen: string, from?: Square, to?: Square) => void) | null>(null);
@@ -219,7 +221,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (isEngineBoardFullscreen) {
+          setIsEngineBoardFullscreen(false);
+        } else {
+          onClose();
+        }
       }
     };
     if (isOpen) {
@@ -230,11 +236,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isEngineBoardFullscreen]);
+
+  useEffect(() => {
+    if (!isOpen) setIsEngineBoardFullscreen(false);
+  }, [isOpen]);
 
   // Handle Tab changes
   const handleTabChange = (tab: PracticeTab) => {
     setActiveTab(tab);
+    setIsEngineBoardFullscreen(false);
     setAnalysisError(null);
     setSelectedSquare(null);
     setIsAnalysisMode(false);
@@ -1101,19 +1112,29 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   return (
     <div
       id="practice-mode-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn overflow-y-auto"
+      className={`fixed inset-0 z-50 flex items-center justify-center animate-fadeIn ${
+        isEngineBoardFullscreen
+          ? 'overflow-hidden bg-[#0b0d12]'
+          : 'overflow-y-auto bg-black/85 p-2 backdrop-blur-md sm:p-4'
+      }`}
       onClick={onClose}
     >
       <div
         id="practice-mode-container"
-        className="relative w-full max-w-5xl bg-[#13151e] border border-cyan-500/40 rounded-2xl shadow-2xl shadow-cyan-950/40 overflow-hidden my-auto flex flex-col max-h-[92vh]"
+        className={`relative flex flex-col overflow-hidden bg-[#13151e] shadow-2xl shadow-cyan-950/40 ${
+          isEngineBoardFullscreen
+            ? 'h-[100dvh] w-screen max-w-none rounded-none border-0'
+            : 'my-auto max-h-[92vh] w-full max-w-5xl rounded-2xl border border-cyan-500/40'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Decorative Accent Line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-emerald-400 to-amber-500" />
+        {!isEngineBoardFullscreen && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-emerald-400 to-amber-500" />
+        )}
 
         {/* Modal Top Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800/80 bg-gradient-to-r from-[#181a24] via-[#141620] to-[#10121a] shrink-0">
+        <div className={`flex shrink-0 items-center justify-between border-b border-zinc-800/80 bg-gradient-to-r from-[#181a24] via-[#141620] to-[#10121a] ${isEngineBoardFullscreen ? 'px-3 py-2' : 'px-5 py-3'}`}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-zinc-950 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-bold">
               <Cpu className="w-5 h-5 text-white" />
@@ -1129,13 +1150,24 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   <span className="text-zinc-400 font-mono">({getEloForLevel(engineLevel).elo} Elo)</span>
                 </div>
               </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">
+              <p className={`text-xs text-zinc-400 ${isEngineBoardFullscreen ? 'hidden' : 'hidden sm:block'}`}>
                 Interactive Playable Board with Board Editor & Engine Analysis, Opening Explorer, and Play Engine
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {isEngineBoardFullscreen && (
+              <button
+                type="button"
+                onClick={() => setIsEngineBoardFullscreen(false)}
+                title="Exit full-screen board"
+                aria-label="Exit full-screen board"
+                className="p-2 rounded-lg bg-[#1a1d27] hover:bg-[#222533] border border-zinc-800 text-zinc-300 transition-colors cursor-pointer"
+              >
+                <Minimize2 className="w-4 h-4 text-cyan-400" />
+              </button>
+            )}
             <button
               id="btn-flip-practice-board"
               onClick={() => setIsFlipped((prev) => !prev)}
@@ -1155,11 +1187,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+        <div className={`flex flex-1 flex-col space-y-4 p-4 sm:p-5 ${isEngineBoardFullscreen ? 'min-h-0 overflow-hidden p-2 sm:p-3' : 'overflow-y-auto'}`}>
           {/* Top Board & Status Layout */}
-          <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5">
+          <div className={`flex flex-col items-center justify-center gap-5 ${isEngineBoardFullscreen ? 'min-h-0 flex-1 gap-2' : 'lg:flex-row lg:items-start'}`}>
             {/* Left Column: Board + Dedicated Bottom-of-Board FEN Bar */}
-            <div className="w-full max-w-[380px] sm:max-w-[420px] flex flex-col items-center gap-2.5">
+            <div className={`flex flex-col items-center gap-2.5 ${isEngineBoardFullscreen ? 'min-h-0 w-full flex-1 justify-center' : 'w-full max-w-[380px] sm:max-w-[420px]'}`}>
               {previewFen && (
                 <div className="w-full px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-between text-xs text-amber-200 shadow-md">
                   <div className="flex items-center gap-2 font-semibold">
@@ -1182,7 +1214,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
               )}
 
               {/* The Fully Playable Chessboard */}
-              <div className="w-full aspect-square rounded-xl overflow-hidden shadow-2xl border-4 border-zinc-800/90 relative select-none">
+              <div
+                className="relative aspect-square w-full select-none overflow-hidden rounded-xl border-4 border-zinc-800/90 shadow-2xl"
+                style={isEngineBoardFullscreen ? { width: 'min(100%, calc(100dvh - 12rem))' } : undefined}
+              >
               <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
                 {(isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((r) =>
                   (isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((c) => {
@@ -1451,7 +1486,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           </div>
 
           {/* Quick Status Sidebar */}
-            <div className="w-full lg:w-72 flex flex-col gap-3">
+            <div className={`${isEngineBoardFullscreen && activeTab === 'play_engine' ? 'hidden ' : ''}flex w-full flex-col gap-3 lg:w-72`}>
               <div className="p-3.5 rounded-xl bg-[#181a24] border border-zinc-800 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -1632,9 +1667,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           {/* ==================================================== */}
           {/* THE OPTIONS UNDER THE BOARD */}
           {/* ==================================================== */}
-          <div className="pt-2 border-t border-zinc-800 space-y-4">
+          <div className={`space-y-4 ${isEngineBoardFullscreen && activeTab === 'play_engine' ? '' : 'border-t border-zinc-800 pt-2'}`}>
             {/* Main Tabs Selection (4 Modes) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-[#10121a] border border-zinc-800/80 max-w-2xl mx-auto">
+            {!(isEngineBoardFullscreen && activeTab === 'play_engine') && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-[#10121a] border border-zinc-800/80 max-w-2xl mx-auto">
               <button
                 id="tab-btn-board-editor"
                 type="button"
@@ -1693,7 +1729,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   Puzzels
                 </span>
               </button>
-            </div>
+              </div>
+            )}
 
             {/* OPTION 1: BOARD EDITOR */}
             {activeTab === 'editor' && (
@@ -2570,8 +2607,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
             {/* OPTION 3: PLAY ENGINE (STOCKFISH ENGINE) */}
             {activeTab === 'play_engine' && (
-              <div id="content-play-engine" className="space-y-4 animate-fadeIn">
+              <div id="content-play-engine" className={`space-y-4 animate-fadeIn ${isEngineBoardFullscreen ? 'flex w-full justify-center' : ''}`}>
                 {/* Engine Level Configuration (1 to 18) */}
+                {!isEngineBoardFullscreen && (
                 <div
                   id="engine-level-selector-box"
                   className="p-4 rounded-xl bg-gradient-to-r from-[#141a29] via-[#161f30] to-[#121927] border border-cyan-500/40 shadow-lg space-y-3"
@@ -2663,9 +2701,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     {getEloForLevel(engineLevel).desc}
                   </p>
                 </div>
+                )}
 
                 {/* Game Controls & Color Chooser */}
-                <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-[#161822] border border-zinc-800">
+                <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-[#161822] p-3.5 ${isEngineBoardFullscreen ? 'w-full max-w-2xl' : ''}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-zinc-300">Play as:</span>
                     <button
@@ -2715,7 +2754,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     <button
                       id="btn-play-new-game"
                       type="button"
-                      onClick={() => startNewEngineGame(playerColor)}
+                      onClick={() => {
+                        startNewEngineGame(playerColor);
+                        setIsEngineBoardFullscreen(true);
+                      }}
                       className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Zap className="w-3.5 h-3.5 fill-current" />
@@ -2725,6 +2767,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 </div>
 
                 {/* Move Notation List */}
+                {!isEngineBoardFullscreen && (
                 <div className="p-3 rounded-xl bg-[#111319] border border-zinc-800">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
                     Move Notation
@@ -2749,6 +2792,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     </div>
                   )}
                 </div>
+                )}
               </div>
             )}
 
@@ -2771,7 +2815,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-zinc-800 bg-[#10121a] flex items-center justify-between text-xs text-zinc-400 shrink-0">
+        <div className={`${isEngineBoardFullscreen ? 'hidden ' : ''}flex shrink-0 items-center justify-between border-t border-zinc-800 bg-[#10121a] px-5 py-3 text-xs text-zinc-400`}>
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-cyan-400" />
             <span>Stockfish 18 Engine Analysis • Depth 18 Evaluation</span>
