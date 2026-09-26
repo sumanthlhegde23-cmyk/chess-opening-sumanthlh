@@ -44,18 +44,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   return (
     <header id="app-navbar" className="bg-[#12141a] border-b border-zinc-800/80 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         {/* Brand identity */}
-        <div className="flex items-center gap-3">
+        <div className="flex w-full min-w-0 items-center gap-3 xl:w-auto xl:flex-1">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-zinc-950 shadow-md shadow-amber-950/40">
             <Crown className="w-5 h-5 fill-current" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-zinc-100 tracking-tight">
+              <h1 className="whitespace-nowrap text-sm font-bold text-zinc-100 tracking-tight sm:text-base">
                 Chess Openings Master
               </h1>
-              <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
+              <span className="hidden lg:inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
                 20 Openings • 240 Variations
               </span>
             </div>
@@ -66,17 +66,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global Toolbar Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-between gap-1 sm:gap-2 xl:w-auto xl:flex-initial xl:justify-end">
           {/* Go Premium Button */}
           <button
             id="navbar-go-premium-btn"
             onClick={onOpenPremium}
             title="Go Premium - Lifetime & 3-Year Membership (₹999 / ₹699)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 via-yellow-500/25 to-amber-600/20 hover:from-amber-500/35 hover:to-yellow-500/35 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow-sm shadow-amber-950/20 group cursor-pointer"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 via-yellow-500/25 to-amber-600/20 hover:from-amber-500/35 hover:to-yellow-500/35 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow-sm shadow-amber-950/20 group cursor-pointer"
           >
             <Crown className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform fill-amber-400/20" />
-            <span className="tracking-tight">Go Premium</span>
-            <span className="hidden sm:inline-block px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-500 text-zinc-950 uppercase tracking-wider">
+            <span className="hidden tracking-tight sm:inline">Go Premium</span>
+            <span className="hidden px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-500 text-zinc-950 uppercase tracking-wider lg:inline-block">
               ₹999 / ₹699
             </span>
           </button>
@@ -99,7 +99,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="navbar-board-theme-select"
               value={boardTheme}
               onChange={(e) => onChangeBoardTheme(e.target.value)}
-              className="pl-7 pr-2 py-1.5 rounded-lg bg-[#181a20] border border-zinc-800 hover:bg-[#20242e] text-zinc-300 text-xs font-medium transition-colors focus:outline-none focus:border-amber-500/60 cursor-pointer"
+              aria-label="Board theme"
+              className="w-24 truncate pl-7 pr-1 py-1.5 rounded-lg bg-[#181a20] border border-zinc-800 hover:bg-[#20242e] text-zinc-300 text-xs font-medium transition-colors focus:outline-none focus:border-amber-500/60 cursor-pointer sm:w-32 sm:pr-2 lg:w-auto"
             >
               {Object.values(boardThemes).map((t) => (
                 <option key={t.id} value={t.id}>
@@ -138,11 +139,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="navbar-practice-mode-btn"
             onClick={onOpenPractice}
             title="Practice Mode - Stockfish Engine Level 18 (Board Editor, Opening Explorer, Play Engine)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-indigo-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-500/60 hover:border-cyan-400 text-cyan-300 hover:text-cyan-200 text-xs font-bold transition-all shadow-sm shadow-cyan-950/20 group cursor-pointer"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-indigo-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-500/60 hover:border-cyan-400 text-cyan-300 hover:text-cyan-200 text-xs font-bold transition-all shadow-sm shadow-cyan-950/20 group cursor-pointer"
           >
             <Cpu className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-            <span className="tracking-tight">Practice Mode</span>
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-cyan-400 text-zinc-950 uppercase tracking-wider">
+            <span className="hidden tracking-tight lg:inline">Practice Mode</span>
+            <span className="hidden px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-cyan-400 text-zinc-950 uppercase tracking-wider xl:inline-flex">
               Level 18
             </span>
           </button>
@@ -153,10 +154,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="navbar-chat-with-ai-btn"
               onClick={onOpenChatAi}
               title="Chat with AI - Grandmaster Chess Assistant"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-amber-600/25 hover:from-amber-500/40 hover:to-yellow-500/40 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow-sm shadow-amber-950/20 group cursor-pointer"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-amber-600/25 hover:from-amber-500/40 hover:to-yellow-500/40 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow-sm shadow-amber-950/20 group cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
-              <span className="tracking-tight">chat with ai</span>
+              <span className="hidden tracking-tight lg:inline">chat with ai</span>
             </button>
           )}
         </div>
