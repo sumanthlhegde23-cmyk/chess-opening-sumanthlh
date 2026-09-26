@@ -8,7 +8,9 @@ import {
   Sparkles,
   Shield,
   Crown,
-  Cpu
+  Cpu,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { boardThemes } from '../utils/boardThemes';
 import { PaidPlanTier } from '../utils/pricingLocks';
@@ -16,6 +18,8 @@ import { PaidPlanTier } from '../utils/pricingLocks';
 interface NavbarProps {
   flipped: boolean;
   onToggleFlip: () => void;
+  colorMode: 'dark' | 'light';
+  onToggleColorMode: () => void;
   boardTheme: string;
   onChangeBoardTheme: (theme: string) => void;
   soundEnabled: boolean;
@@ -31,6 +35,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   flipped,
   onToggleFlip,
+  colorMode,
+  onToggleColorMode,
   boardTheme,
   onChangeBoardTheme,
   soundEnabled,
@@ -90,6 +96,21 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Repeat className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden sm:inline">{flipped ? 'Black POV' : 'White POV'}</span>
+          </button>
+
+          <button
+            id="navbar-color-mode-toggle"
+            type="button"
+            onClick={onToggleColorMode}
+            title={`Switch to ${colorMode === 'dark' ? 'light' : 'dark'} mode`}
+            aria-label={`Switch to ${colorMode === 'dark' ? 'light' : 'dark'} mode`}
+            className="p-1.5 rounded-lg bg-[#181a20] border border-zinc-800 hover:bg-[#20242e] text-zinc-300 transition-colors"
+          >
+            {colorMode === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-cyan-600" />
+            )}
           </button>
 
           {/* Theme Selector */}

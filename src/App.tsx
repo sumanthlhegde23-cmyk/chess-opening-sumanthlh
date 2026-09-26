@@ -77,6 +77,9 @@ export default function App() {
   const [userDeviation, setUserDeviation] = useState<UserDeviationState | null>(null);
   const [flipped, setFlipped] = useState<boolean>(false);
   const [boardTheme, setBoardTheme] = useState<string>('maple');
+  const [colorMode, setColorMode] = useState<'dark' | 'light'>(() =>
+    localStorage.getItem('chess-openings-color-mode') === 'light' ? 'light' : 'dark'
+  );
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeed] = useState<number>(2200); // 2.2s interval
@@ -94,6 +97,10 @@ export default function App() {
   const [isLockedVariationModalOpen, setIsLockedVariationModalOpen] = useState<boolean>(false);
   const [lockedVariationTarget, setLockedVariationTarget] = useState<Variation | null>(null);
   const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699' | '399'>('999');
+
+  useEffect(() => {
+    localStorage.setItem('chess-openings-color-mode', colorMode);
+  }, [colorMode]);
 
   const isOwner = userRole === 'owner';
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
@@ -612,11 +619,13 @@ export default function App() {
   }, [activeGmGame]);
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
+    <div data-color-mode={colorMode} className="min-h-screen bg-[#0f1115] text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
       {/* Top Navbar */}
       <Navbar
         flipped={flipped}
         onToggleFlip={() => setFlipped((prev) => !prev)}
+        colorMode={colorMode}
+        onToggleColorMode={() => setColorMode((mode) => mode === 'dark' ? 'light' : 'dark')}
         boardTheme={boardTheme}
         onChangeBoardTheme={setBoardTheme}
         soundEnabled={soundEnabled}
