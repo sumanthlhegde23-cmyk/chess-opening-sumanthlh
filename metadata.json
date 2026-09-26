@@ -1,0 +1,6 @@
+{
+  "name": "Chess Openings Master",
+  "description": "Interactive chess opening explorer with 20 master openings, 240 variations, 840 Grandmaster games, live chess current affairs, and a Practice Mode featuring Stockfish Level 18 with Board Editor, Chess.com & Lichess Opening Explorer, Play Engine, and 200 tactical puzzles per variation across 20 tactical themes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
