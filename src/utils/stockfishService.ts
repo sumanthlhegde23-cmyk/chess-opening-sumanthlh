@@ -202,6 +202,46 @@ export function evaluateBoardPosition(chess: Chess): number {
   return centipawns;
 }
 
+const OPENING_REPLIES: Record<string, { san: string; weight: number }[]> = {
+  'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR': [
+    { san: 'e5', weight: 24 },
+    { san: 'c5', weight: 24 },
+    { san: 'e6', weight: 15 },
+    { san: 'c6', weight: 14 },
+    { san: 'd5', weight: 8 },
+    { san: 'd6', weight: 7 },
+    { san: 'g6', weight: 4 },
+    { san: 'Nf6', weight: 4 },
+  ],
+  'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR': [
+    { san: 'd5', weight: 35 },
+    { san: 'Nf6', weight: 30 },
+    { san: 'e6', weight: 14 },
+    { san: 'f5', weight: 7 },
+    { san: 'c5', weight: 10 },
+    { san: 'g6', weight: 4 },
+  ],
+};
+
+function chooseOpeningReply(chess: Chess, random: () => number = Math.random) {
+  if (chess.turn() !== 'b' || chess.moveNumber() !== 1) return null;
+
+  const position = chess.fen().split(' ')[0];
+  const replies = OPENING_REPLIES[position];
+  if (!replies) return null;
+
+  const totalWeight = replies.reduce((total, reply) => total + reply.weight, 0);
+  let choice = random() * totalWeight;
+  for (const reply of replies) {
+    choice -= reply.weight;
+    if (choice < 0) {
+      return chess.moves({ verbose: true }).find((move) => move.san === reply.san) ?? null;
+    }
+  }
+
+  return null;
+}
+
 // Alpha-Beta Search for Stockfish level 18 simulation
 function alphaBeta(
   chess: Chess,
@@ -213,7 +253,6 @@ function alphaBeta(
   if (depth <= 0 || chess.isGameOver()) {
     return { score: evaluateBoardPosition(chess) };
   }
-
   const moves = chess.moves({ verbose: true });
   if (moves.length === 0) {
     if (chess.inCheck()) {
@@ -494,6 +533,108 @@ export function explainPlayedMove(fen: string, san: string): MoveExplanationItem
   }
 }
 
+type UciSearchResult = { bestMove: string; score?: number; mate?: number };
+
+let stockfishWorker: Worker | null = null;
+let stockfishReady: Promise<void> | null = null;
+let resolveStockfishReady: (() => void) | null = null;
+let rejectStockfishReady: ((error: Error) => void) | null = null;
+let resolveUciReady: (() => void) | null = null;
+let activeUciSearch: {
+  resolve: (result: UciSearchResult) => void;
+  reject: (error: Error) => void;
+  score?: number;
+  mate?: number;
+} | null = null;
+let stockfishQueue: Promise<void> = Promise.resolve();
+
+function getStockfishWorker(): Promise<void> {
+  if (stockfishReady) return stockfishReady;
+
+  stockfishReady = new Promise<void>((resolve, reject) => {
+    const worker = new Worker('/engine/stockfish-19-lite-single.js');
+    stockfishWorker = worker;
+    resolveUciReady = resolve;
+    rejectStockfishReady = reject;
+
+    worker.onmessage = (event: MessageEvent<string>) => {
+      const lines = String(event.data).split(/\r?\n/);
+      for (const line of lines) {
+        if (line === 'uciok') {
+          resolveUciReady?.();
+          resolveUciReady = null;
+        } else if (line === 'readyok') {
+          resolveStockfishReady?.();
+          resolveStockfishReady = null;
+        } else if (line.startsWith('info ')) {
+          const scoreMatch = line.match(/\bscore cp (-?\d+)/);
+          const mateMatch = line.match(/\bscore mate (-?\d+)/);
+          if (scoreMatch && activeUciSearch) activeUciSearch.score = Number(scoreMatch[1]);
+          if (mateMatch && activeUciSearch) activeUciSearch.mate = Number(mateMatch[1]);
+        } else if (line.startsWith('bestmove ')) {
+          const bestMove = line.split(/\s+/)[1];
+          const search = activeUciSearch;
+          activeUciSearch = null;
+          if (search && bestMove && bestMove !== '(none)') {
+            search.resolve({ bestMove, score: search.score, mate: search.mate });
+          } else if (search) {
+            search.reject(new Error('Stockfish returned no legal move.'));
+          }
+        }
+      }
+    };
+
+    worker.onerror = () => {
+      const error = new Error('Stockfish could not be loaded.');
+      rejectStockfishReady?.(error);
+      activeUciSearch?.reject(error);
+      activeUciSearch = null;
+      stockfishWorker = null;
+      stockfishReady = null;
+    };
+
+    worker.postMessage('uci');
+  });
+
+  return stockfishReady;
+}
+
+function waitForStockfishReady(): Promise<void> {
+  if (!stockfishWorker) return Promise.reject(new Error('Stockfish is not initialized.'));
+  return new Promise((resolve) => {
+    resolveStockfishReady = resolve;
+    stockfishWorker?.postMessage('isready');
+  });
+}
+
+function searchWithStockfish(fen: string, level: number): Promise<UciSearchResult> {
+  const search = async () => {
+    await getStockfishWorker();
+    if (!stockfishWorker) throw new Error('Stockfish worker is unavailable.');
+
+    const safeLevel = Math.max(1, Math.min(18, Math.round(level)));
+    const elo = Math.max(1320, Math.min(3190, getEloForLevel(safeLevel).elo));
+    const skill = Math.round(((safeLevel - 1) / 17) * 20);
+    stockfishWorker.postMessage('setoption name Threads value 1');
+    stockfishWorker.postMessage('setoption name Hash value 32');
+    stockfishWorker.postMessage(`setoption name Skill Level value ${skill}`);
+    stockfishWorker.postMessage(`setoption name UCI_LimitStrength value ${safeLevel < 18}`);
+    stockfishWorker.postMessage(`setoption name UCI_Elo value ${elo}`);
+    await waitForStockfishReady();
+
+    return new Promise<UciSearchResult>((resolve, reject) => {
+      activeUciSearch = { resolve, reject };
+      const moveTime = Math.round(250 + safeLevel * 70);
+      stockfishWorker?.postMessage(`position fen ${fen}`);
+      stockfishWorker?.postMessage(`go movetime ${moveTime}`);
+    });
+  };
+
+  const queuedSearch = stockfishQueue.then(search, search);
+  stockfishQueue = queuedSearch.then(() => undefined, () => undefined);
+  return queuedSearch;
+}
+
 /**
  * Stockfish Level 18 Position Analyzer: Thorough Position Assessment with Move-by-Move Explanations
  */
@@ -601,12 +742,6 @@ export async function getStockfish18Move(
   level: number = 18
 ): Promise<{ from: Square; to: Square; promotion?: string; san: string; evalScore: string }> {
   const chess = new Chess(fen);
-  const isWhite = chess.turn() === 'w';
-
-  // Realistic calculation delay based on engine level
-  const delayMs = Math.min(600, Math.max(200, 150 + level * 20));
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
-
   const allLegalMoves = chess.moves({ verbose: true });
   if (allLegalMoves.length === 0) {
     throw new Error('No legal moves available');
@@ -614,56 +749,40 @@ export async function getStockfish18Move(
 
   const safeLevel = Math.max(1, Math.min(18, Math.round(level)));
 
-  // Difficulty scaling from Level 1 to 18:
-  // Levels 1-3: depth 1, 35% chance to pick a random or suboptimal move (Novice)
-  // Levels 4-7: depth 1-2, 20% chance of 2nd best move (Intermediate)
-  // Levels 8-12: depth 2, 8% chance of suboptimal move (Advanced Club)
-  // Levels 13-18: depth 3-4 full alpha-beta minimax with piece-square evaluation (Master to Stockfish 18)
-  let chosenMove = allLegalMoves[0];
-  let searchDepth = 3;
-
-  if (safeLevel <= 3) {
-    searchDepth = 1;
-    // With 35% probability, pick a random legal move for novice human mistakes
-    if (Math.random() < 0.35 && allLegalMoves.length > 1) {
-      const randIdx = Math.floor(Math.random() * Math.min(4, allLegalMoves.length));
-      chosenMove = allLegalMoves[randIdx];
-      return {
-        from: chosenMove.from,
-        to: chosenMove.to,
-        promotion: chosenMove.promotion,
-        san: chosenMove.san,
-        evalScore: '0.00',
-      };
-    }
-  } else if (safeLevel <= 7) {
-    searchDepth = 2;
-  } else if (safeLevel <= 13) {
-    searchDepth = 2;
-  } else {
-    searchDepth = 3;
+  const openingReply = chooseOpeningReply(chess);
+  if (openingReply) {
+    return {
+      from: openingReply.from,
+      to: openingReply.to,
+      promotion: openingReply.promotion,
+      san: openingReply.san,
+      evalScore: '0.00',
+    };
   }
 
-  const result = alphaBeta(chess, searchDepth, -Infinity, Infinity, isWhite);
-
-  if (result.bestMove) {
-    chosenMove = result.bestMove;
-
-    // Small intentional inaccuracy for levels 4-7 to simulate human club play
-    if (safeLevel <= 7 && Math.random() < 0.20 && allLegalMoves.length > 1) {
-      const secondChoice = allLegalMoves.find((m) => m.san !== chosenMove.san);
-      if (secondChoice) chosenMove = secondChoice;
-    }
+  let result: UciSearchResult;
+  try {
+    result = await searchWithStockfish(fen, safeLevel);
+  } catch {
+    const isWhite = chess.turn() === 'w';
+    const fallback = alphaBeta(chess, 2, -Infinity, Infinity, isWhite).bestMove;
+    const move = fallback ?? allLegalMoves[0];
+    return { from: move.from, to: move.to, promotion: move.promotion, san: move.san, evalScore: '0.00' };
   }
 
-  const pawns = (result.score || 0) / 100;
-  const evalScore = pawns >= 0 ? `+${pawns.toFixed(2)}` : `${pawns.toFixed(2)}`;
+  const from = result.bestMove.slice(0, 2) as Square;
+  const to = result.bestMove.slice(2, 4) as Square;
+  const promotion = result.bestMove[4];
+  const chosenMove = chess.move({ from, to, promotion });
+  if (!chosenMove) throw new Error(`Stockfish returned an illegal move: ${result.bestMove}`);
 
-  return {
-    from: chosenMove.from,
-    to: chosenMove.to,
-    promotion: chosenMove.promotion,
-    san: chosenMove.san,
-    evalScore,
-  };
+  const score = (result.score ?? 0) * (chess.turn() === 'w' ? 1 : -1);
+  const mate = result.mate === undefined ? undefined : result.mate * (chess.turn() === 'w' ? 1 : -1);
+  const evalScore = mate !== undefined
+    ? `${mate > 0 ? '+' : '-'}M${Math.abs(mate)}`
+    : score >= 0
+    ? `+${(score / 100).toFixed(2)}`
+    : `${(score / 100).toFixed(2)}`;
+
+  return { from, to, promotion, san: chosenMove.san, evalScore };
 }
