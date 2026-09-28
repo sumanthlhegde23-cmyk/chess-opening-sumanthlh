@@ -570,7 +570,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     }
   };
 
-  // Play Engine Square Click (Play against Stockfish Level 18)
+  // Play Engine Square Click (play against Stockfish)
   const handleSquareClickPlayEngine = async (square: Square) => {
     if (isEngineThinking || gameResult) return;
 
@@ -767,7 +767,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setTimeout(() => setCopiedFen(false), 2000);
   };
 
-  // Stockfish Level 18 Position Analysis & Playable Mode Transition
+  // Position Analysis & Playable Mode Transition
   const handleAnalyzeWithStockfish = async () => {
     setAnalysisError(null);
     try {
@@ -777,7 +777,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
       if (!whiteKing || !blackKing) {
         setAnalysisError(
-          'Both White and Black Kings must be placed on the board to run Stockfish Level 18 analysis.'
+          'Both White and Black Kings must be placed on the board to run engine analysis.'
         );
         return;
       }
@@ -827,7 +827,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setSelectedTool('move');
   };
 
-  // Play the move suggested by Stockfish 18
+  // Play the move suggested by the position analyzer
   const handlePlaySuggestedMove = async () => {
     if (!engineAnalysis || isAnalyzing) return;
     try {
@@ -2019,7 +2019,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 )}
                 {activeTab === 'play_engine' && (
                   <p>
-                    <strong className="text-amber-400">Play Stockfish 18:</strong> Play full chess games against Stockfish 18 (2850+ Elo rating).
+                    <strong className="text-amber-400">Play Stockfish:</strong> Play full games against the Stockfish engine. Strength follows the selected level.
                   </p>
                 )}
                 {activeTab === 'puzzles' && (
@@ -2352,7 +2352,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     ) : (
                       <>
                         <Zap className="w-4 h-4 fill-current" />
-                        <span>Run Stockfish 18 Analysis</span>
+                        <span>Run Engine Analysis</span>
                       </>
                     )}
                   </button>
@@ -2365,7 +2365,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   </div>
                 )}
 
-                {/* Thorough Stockfish 18 Analysis Results & Move-by-Move Explanations */}
+                {/* Thorough position analysis results & move-by-move explanations */}
                 {engineAnalysis && (
                   <div
                     id="engine-analysis-results"
@@ -2387,7 +2387,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             {engineAnalysis.status === 'checkmate' && 'Forced Checkmate sequence'}
                           </div>
                           <div className="text-[11px] text-cyan-400/90 font-medium">
-                            Stockfish 18 Deep Search • Depth 18 ply • Multi-PV Grandmaster Evaluation
+                            Position evaluation and suggested continuation
                           </div>
                         </div>
                       </div>
@@ -3141,7 +3141,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   </div>
                   {engineGameHistory.length === 0 ? (
                     <div className="text-xs text-zinc-500 italic py-2">
-                      Click your pieces on the board above to play against Stockfish 18.
+                      Click your pieces on the board above to play against Stockfish.
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto font-mono text-xs">
@@ -3187,15 +3187,23 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         <div className={`${isEngineBoardFullscreen || isCompletedGameReviewOpen ? 'hidden ' : ''}flex shrink-0 items-center justify-between border-t border-zinc-800 bg-[#10121a] px-5 py-3 text-xs text-zinc-400`}>
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-cyan-400" />
-            <span>Stockfish 18 Engine Analysis • Depth 18 Evaluation</span>
+            <span>Stockfish 19 engine • Position analysis</span>
           </div>
 
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Close Practice
-          </button>
+          <div className="flex items-center gap-3">
+            <a href="/engine/README.md" target="_blank" rel="noreferrer" className="text-cyan-300 underline-offset-2 hover:underline">
+              Engine source
+            </a>
+            <a href="/engine/Copying.txt" target="_blank" rel="noreferrer" className="text-cyan-300 underline-offset-2 hover:underline">
+              GPLv3 license
+            </a>
+            <button
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Close Practice
+            </button>
+          </div>
         </div>
       </div>
     </div>

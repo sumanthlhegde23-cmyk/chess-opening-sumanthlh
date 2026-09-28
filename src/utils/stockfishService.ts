@@ -56,7 +56,7 @@ export function getEloForLevel(level: number): { elo: number; title: string; des
     15: { elo: 2620, title: 'Grandmaster (Level 15)', desc: 'Formidable opening preparation and endgame precision' },
     16: { elo: 2740, title: 'Super GM (Level 16)', desc: 'Elite tournament strength, near-zero errors' },
     17: { elo: 2850, title: 'World Champion Class (Level 17)', desc: 'Deep multi-ply depth, merciless calculation' },
-    18: { elo: 2950, title: 'Stockfish 18 Maximum (Level 18)', desc: 'Uncompromising maximum depth, pinnacle engine play' },
+    18: { elo: 2950, title: 'Stockfish Maximum (Level 18)', desc: 'Maximum-strength Stockfish 19 engine play' },
   };
   return eloMap[safeLevel] || eloMap[18];
 }
@@ -601,8 +601,9 @@ function getStockfishWorker(): Promise<void> {
 
 function waitForStockfishReady(): Promise<void> {
   if (!stockfishWorker) return Promise.reject(new Error('Stockfish is not initialized.'));
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     resolveStockfishReady = resolve;
+    rejectStockfishReady = reject;
     stockfishWorker?.postMessage('isready');
   });
 }
@@ -618,7 +619,7 @@ function searchWithStockfish(fen: string, level: number): Promise<UciSearchResul
     stockfishWorker.postMessage('setoption name Threads value 1');
     stockfishWorker.postMessage('setoption name Hash value 32');
     stockfishWorker.postMessage(`setoption name Skill Level value ${skill}`);
-    stockfishWorker.postMessage(`setoption name UCI_LimitStrength value ${safeLevel < 18}`);
+    stockfishWorker.postMessage('setoption name UCI_LimitStrength value true');
     stockfishWorker.postMessage(`setoption name UCI_Elo value ${elo}`);
     await waitForStockfishReady();
 
