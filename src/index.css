@@ -96,3 +96,78 @@
 .animate-fadeIn {
   animation: fadeIn 0.25s ease-out forwards;
 }
+
+@keyframes engineMovePulse {
+  0% { box-shadow: inset 0 0 0 0 rgba(34, 211, 238, 0); background-color: rgba(34, 211, 238, 0.08); }
+  40% { box-shadow: inset 0 0 0 5px rgba(34, 211, 238, 0.95); background-color: rgba(34, 211, 238, 0.58); }
+  100% { box-shadow: inset 0 0 0 4px rgba(34, 211, 238, 0.9); background-color: rgba(34, 211, 238, 0.42); }
+}
+
+@keyframes engineMoveOriginPulse {
+  0% { box-shadow: inset 0 0 0 0 rgba(251, 191, 36, 0); background-color: rgba(251, 191, 36, 0.1); }
+  40% { box-shadow: inset 0 0 0 5px rgba(251, 191, 36, 0.95); background-color: rgba(251, 191, 36, 0.52); }
+  100% { box-shadow: inset 0 0 0 4px rgba(251, 191, 36, 0.85); background-color: rgba(251, 191, 36, 0.36); }
+}
+
+@keyframes checkedKingPulse {
+  0%, 100% { box-shadow: inset 0 0 0 3px rgba(254, 202, 202, 0.8); }
+  50% { box-shadow: inset 0 0 0 6px rgba(254, 202, 202, 1); }
+}
+
+@keyframes winnerPop {
+  0% { opacity: 0; transform: scale(0.35) rotate(-25deg); }
+  65% { opacity: 1; transform: scale(1.18) rotate(8deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes celebrationLeft {
+  0%, 100% { opacity: 0.25; transform: translate(-10px, 8px) scale(0.55) rotate(-25deg); }
+  50% { opacity: 1; transform: translate(-22px, -13px) scale(1.15) rotate(18deg); }
+}
+
+@keyframes celebrationRight {
+  0%, 100% { opacity: 0.25; transform: translate(10px, 8px) scale(0.55) rotate(25deg); }
+  50% { opacity: 1; transform: translate(22px, -12px) scale(1.15) rotate(-18deg); }
+}
+
+.engine-move-origin {
+  background-color: rgba(251, 191, 36, 0.36);
+  box-shadow: inset 0 0 0 4px rgba(251, 191, 36, 0.85);
+  animation: engineMoveOriginPulse 0.8s ease-out 2 forwards;
+}
+
+.engine-move-target {
+  background-color: rgba(34, 211, 238, 0.42);
+  box-shadow: inset 0 0 0 4px rgba(34, 211, 238, 0.9);
+  animation: engineMovePulse 0.8s ease-out 2 forwards;
+}
+
+.engine-checked-king {
+  z-index: 5;
+  background-color: rgba(239, 68, 68, 0.78) !important;
+  box-shadow: inset 0 0 0 4px rgba(254, 202, 202, 0.95);
+  animation: checkedKingPulse 1s ease-in-out infinite;
+}
+
+.animate-winner-pop {
+  animation: winnerPop 0.75s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.animate-celebration-left {
+  animation: celebrationLeft 1.2s ease-in-out infinite;
+}
+
+.animate-celebration-right {
+  animation: celebrationRight 1.2s ease-in-out 0.2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .engine-move-target,
+  .engine-move-origin,
+  .engine-checked-king,
+  .animate-winner-pop,
+  .animate-celebration-left,
+  .animate-celebration-right {
+    animation: none;
+  }
+}

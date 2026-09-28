@@ -8,6 +8,7 @@ import {
   X,
   Play,
   ChevronLeft,
+  ChevronRight,
   Zap,
   Check,
   Flame,
@@ -37,6 +38,7 @@ import {
   Puzzle,
 } from 'lucide-react';
 import { ChessPiece } from './ChessPiece';
+import { Chessboard } from './Chessboard';
 import { boardThemes, BoardTheme } from '../utils/boardThemes';
 import { chessAudio } from '../utils/sound';
 import {
@@ -45,6 +47,7 @@ import {
   getEloForLevel,
   EngineAnalysisResult,
   MoveExplanationItem,
+  explainPlayedMove,
 } from '../utils/stockfishService';
 import {
   PlatformType,
@@ -66,6 +69,12 @@ interface PracticeModeModalProps {
 }
 
 type PracticeTab = 'editor' | 'explorer' | 'play_engine' | 'puzzles';
+type EngineGameMove = { san: string; from: string; to: string };
+type CompletedGameReview = {
+  moves: EngineGameMove[];
+  fens: string[];
+  explanations: (MoveExplanationItem | null)[];
+};
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
@@ -178,12 +187,19 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const [engineLevel, setEngineLevel] = useState<number>(18);
   const [previewFen, setPreviewFen] = useState<string | null>(null);
   const [activeExplanationIndex, setActiveExplanationIndex] = useState<number | null>(null);
+  const [completedGameReview, setCompletedGameReview] = useState<CompletedGameReview | null>(null);
+  const [isCompletedGameReviewOpen, setIsCompletedGameReviewOpen] = useState<boolean>(false);
+  const [reviewPlyIndex, setReviewPlyIndex] = useState<number>(0);
+  const [reviewPositionAnalysis, setReviewPositionAnalysis] = useState<EngineAnalysisResult | null>(null);
+  const [isReviewAnalysisLoading, setIsReviewAnalysisLoading] = useState<boolean>(false);
+  const [reviewAnalysisError, setReviewAnalysisError] = useState<string | null>(null);
 
   // Play Engine states
   const [playerColor, setPlayerColor] = useState<Color>('w');
   const [engineGameHistory, setEngineGameHistory] = useState<{ san: string; from: string; to: string }[]>([]);
+  const [lastEngineMove, setLastEngineMove] = useState<{ from: Square; to: Square } | null>(null);
   const [isEngineThinking, setIsEngineThinking] = useState<boolean>(false);
-  const [gameResult, setGameResult] = useState<string | null>(null);
+  const [gameResult, setGameResult] = useState<'player' | 'engine' | 'draw' | null>(null);
   const [engineEvalBar, setEngineEvalBar] = useState<string>('0.00');
 
   const currentTheme: BoardTheme = boardThemes[boardTheme] || boardThemes.maple;
@@ -201,6 +217,24 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     const parts = boardFen.trim().split(' ');
     return parts[1] === 'b' ? 'b' : 'w';
   }, [boardFen]);
+
+  const checkedKingSquare = useMemo<Square | null>(() => {
+    if (activeTab !== 'play_engine' || !lastEngineMove) return null;
+    try {
+      const chess = new Chess(boardFen);
+      if (!chess.isCheck() || chess.turn() !== playerColor) return null;
+      for (const [rankIndex, row] of chess.board().entries()) {
+        for (const [fileIndex, piece] of row.entries()) {
+          if (piece?.type === 'k' && piece.color === playerColor) {
+            return `${String.fromCharCode(97 + fileIndex)}${8 - rankIndex}` as Square;
+          }
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }, [activeTab, boardFen, lastEngineMove, playerColor]);
 
   // Compute legal destination squares for the currently selected piece
   const legalDestinations = useMemo(() => {
@@ -242,8 +276,32 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     if (!isOpen) setIsEngineBoardFullscreen(false);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isCompletedGameReviewOpen || !completedGameReview) return;
+
+    let isCurrentReview = true;
+    setIsReviewAnalysisLoading(true);
+    setReviewAnalysisError(null);
+    setReviewPositionAnalysis(null);
+    analyzePositionStockfish18(completedGameReview.fens[reviewPlyIndex])
+      .then((analysis) => {
+        if (isCurrentReview) setReviewPositionAnalysis(analysis);
+      })
+      .catch(() => {
+        if (isCurrentReview) setReviewAnalysisError('Could not evaluate this game position.');
+      })
+      .finally(() => {
+        if (isCurrentReview) setIsReviewAnalysisLoading(false);
+      });
+
+    return () => {
+      isCurrentReview = false;
+    };
+  }, [isCompletedGameReviewOpen, completedGameReview, reviewPlyIndex]);
+
   // Handle Tab changes
   const handleTabChange = (tab: PracticeTab) => {
+    setIsCompletedGameReviewOpen(false);
     setActiveTab(tab);
     setIsEngineBoardFullscreen(false);
     setAnalysisError(null);
@@ -553,6 +611,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
       // Execute Player move
       setSelectedSquare(null);
+      setLastEngineMove(null);
       if (move.captured) chessAudio.playCapture();
       else chessAudio.playMove();
 
@@ -562,9 +621,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
       if (chess.isGameOver()) {
         if (chess.isCheckmate()) {
-          setGameResult(`Victory! You defeated Stockfish Level ${engineLevel} by checkmate!`);
+          setGameResult('player');
         } else {
-          setGameResult('Game drawn by stalemate or repetition.');
+          setGameResult('draw');
         }
         return;
       }
@@ -588,13 +647,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           ...prev,
           { san: engineResult.san, from: engineResult.from, to: engineResult.to },
         ]);
+        setLastEngineMove({ from: engineResult.from, to: engineResult.to });
         setEngineEvalBar(engineMove.evalScore);
 
         if (engineChess.isGameOver()) {
           if (engineChess.isCheckmate()) {
-            setGameResult(`Stockfish Level ${engineLevel} won by checkmate.`);
+            setGameResult('engine');
           } else {
-            setGameResult('Game drawn by stalemate or repetition.');
+            setGameResult('draw');
           }
         }
       } catch {
@@ -1063,8 +1123,13 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // ----------------------------------------------------
   const startNewEngineGame = useCallback((color: Color) => {
     const chess = new Chess(START_FEN);
+    setIsCompletedGameReviewOpen(false);
+    setCompletedGameReview(null);
+    setReviewPlyIndex(0);
+    setReviewPositionAnalysis(null);
     setBoardFen(START_FEN);
     setEngineGameHistory([]);
+    setLastEngineMove(null);
     setGameResult(null);
     setSelectedSquare(null);
     setEngineEvalBar('0.00');
@@ -1078,6 +1143,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           chess.move({ from: move.from, to: move.to, promotion: move.promotion });
           setBoardFen(chess.fen());
           setEngineGameHistory([{ san: move.san, from: move.from, to: move.to }]);
+          setLastEngineMove({ from: move.from, to: move.to });
           setEngineEvalBar(move.evalScore);
           chessAudio.playMove();
         } catch {
@@ -1099,6 +1165,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       }
       setBoardFen(chess.fen());
       setEngineGameHistory(historyToKeep);
+      setLastEngineMove(null);
       setGameResult(null);
       setSelectedSquare(null);
       chessAudio.playMove();
@@ -1106,6 +1173,100 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       // fallback
     }
   };
+
+  const handleAnalyzeCompletedGame = async () => {
+    const chess = new Chess(START_FEN);
+    const fenHistory = [START_FEN];
+    const moves: EngineGameMove[] = [];
+    const explanations: (MoveExplanationItem | null)[] = [];
+
+    try {
+      for (const move of engineGameHistory) {
+        const fenBeforeMove = chess.fen();
+        const playedMove = chess.move(move.san);
+        moves.push({ san: playedMove.san, from: playedMove.from, to: playedMove.to });
+        explanations.push(explainPlayedMove(fenBeforeMove, playedMove.san));
+        fenHistory.push(chess.fen());
+      }
+    } catch {
+      setAnalysisError('Could not replay the completed game for analysis.');
+      return;
+    }
+
+    setCompletedGameReview({ moves, fens: fenHistory, explanations });
+    setIsCompletedGameReviewOpen(true);
+    setReviewPlyIndex(0);
+    setReviewPositionAnalysis(null);
+    setReviewAnalysisError(null);
+    setIsEngineBoardFullscreen(false);
+  };
+
+  const handleReviewNavigation = (direction: -1 | 1) => {
+    if (!completedGameReview) return;
+    setReviewPlyIndex((current) => Math.max(0, Math.min(completedGameReview.moves.length, current + direction)));
+  };
+
+  const handleReviewPlayAgain = () => {
+    setIsCompletedGameReviewOpen(false);
+    setActiveTab('play_engine');
+    setIsEngineBoardFullscreen(true);
+    startNewEngineGame(playerColor);
+  };
+
+  const handleExitCompletedGameReview = () => {
+    setIsCompletedGameReviewOpen(false);
+    setCompletedGameReview(null);
+    setReviewPlyIndex(0);
+    setReviewPositionAnalysis(null);
+    setReviewAnalysisError(null);
+    setEngineGameHistory([]);
+    setLastEngineMove(null);
+    setGameResult(null);
+    setEngineEvalBar('0.00');
+    setEngineAnalysis(null);
+    setAnalysisError(null);
+    setIsAnalysisMode(false);
+    setAnalyzedBaseFen(null);
+    setAnalysisMoveHistory([]);
+    setAnalysisFenHistory([]);
+    setPreviewFen(null);
+    setActiveExplanationIndex(null);
+    setSelectedSquare(null);
+    setIsEngineThinking(false);
+    setBoardFen(START_FEN);
+    setCustomFenInput(START_FEN);
+    setIsEngineBoardFullscreen(false);
+    setActiveTab('play_engine');
+    onClose();
+  };
+
+  const renderReviewMoveControls = (idPrefix: string) => (
+    <div className="flex items-center justify-center gap-3">
+      <button
+        id={`${idPrefix}-previous-move`}
+        type="button"
+        onClick={() => handleReviewNavigation(-1)}
+        disabled={reviewPlyIndex === 0}
+        className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Previous Move
+      </button>
+      <span className="min-w-24 text-center font-mono text-xs text-zinc-400">
+        Move {reviewPlyIndex} / {completedGameReview?.moves.length ?? 0}
+      </span>
+      <button
+        id={`${idPrefix}-next-move`}
+        type="button"
+        onClick={() => handleReviewNavigation(1)}
+        disabled={!completedGameReview || reviewPlyIndex === completedGameReview.moves.length}
+        className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Next Move
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
 
   if (!isOpen) return null;
 
@@ -1187,7 +1348,148 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         </div>
 
         {/* Scrollable Content Body */}
-        <div className={`flex flex-1 flex-col space-y-4 p-4 sm:p-5 ${isEngineBoardFullscreen ? 'min-h-0 overflow-hidden p-2 sm:p-3' : 'overflow-y-auto'}`}>
+        <div className={`flex flex-1 flex-col space-y-4 p-4 sm:p-5 ${isEngineBoardFullscreen && !gameResult ? 'min-h-0 overflow-hidden p-2 sm:p-3' : 'overflow-y-auto'}`}>
+          {isCompletedGameReviewOpen && completedGameReview ? (
+            <section aria-labelledby="completed-game-analysis-title" className="mx-auto flex w-full max-w-4xl flex-col gap-5 animate-fadeIn">
+              <header className={`rounded-xl border p-4 text-center sm:p-5 ${
+                gameResult === 'player'
+                  ? 'border-emerald-400/50 bg-emerald-950/50'
+                  : gameResult === 'engine'
+                  ? 'border-rose-400/50 bg-rose-950/50'
+                  : 'border-amber-300/40 bg-amber-950/40'
+              }`}>
+                <div className="flex items-center justify-center gap-3">
+                  <Sparkles className={`h-6 w-6 ${gameResult === 'player' ? 'text-emerald-300' : gameResult === 'engine' ? 'text-rose-300' : 'text-amber-300'}`} />
+                  <h2 id="completed-game-analysis-title" className={`text-xl font-black ${
+                    gameResult === 'player' ? 'text-emerald-300' : gameResult === 'engine' ? 'text-rose-300' : 'text-amber-200'
+                  }`}>
+                    {gameResult === 'player' ? 'You Won!!' : gameResult === 'engine' ? 'Engine Won' : 'Game Draw'}
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs text-zinc-300">
+                  Full game review · {completedGameReview.moves.length} half-moves · Stockfish Level {engineLevel}
+                </p>
+              </header>
+
+              <div className="mx-auto w-full max-w-[540px]">
+                <Chessboard
+                  fen={completedGameReview.fens[reviewPlyIndex]}
+                  flipped={isFlipped}
+                  theme={boardTheme}
+                  lastMove={reviewPlyIndex > 0 ? completedGameReview.moves[reviewPlyIndex - 1] : null}
+                  interactive={false}
+                />
+              </div>
+
+              {renderReviewMoveControls('analysis-board')}
+
+              <section aria-live="polite" className="space-y-3 rounded-xl border border-zinc-800 bg-[#141720] p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-100">
+                      {reviewPlyIndex === 0
+                        ? 'Starting Position'
+                        : `Move ${completedGameReview.moves[reviewPlyIndex - 1]?.san ?? ''}`}
+                    </h3>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      {reviewPlyIndex === 0
+                        ? 'The game begins from the standard starting position.'
+                        : completedGameReview.explanations[reviewPlyIndex - 1]?.explanation ?? 'Position after this move.'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-right">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Position Evaluation</div>
+                    <div className="font-mono text-lg font-black text-cyan-200">
+                      {isReviewAnalysisLoading ? '…' : reviewPositionAnalysis?.evalScore ?? '--'}
+                    </div>
+                  </div>
+                </div>
+
+                {reviewPlyIndex > 0 && completedGameReview.explanations[reviewPlyIndex - 1] && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-amber-300">
+                        {completedGameReview.explanations[reviewPlyIndex - 1]?.moveNumber}.
+                        {completedGameReview.explanations[reviewPlyIndex - 1]?.color === 'Black' ? '..' : ''}
+                        {' '}{completedGameReview.explanations[reviewPlyIndex - 1]?.san}
+                      </span>
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                        {completedGameReview.explanations[reviewPlyIndex - 1]?.tacticalConcept}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-zinc-200">
+                      {completedGameReview.explanations[reviewPlyIndex - 1]?.explanation}
+                    </p>
+                    <p className="text-xs leading-relaxed text-cyan-200/80">
+                      Idea: {completedGameReview.explanations[reviewPlyIndex - 1]?.threatOrIdea}
+                    </p>
+                  </div>
+                )}
+
+                {reviewPositionAnalysis?.thoroughAssessment && (
+                  <p className="rounded-lg bg-black/20 p-3 text-xs leading-relaxed text-zinc-300">
+                    {reviewPositionAnalysis.thoroughAssessment.overallSummary}
+                  </p>
+                )}
+                {reviewAnalysisError && <p role="alert" className="text-xs text-rose-300">{reviewAnalysisError}</p>}
+              </section>
+
+              {renderReviewMoveControls('analysis-explanation')}
+
+              <section aria-labelledby="full-game-review-title" className="space-y-3">
+                <h3 id="full-game-review-title" className="text-sm font-bold uppercase tracking-wider text-zinc-300">
+                  Full Game Review
+                </h3>
+                <div className="space-y-2">
+                  {completedGameReview.moves.map((move, index) => {
+                    const explanation = completedGameReview.explanations[index];
+                    const isActive = reviewPlyIndex === index + 1;
+                    return (
+                      <button
+                        key={`${move.san}-${index}`}
+                        type="button"
+                        onClick={() => setReviewPlyIndex(index + 1)}
+                        className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                          isActive ? 'border-cyan-400/70 bg-cyan-950/35' : 'border-zinc-800 bg-[#11141c] hover:border-zinc-600'
+                        }`}
+                      >
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-cyan-300">
+                            {Math.floor(index / 2) + 1}{index % 2 === 1 ? '...' : '.'} {move.san}
+                          </span>
+                          {explanation && <span className="text-[10px] font-semibold text-amber-300">{explanation.tacticalConcept}</span>}
+                        </span>
+                        {explanation && <span className="mt-1 block text-xs leading-relaxed text-zinc-300">{explanation.explanation}</span>}
+                        {explanation && <span className="mt-1 block text-[11px] leading-relaxed text-zinc-500">Idea: {explanation.threatOrIdea}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <div className="flex flex-col justify-center gap-2 border-t border-zinc-800 pt-4 sm:flex-row">
+                <button
+                  id="btn-analysis-play-again"
+                  type="button"
+                  onClick={handleReviewPlayAgain}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Play Again
+                </button>
+                <button
+                  id="btn-analysis-exit-menu"
+                  type="button"
+                  onClick={handleExitCompletedGameReview}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-600 bg-zinc-800 px-5 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-700"
+                >
+                  <X className="h-4 w-4" />
+                  Exit to Main Menu
+                </button>
+              </div>
+            </section>
+          ) : (
+          <>
           {/* Top Board & Status Layout */}
           <div className={`flex flex-col items-center justify-center gap-5 ${isEngineBoardFullscreen ? 'min-h-0 flex-1 gap-2' : 'lg:flex-row lg:items-start'}`}>
             {/* Left Column: Board + Dedicated Bottom-of-Board FEN Bar */}
@@ -1253,6 +1555,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       activeTab === 'explorer' &&
                       showPopularMoveOnBoard &&
                       popularMoveCoords?.toSquare === square;
+                    const isEngineMoveFrom =
+                      activeTab === 'play_engine' && lastEngineMove?.from === square;
+                    const isEngineMoveTo =
+                      activeTab === 'play_engine' && lastEngineMove?.to === square;
+                    const isCheckedKing = checkedKingSquare === square;
 
                     return (
                       <div
@@ -1271,13 +1578,24 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                           isBestMoveTo ? 'ring-2 ring-cyan-400 ring-inset bg-cyan-500/35' : ''
                         } ${isBestMoveSq && !isBestMoveFrom && !isBestMoveTo ? 'bg-cyan-500/20' : ''} ${
                           isPopularFrom ? 'ring-2 ring-emerald-400 ring-inset bg-emerald-500/20' : ''
-                        } ${isPopularTo ? 'bg-emerald-500/25 ring-2 ring-emerald-400 ring-inset' : ''}`}
+                        } ${isPopularTo ? 'bg-emerald-500/25 ring-2 ring-emerald-400 ring-inset' : ''} ${
+                          isEngineMoveFrom ? 'engine-move-origin' : ''
+                        } ${isEngineMoveTo ? 'engine-move-target' : ''} ${
+                          isCheckedKing ? 'engine-checked-king' : ''
+                        }`}
                       >
                         {/* Piece Display */}
                         {piece && (
                           <div className="w-full h-full p-0.5">
                             <ChessPiece type={piece.type} color={piece.color} />
                           </div>
+                        )}
+
+                        {isCheckedKing && (
+                          <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 z-20 bg-red-500/55 ring-4 ring-inset ring-red-200/90"
+                          />
                         )}
 
                         {/* Playable Move Indicator: Legal Move Dot or Capture Ring */}
@@ -1411,7 +1729,72 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   </span>
                 </div>
               )}
+
             </div>
+
+            {activeTab === 'play_engine' && gameResult && (
+              <section
+                aria-labelledby="engine-game-result-title"
+                aria-live="polite"
+                className={`w-full rounded-xl border p-4 text-center shadow-lg animate-fadeIn sm:p-5 ${
+                  gameResult === 'player'
+                    ? 'border-emerald-400/60 bg-emerald-950/70 shadow-emerald-950/30'
+                    : gameResult === 'engine'
+                    ? 'border-rose-400/60 bg-rose-950/60 shadow-rose-950/30'
+                    : 'border-amber-300/50 bg-amber-950/50 shadow-amber-950/30'
+                }`}
+              >
+                <div className="relative mx-auto mb-2 flex h-12 w-14 items-center justify-center">
+                  <Star className={`absolute left-0 h-4 w-4 animate-celebration-left ${gameResult === 'player' ? 'text-emerald-300' : 'text-rose-300'}`} />
+                  <Sparkles className={`h-9 w-9 animate-winner-pop ${gameResult === 'player' ? 'text-emerald-300' : gameResult === 'engine' ? 'text-rose-300' : 'text-amber-300'}`} />
+                  <Star className={`absolute right-0 h-4 w-4 animate-celebration-right ${gameResult === 'player' ? 'text-lime-300' : 'text-amber-300'}`} />
+                </div>
+                <h2
+                  id="engine-game-result-title"
+                  className={`text-2xl font-black sm:text-3xl ${
+                    gameResult === 'player'
+                      ? 'text-emerald-300'
+                      : gameResult === 'engine'
+                      ? 'text-rose-300'
+                      : 'text-amber-200'
+                  }`}
+                >
+                  {gameResult === 'player' ? 'You Won!!' : gameResult === 'engine' ? 'Engine Won' : 'Game Draw'}
+                </h2>
+                <p className="mt-1 text-sm text-zinc-200">
+                  {gameResult === 'draw' ? 'The game ended in a draw.' : 'Checkmate. Well played.'}
+                </p>
+                <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
+                  <button
+                    id="btn-play-again"
+                    type="button"
+                    onClick={() => startNewEngineGame(playerColor)}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Play Again
+                  </button>
+                  <button
+                    id="btn-analyze-completed-game"
+                    type="button"
+                    onClick={handleAnalyzeCompletedGame}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-cyan-400"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Analyze the Game
+                  </button>
+                  <button
+                    id="btn-exit-game-menu"
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-500 bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-700"
+                  >
+                    <X className="h-4 w-4" />
+                    Exit to Main Menu
+                  </button>
+                </div>
+              </section>
+            )}
 
             {/* Bottom of the Board in Board Editor: Dedicated Copy FEN Bar for Uploading to AI */}
             {activeTab === 'editor' && (
@@ -1622,22 +2005,6 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
               </div>
 
               {/* Game Result Card for Play Engine */}
-              {gameResult && (
-                <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs font-semibold animate-fadeIn space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
-                    <Award className="w-4 h-4 text-amber-400" />
-                    <span>Game Finished</span>
-                  </div>
-                  <p>{gameResult}</p>
-                  <button
-                    onClick={() => startNewEngineGame(playerColor)}
-                    className="w-full py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Play Again
-                  </button>
-                </div>
-              )}
-
               {/* Mode Context Hint */}
               <div className="p-3 rounded-xl bg-[#151722] border border-zinc-800/80 text-[11px] text-zinc-400 leading-relaxed">
                 {activeTab === 'editor' && (
@@ -2812,10 +3179,12 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
               />
             )}
           </div>
+          </>
+          )}
         </div>
 
         {/* Modal Footer */}
-        <div className={`${isEngineBoardFullscreen ? 'hidden ' : ''}flex shrink-0 items-center justify-between border-t border-zinc-800 bg-[#10121a] px-5 py-3 text-xs text-zinc-400`}>
+        <div className={`${isEngineBoardFullscreen || isCompletedGameReviewOpen ? 'hidden ' : ''}flex shrink-0 items-center justify-between border-t border-zinc-800 bg-[#10121a] px-5 py-3 text-xs text-zinc-400`}>
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-cyan-400" />
             <span>Stockfish 18 Engine Analysis • Depth 18 Evaluation</span>

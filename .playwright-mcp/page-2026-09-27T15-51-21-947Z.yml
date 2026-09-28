@@ -1,0 +1,846 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - heading "Chess Openings Master" [level=1] [ref=e12]
+          - generic [ref=e13]: 20 Openings • 240 Variations
+        - paragraph [ref=e14]: 10 White & 10 Black Openings with 12 variations each & move-by-move master explanations
+      - generic [ref=e15]:
+        - button "Go Premium ₹999 / ₹699" [ref=e16] [cursor=pointer]:
+          - generic [ref=e19]: Go Premium
+          - generic [ref=e20]: ₹999 / ₹699
+        - button "White POV" [ref=e21]
+        - button "Switch to light mode" [ref=e28]
+        - combobox "Board theme" [ref=e36] [cursor=pointer]:
+          - option "Maple Wood" [selected]
+          - option "Classic Walnut"
+          - option "Tournament Emerald"
+          - option "Midnight Slate"
+          - option "Tournament Blue"
+        - button "Mute Sound" [ref=e37]
+        - button "Study Guide & Repertoire Tips" [ref=e42]
+        - button "Practice Mode" [active] [ref=e46] [cursor=pointer]
+        - button "chat with ai" [ref=e51] [cursor=pointer]
+  - main [ref=e56]:
+    - region "Openings Explorer" [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - button "All Openings (20)" [ref=e61]
+            - button "White (10)" [ref=e62]
+            - button "Black (10)" [ref=e64]
+          - generic [ref=e66]:
+            - textbox "Search openings, ECO (e.g. B90, E60)..." [ref=e71]
+            - combobox [ref=e72]:
+              - option "All Styles" [selected]
+              - option "Aggressive"
+              - option "Tactical"
+              - option "Positional"
+              - option "Solid"
+              - option "Counterattacking"
+            - button "Global Chess Current Affairs and Live Tournaments" [ref=e73]:
+              - generic [ref=e80]: Live Affairs
+        - generic [ref=e81]:
+          - button "White Opening C60-C99 Ruy Lopez Open Game (1.e4 e5) 12 Variations Positional" [ref=e82] [cursor=pointer]:
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - generic [ref=e85]: White Opening
+                - generic [ref=e87]: C60-C99
+              - generic [ref=e88]: Ruy Lopez
+              - generic [ref=e89]: Open Game (1.e4 e5)
+            - generic [ref=e90]:
+              - generic [ref=e91]:
+                - strong [ref=e92]: "12"
+                - text: Variations
+              - generic [ref=e93]: Positional
+          - button "White Opening C50-C54 Italian Game Open Game (1.e4 e5) 12 Variations Tactical" [ref=e94] [cursor=pointer]:
+            - generic [ref=e95]:
+              - generic [ref=e96]:
+                - generic [ref=e97]: White Opening
+                - generic [ref=e99]: C50-C54
+              - generic [ref=e100]: Italian Game
+              - generic [ref=e101]: Open Game (1.e4 e5)
+            - generic [ref=e102]:
+              - generic [ref=e103]:
+                - strong [ref=e104]: "12"
+                - text: Variations
+              - generic [ref=e105]: Tactical
+          - button "White Opening D06-D69 Queen's Gambit Closed Game (1.d4 d5) 12 Variations Positional" [ref=e106] [cursor=pointer]:
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - generic [ref=e109]: White Opening
+                - generic [ref=e111]: D06-D69
+              - generic [ref=e112]: Queen's Gambit
+              - generic [ref=e113]: Closed Game (1.d4 d5)
+            - generic [ref=e114]:
+              - generic [ref=e115]:
+                - strong [ref=e116]: "12"
+                - text: Variations
+              - generic [ref=e117]: Positional
+          - button "White Opening A10-A39 English Opening Flank Opening (1.c4) 12 Variations Positional" [ref=e118] [cursor=pointer]:
+            - generic [ref=e119]:
+              - generic [ref=e120]:
+                - generic [ref=e121]: White Opening
+                - generic [ref=e123]: A10-A39
+              - generic [ref=e124]: English Opening
+              - generic [ref=e125]: Flank Opening (1.c4)
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - strong [ref=e128]: "12"
+                - text: Variations
+              - generic [ref=e129]: Positional
+          - button "White Opening C45 Scotch Game Open Game (1.e4 e5) 12 Variations Tactical" [ref=e130] [cursor=pointer]:
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - generic [ref=e133]: White Opening
+                - generic [ref=e135]: C45
+              - generic [ref=e136]: Scotch Game
+              - generic [ref=e137]: Open Game (1.e4 e5)
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - strong [ref=e140]: "12"
+                - text: Variations
+              - generic [ref=e141]: Tactical
+          - button "White Opening D02 London System Closed Game (1.d4) 12 Variations Solid" [ref=e142] [cursor=pointer]:
+            - generic [ref=e143]:
+              - generic [ref=e144]:
+                - generic [ref=e145]: White Opening
+                - generic [ref=e147]: D02
+              - generic [ref=e148]: London System
+              - generic [ref=e149]: Closed Game (1.d4)
+            - generic [ref=e150]:
+              - generic [ref=e151]:
+                - strong [ref=e152]: "12"
+                - text: Variations
+              - generic [ref=e153]: Solid
+          - button "White Opening A07-A08 King's Indian Attack Flank Opening (1.Nf3 / 1.e4) 12 Variations Aggressive" [ref=e154] [cursor=pointer]:
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - generic [ref=e157]: White Opening
+                - generic [ref=e159]: A07-A08
+              - generic [ref=e160]: King's Indian Attack
+              - generic [ref=e161]: Flank Opening (1.Nf3 / 1.e4)
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - strong [ref=e164]: "12"
+                - text: Variations
+              - generic [ref=e165]: Aggressive
+          - button "White Opening E00-E09 Catalan Opening Closed Game (1.d4 Nf6 2.c4 e6 3.g3) 12 Variations Positional" [ref=e166] [cursor=pointer]:
+            - generic [ref=e167]:
+              - generic [ref=e168]:
+                - generic [ref=e169]: White Opening
+                - generic [ref=e171]: E00-E09
+              - generic [ref=e172]: Catalan Opening
+              - generic [ref=e173]: Closed Game (1.d4 Nf6 2.c4 e6 3.g3)
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - strong [ref=e176]: "12"
+                - text: Variations
+              - generic [ref=e177]: Positional
+          - button "White Opening C25-C29 Vienna Game & Gambit Open Game (1.e4 e5 2.Nc3) 12 Variations Tactical" [ref=e178] [cursor=pointer]:
+            - generic [ref=e179]:
+              - generic [ref=e180]:
+                - generic [ref=e181]: White Opening
+                - generic [ref=e183]: C25-C29
+              - generic [ref=e184]: Vienna Game & Gambit
+              - generic [ref=e185]: Open Game (1.e4 e5 2.Nc3)
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - strong [ref=e188]: "12"
+                - text: Variations
+              - generic [ref=e189]: Tactical
+          - button "White Opening A04-A09 Réti Opening Flank Opening (1.Nf3 d5 2.c4) 12 Variations Positional" [ref=e190] [cursor=pointer]:
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - generic [ref=e193]: White Opening
+                - generic [ref=e195]: A04-A09
+              - generic [ref=e196]: Réti Opening
+              - generic [ref=e197]: Flank Opening (1.Nf3 d5 2.c4)
+            - generic [ref=e198]:
+              - generic [ref=e199]:
+                - strong [ref=e200]: "12"
+                - text: Variations
+              - generic [ref=e201]: Positional
+          - button "Black Defense B20-B99 Sicilian Defense Semi-Open Game (1.e4 c5) 12 Variations Counterattacking" [ref=e202] [cursor=pointer]:
+            - generic [ref=e203]:
+              - generic [ref=e204]:
+                - generic [ref=e205]: Black Defense
+                - generic [ref=e207]: B20-B99
+              - generic [ref=e208]: Sicilian Defense
+              - generic [ref=e209]: Semi-Open Game (1.e4 c5)
+            - generic [ref=e210]:
+              - generic [ref=e211]:
+                - strong [ref=e212]: "12"
+                - text: Variations
+              - generic [ref=e213]: Counterattacking
+          - button "Black Defense C00-C19 French Defense Semi-Open Game (1.e4 e6) 12 Variations Positional" [ref=e214] [cursor=pointer]:
+            - generic [ref=e215]:
+              - generic [ref=e216]:
+                - generic [ref=e217]: Black Defense
+                - generic [ref=e219]: C00-C19
+              - generic [ref=e220]: French Defense
+              - generic [ref=e221]: Semi-Open Game (1.e4 e6)
+            - generic [ref=e222]:
+              - generic [ref=e223]:
+                - strong [ref=e224]: "12"
+                - text: Variations
+              - generic [ref=e225]: Positional
+          - button "Black Defense B10-B19 Caro-Kann Defense Semi-Open Game (1.e4 c6) 12 Variations Solid" [ref=e226] [cursor=pointer]:
+            - generic [ref=e227]:
+              - generic [ref=e228]:
+                - generic [ref=e229]: Black Defense
+                - generic [ref=e231]: B10-B19
+              - generic [ref=e232]: Caro-Kann Defense
+              - generic [ref=e233]: Semi-Open Game (1.e4 c6)
+            - generic [ref=e234]:
+              - generic [ref=e235]:
+                - strong [ref=e236]: "12"
+                - text: Variations
+              - generic [ref=e237]: Solid
+          - button "Black Defense E60-E99 King's Indian Defense Hypermodern / Closed Game 12 Variations Aggressive" [ref=e238] [cursor=pointer]:
+            - generic [ref=e239]:
+              - generic [ref=e240]:
+                - generic [ref=e241]: Black Defense
+                - generic [ref=e243]: E60-E99
+              - generic [ref=e244]: King's Indian Defense
+              - generic [ref=e245]: Hypermodern / Closed Game
+            - generic [ref=e246]:
+              - generic [ref=e247]:
+                - strong [ref=e248]: "12"
+                - text: Variations
+              - generic [ref=e249]: Aggressive
+          - button "Black Defense E20-E59 Nimzo-Indian Defense Hypermodern / Closed Game 12 Variations Positional" [ref=e250] [cursor=pointer]:
+            - generic [ref=e251]:
+              - generic [ref=e252]:
+                - generic [ref=e253]: Black Defense
+                - generic [ref=e255]: E20-E59
+              - generic [ref=e256]: Nimzo-Indian Defense
+              - generic [ref=e257]: Hypermodern / Closed Game
+            - generic [ref=e258]:
+              - generic [ref=e259]:
+                - strong [ref=e260]: "12"
+                - text: Variations
+              - generic [ref=e261]: Positional
+          - button "Black Defense D10-D19 Slav Defense Closed Game (1.d4 d5 2.c4 c6) 12 Variations Solid" [ref=e262] [cursor=pointer]:
+            - generic [ref=e263]:
+              - generic [ref=e264]:
+                - generic [ref=e265]: Black Defense
+                - generic [ref=e267]: D10-D19
+              - generic [ref=e268]: Slav Defense
+              - generic [ref=e269]: Closed Game (1.d4 d5 2.c4 c6)
+            - generic [ref=e270]:
+              - generic [ref=e271]:
+                - strong [ref=e272]: "12"
+                - text: Variations
+              - generic [ref=e273]: Solid
+          - button "Black Defense B01 Scandinavian Defense Center Game (1.e4 d5) 12 Variations Counterattacking" [ref=e274] [cursor=pointer]:
+            - generic [ref=e275]:
+              - generic [ref=e276]:
+                - generic [ref=e277]: Black Defense
+                - generic [ref=e279]: B01
+              - generic [ref=e280]: Scandinavian Defense
+              - generic [ref=e281]: Center Game (1.e4 d5)
+            - generic [ref=e282]:
+              - generic [ref=e283]:
+                - strong [ref=e284]: "12"
+                - text: Variations
+              - generic [ref=e285]: Counterattacking
+          - button "Black Defense B06-B09 Pirc / Modern Defense Hypermodern / Semi-Open Game 12 Variations Counterattacking" [ref=e286] [cursor=pointer]:
+            - generic [ref=e287]:
+              - generic [ref=e288]:
+                - generic [ref=e289]: Black Defense
+                - generic [ref=e291]: B06-B09
+              - generic [ref=e292]: Pirc / Modern Defense
+              - generic [ref=e293]: Hypermodern / Semi-Open Game
+            - generic [ref=e294]:
+              - generic [ref=e295]:
+                - strong [ref=e296]: "12"
+                - text: Variations
+              - generic [ref=e297]: Counterattacking
+          - button "Black Defense A80-A99 Dutch Defense Flank / Asymmetrical (1.d4 f5) 12 Variations Aggressive" [ref=e298] [cursor=pointer]:
+            - generic [ref=e299]:
+              - generic [ref=e300]:
+                - generic [ref=e301]: Black Defense
+                - generic [ref=e303]: A80-A99
+              - generic [ref=e304]: Dutch Defense
+              - generic [ref=e305]: Flank / Asymmetrical (1.d4 f5)
+            - generic [ref=e306]:
+              - generic [ref=e307]:
+                - strong [ref=e308]: "12"
+                - text: Variations
+              - generic [ref=e309]: Aggressive
+          - button "Black Defense B02-B05 Alekhine Defense Hypermodern (1.e4 Nf6) 12 Variations Counterattacking" [ref=e310] [cursor=pointer]:
+            - generic [ref=e311]:
+              - generic [ref=e312]:
+                - generic [ref=e313]: Black Defense
+                - generic [ref=e315]: B02-B05
+              - generic [ref=e316]: Alekhine Defense
+              - generic [ref=e317]: Hypermodern (1.e4 Nf6)
+            - generic [ref=e318]:
+              - generic [ref=e319]:
+                - strong [ref=e320]: "12"
+                - text: Variations
+              - generic [ref=e321]: Counterattacking
+    - region "Variation Selector" [ref=e322]:
+      - generic [ref=e323]:
+        - generic [ref=e324]:
+          - generic [ref=e325]:
+            - generic [ref=e326]: White Opening
+            - heading "Ruy Lopez" [level=2] [ref=e327]
+            - generic [ref=e328]: (C60-C99)
+          - paragraph [ref=e329]: Also known as the Spanish Opening, the Ruy Lopez is one of the oldest, most prestigious, and deeply studied openings in chess history. White targets Black’s c6 knight to indirectly pressure the e5 center.
+        - generic [ref=e330]:
+          - generic [ref=e331]: Indirect central pressure
+          - generic [ref=e332]: C3-d4 pawn center formation
+      - generic [ref=e333]:
+        - generic [ref=e334]:
+          - generic [ref=e335]: 12 Variations
+          - generic [ref=e341]: Select any variation to explore move-by-move
+        - generic [ref=e342]:
+          - 'button "C65 #1 Berlin Defense 16 ply Kxd8" [ref=e343] [cursor=pointer]':
+            - generic [ref=e344]:
+              - generic [ref=e345]:
+                - generic [ref=e346]: C65
+                - generic [ref=e347]: "#1"
+              - generic "Berlin Defense" [ref=e349]
+            - generic [ref=e350]:
+              - generic [ref=e351]: 16 ply
+              - generic [ref=e352]: Kxd8
+          - 'button "C84 #2 Morphy Defense - Closed Main Line 17 ply h3" [ref=e353] [cursor=pointer]':
+            - generic [ref=e354]:
+              - generic [ref=e355]:
+                - generic [ref=e356]: C84
+                - generic [ref=e357]: "#2"
+              - generic "Morphy Defense - Closed Main Line" [ref=e359]
+            - generic [ref=e360]:
+              - generic [ref=e361]: 17 ply
+              - generic [ref=e362]: h3
+          - 'button "C89 #3 Marshall Attack 22 ply c6" [ref=e363] [cursor=pointer]':
+            - generic [ref=e364]:
+              - generic [ref=e365]:
+                - generic [ref=e366]: C89
+                - generic [ref=e367]: "#3"
+              - generic "Marshall Attack" [ref=e369]
+            - generic [ref=e370]:
+              - generic [ref=e371]: 22 ply
+              - generic [ref=e372]: c6
+          - 'button "C80 #4 Open Variation 16 ply Be6" [ref=e373] [cursor=pointer]':
+            - generic [ref=e374]:
+              - generic [ref=e375]:
+                - generic [ref=e376]: C80
+                - generic [ref=e377]: "#4"
+              - generic "Open Variation" [ref=e379]
+            - generic [ref=e380]:
+              - generic [ref=e381]: 16 ply
+              - generic [ref=e382]: Be6
+          - 'button "C95 #5 Breyer Variation 18 ply Nb8" [ref=e383] [cursor=pointer]':
+            - generic [ref=e384]:
+              - generic [ref=e385]:
+                - generic [ref=e386]: C95
+                - generic [ref=e387]: "#5"
+              - generic "Breyer Variation" [ref=e389]
+            - generic [ref=e390]:
+              - generic [ref=e391]: 18 ply
+              - generic [ref=e392]: Nb8
+          - 'button "C97 #6 Chigorin Defense 22 ply Qc7" [ref=e393] [cursor=pointer]':
+            - generic [ref=e394]:
+              - generic [ref=e395]:
+                - generic [ref=e396]: C97
+                - generic [ref=e397]: "#6"
+              - generic "Chigorin Defense" [ref=e399]
+            - generic [ref=e400]:
+              - generic [ref=e401]: 22 ply
+              - generic [ref=e402]: Qc7
+          - 'button "C92 #7 Zaitsev Variation 20 ply Re8" [ref=e403] [cursor=pointer]':
+            - generic [ref=e404]:
+              - generic [ref=e405]:
+                - generic [ref=e406]: C92
+                - generic [ref=e407]: "#7"
+              - generic "Zaitsev Variation" [ref=e409]
+            - generic [ref=e410]:
+              - generic [ref=e411]: 20 ply
+              - generic [ref=e412]: Re8
+          - 'button "C78 #8 Arkhangelsk (Counter-Attack) Variation 14 ply Bc5" [ref=e413] [cursor=pointer]':
+            - generic [ref=e414]:
+              - generic [ref=e415]:
+                - generic [ref=e416]: C78
+                - generic [ref=e417]: "#8"
+              - generic "Arkhangelsk (Counter-Attack) Variation" [ref=e419]
+            - generic [ref=e420]:
+              - generic [ref=e421]: 14 ply
+              - generic [ref=e422]: Bc5
+          - 'button "C68 #9 Exchange Variation 14 ply c5" [ref=e423] [cursor=pointer]':
+            - generic [ref=e424]:
+              - generic [ref=e425]:
+                - generic [ref=e426]: C68
+                - generic [ref=e427]: "#9"
+              - generic "Exchange Variation" [ref=e429]
+            - generic [ref=e430]:
+              - generic [ref=e431]: 14 ply
+              - generic [ref=e432]: c5
+          - 'button "C63 #10 Schliemann (Jaenisch) Gambit 14 ply Qg5" [ref=e433] [cursor=pointer]':
+            - generic [ref=e434]:
+              - generic [ref=e435]:
+                - generic [ref=e436]: C63
+                - generic [ref=e437]: "#10"
+              - generic "Schliemann (Jaenisch) Gambit" [ref=e439]
+            - generic [ref=e440]:
+              - generic [ref=e441]: 14 ply
+              - generic [ref=e442]: Qg5
+          - 'button "C72 #11 Steinitz Defense Deferred 14 ply Be7" [ref=e443] [cursor=pointer]':
+            - generic [ref=e444]:
+              - generic [ref=e445]:
+                - generic [ref=e446]: C72
+                - generic [ref=e447]: "#11"
+              - generic "Steinitz Defense Deferred" [ref=e449]
+            - generic [ref=e450]:
+              - generic [ref=e451]: 14 ply
+              - generic [ref=e452]: Be7
+          - 'button "C61 #12 Bird''s Defense 12 ply Nf6" [ref=e453] [cursor=pointer]':
+            - generic [ref=e454]:
+              - generic [ref=e455]:
+                - generic [ref=e456]: C61
+                - generic [ref=e457]: "#12"
+              - generic "Bird's Defense" [ref=e459]
+            - generic [ref=e460]:
+              - generic [ref=e461]: 12 ply
+              - generic [ref=e462]: Nf6
+    - generic [ref=e465]:
+      - button "Opening Theory Repertoire" [ref=e466]
+      - button "Grandmaster Games 4 Games" [ref=e470]:
+        - generic [ref=e477]: Grandmaster Games
+        - generic [ref=e478]: 4 Games
+    - region "Interactive Board & Analysis" [ref=e479]:
+      - generic [ref=e480]:
+        - generic [ref=e481]:
+          - generic [ref=e482]: White Perspective
+          - generic [ref=e485]: Learn Mode
+        - generic [ref=e488]:
+          - generic [ref=e489] [cursor=pointer]:
+            - generic: "8"
+            - generic [ref=e490]:
+              - img "Black Rook"
+          - generic [ref=e492]:
+            - img "Black Knight"
+          - generic [ref=e494]:
+            - img "Black Bishop"
+          - generic [ref=e496]:
+            - img "Black Queen"
+          - generic [ref=e498]:
+            - img "Black King"
+          - generic [ref=e500]:
+            - img "Black Bishop"
+          - generic [ref=e502]:
+            - img "Black Knight"
+          - generic [ref=e504]:
+            - img "Black Rook"
+          - generic [ref=e505] [cursor=pointer]:
+            - generic: "7"
+            - generic [ref=e506]:
+              - img "Black Pawn"
+          - generic [ref=e508]:
+            - img "Black Pawn"
+          - generic [ref=e510]:
+            - img "Black Pawn"
+          - generic [ref=e512]:
+            - img "Black Pawn"
+          - generic [ref=e514]:
+            - img "Black Pawn"
+          - generic [ref=e516]:
+            - img "Black Pawn"
+          - generic [ref=e518]:
+            - img "Black Pawn"
+          - generic [ref=e520]:
+            - img "Black Pawn"
+          - generic [ref=e521] [cursor=pointer]: "6"
+          - generic [ref=e522] [cursor=pointer]
+          - generic [ref=e523] [cursor=pointer]
+          - generic [ref=e524] [cursor=pointer]
+          - generic [ref=e525] [cursor=pointer]
+          - generic [ref=e526] [cursor=pointer]
+          - generic [ref=e527] [cursor=pointer]
+          - generic [ref=e528] [cursor=pointer]
+          - generic [ref=e529] [cursor=pointer]: "5"
+          - generic [ref=e530] [cursor=pointer]
+          - generic [ref=e531] [cursor=pointer]
+          - generic [ref=e532] [cursor=pointer]
+          - generic [ref=e533] [cursor=pointer]
+          - generic [ref=e534] [cursor=pointer]
+          - generic [ref=e535] [cursor=pointer]
+          - generic [ref=e536] [cursor=pointer]
+          - generic [ref=e537] [cursor=pointer]: "4"
+          - generic [ref=e538] [cursor=pointer]
+          - generic [ref=e539] [cursor=pointer]
+          - generic [ref=e540] [cursor=pointer]
+          - generic [ref=e541] [cursor=pointer]
+          - generic [ref=e542] [cursor=pointer]
+          - generic [ref=e543] [cursor=pointer]
+          - generic [ref=e544] [cursor=pointer]
+          - generic [ref=e545] [cursor=pointer]: "3"
+          - generic [ref=e546] [cursor=pointer]
+          - generic [ref=e547] [cursor=pointer]
+          - generic [ref=e548] [cursor=pointer]
+          - generic [ref=e549] [cursor=pointer]
+          - generic [ref=e550] [cursor=pointer]
+          - generic [ref=e551] [cursor=pointer]
+          - generic [ref=e552] [cursor=pointer]
+          - generic [ref=e553] [cursor=pointer]:
+            - generic: "2"
+            - generic [ref=e554]:
+              - img "White Pawn"
+          - generic [ref=e556]:
+            - img "White Pawn"
+          - generic [ref=e558]:
+            - img "White Pawn"
+          - generic [ref=e560]:
+            - img "White Pawn"
+          - generic [ref=e562]:
+            - img "White Pawn"
+          - generic [ref=e564]:
+            - img "White Pawn"
+          - generic [ref=e566]:
+            - img "White Pawn"
+          - generic [ref=e568]:
+            - img "White Pawn"
+          - generic [ref=e569] [cursor=pointer]:
+            - generic: "1"
+            - generic: a
+            - generic [ref=e570]:
+              - img "White Rook"
+          - generic [ref=e571] [cursor=pointer]:
+            - generic: b
+            - generic [ref=e572]:
+              - img "White Knight"
+          - generic [ref=e573] [cursor=pointer]:
+            - generic: c
+            - generic [ref=e574]:
+              - img "White Bishop"
+          - generic [ref=e575] [cursor=pointer]:
+            - generic: d
+            - generic [ref=e576]:
+              - img "White Queen"
+          - generic [ref=e577] [cursor=pointer]:
+            - generic: e
+            - generic [ref=e578]:
+              - img "White King"
+          - generic [ref=e579] [cursor=pointer]:
+            - generic: f
+            - generic [ref=e580]:
+              - img "White Bishop"
+          - generic [ref=e581] [cursor=pointer]:
+            - generic: g
+            - generic [ref=e582]:
+              - img "White Knight"
+          - generic [ref=e583] [cursor=pointer]:
+            - generic: h
+            - generic [ref=e584]:
+              - img "White Rook"
+        - generic [ref=e585]:
+          - generic [ref=e586]: Click or drag pieces on the board
+          - generic [ref=e587]: Use ← → arrow keys to step moves
+      - generic [ref=e589]:
+        - generic [ref=e590]:
+          - generic [ref=e591]:
+            - generic [ref=e592]:
+              - generic [ref=e593]: C65
+              - generic [ref=e594]: 16 moves (8 full moves)
+            - heading "Berlin Defense" [level=2] [ref=e595]
+          - generic [ref=e596]:
+            - button "Learn Mode" [ref=e597]
+            - button "Mute Sound" [ref=e603]
+        - generic [ref=e609]:
+          - generic [ref=e610]:
+            - generic [ref=e611]: Variation Strategic Overview
+            - paragraph [ref=e615]: Famous as the "Berlin Wall" with which Vladimir Kramnik dethroned Garry Kasparov in 2000. Black accepts an early queenless endgame in exchange for the bishop pair and a resilient fortress.
+          - generic [ref=e616]:
+            - generic [ref=e617]:
+              - generic [ref=e618]: White Strategic Plan
+              - paragraph [ref=e621]: Exploit kingside pawn majority 4 vs 3 and restrict Black bishops.
+            - generic [ref=e622]:
+              - generic [ref=e623]: Black Strategic Plan
+              - paragraph [ref=e626]: Maintain solid fortress, coordinate rooks from e8/d8, utilize bishop pair.
+          - generic [ref=e627]:
+            - generic [ref=e628]: Move-by-Move Master Explanations Active
+            - paragraph [ref=e633]: "Every single move in this variation is analyzed with:"
+            - list [ref=e634]:
+              - listitem [ref=e635]:
+                - generic [ref=e639]:
+                  - strong [ref=e640]: "Why this move is best:"
+                  - text: Positional purpose, central control, and harmonic coordination.
+              - listitem [ref=e641]:
+                - generic [ref=e644]:
+                  - strong [ref=e645]: "Mistakes & blunders:"
+                  - text: Tactical traps, passive alternatives, and common errors to avoid.
+          - generic [ref=e650]:
+            - text: Click
+            - strong [ref=e651]: Next (→)
+            - text: or click any move in the notation tree below to inspect move-by-move master explanations.
+        - generic [ref=e652]:
+          - generic [ref=e653]:
+            - generic [ref=e654]: Move Notation Tree
+            - generic [ref=e655]: Click any move to jump & inspect
+          - generic [ref=e656]:
+            - generic [ref=e657]:
+              - generic [ref=e658]: "1."
+              - button "e4" [ref=e659]
+              - button "e5" [ref=e660]
+            - generic [ref=e661]:
+              - generic [ref=e662]: "2."
+              - button "Nf3" [ref=e663]
+              - button "Nc6" [ref=e664]
+            - generic [ref=e665]:
+              - generic [ref=e666]: "3."
+              - button "Bb5" [ref=e667]
+              - button "Nf6" [ref=e668]
+            - generic [ref=e669]:
+              - generic [ref=e670]: "4."
+              - button "O-O" [ref=e671]
+              - button "Nxe4" [ref=e672]
+            - generic [ref=e673]:
+              - generic [ref=e674]: "5."
+              - button "d4" [ref=e675]
+              - button "Nd6" [ref=e676]
+            - generic [ref=e677]:
+              - generic [ref=e678]: "6."
+              - button "Bxc6" [ref=e679]
+              - button "dxc6" [ref=e680]
+            - generic [ref=e681]:
+              - generic [ref=e682]: "7."
+              - button "dxe5" [ref=e683]
+              - button "Nf5" [ref=e684]
+            - generic [ref=e685]:
+              - generic [ref=e686]: "8."
+              - button "Qxd8+" [ref=e687]
+              - button "Kxd8" [ref=e688]
+        - generic [ref=e689]:
+          - generic [ref=e690]:
+            - button "Start Position (Home)" [disabled] [ref=e691]
+            - button "Previous Move (Left Arrow)" [disabled] [ref=e695]
+          - button "Auto-Play" [ref=e698]
+          - generic [ref=e702]:
+            - button "Next Move (Right Arrow)" [ref=e703]
+            - button "Final Move (End)" [ref=e706]
+  - generic [ref=e718]:
+    - generic [ref=e720]:
+      - generic [ref=e726]:
+        - generic [ref=e727]:
+          - heading "Practice Mode" [level=2] [ref=e728]
+          - generic [ref=e729]:
+            - generic [ref=e732]: Stockfish Level 18
+            - generic [ref=e733]: (2950 Elo)
+        - paragraph [ref=e734]: Interactive Playable Board with Board Editor & Engine Analysis, Opening Explorer, and Play Engine
+      - generic [ref=e735]:
+        - button "Flip Board Perspective" [ref=e736] [cursor=pointer]
+        - button [ref=e742] [cursor=pointer]
+    - generic [ref=e746]:
+      - generic [ref=e747]:
+        - generic [ref=e748]:
+          - generic [ref=e750]:
+            - generic [ref=e751] [cursor=pointer]:
+              - generic [ref=e752]:
+                - img "Black Rook"
+              - generic [ref=e753]: "8"
+            - generic [ref=e755] [cursor=pointer]:
+              - img "Black Knight"
+            - generic [ref=e757] [cursor=pointer]:
+              - img "Black Bishop"
+            - generic [ref=e759] [cursor=pointer]:
+              - img "Black Queen"
+            - generic [ref=e761] [cursor=pointer]:
+              - img "Black King"
+            - generic [ref=e763] [cursor=pointer]:
+              - img "Black Bishop"
+            - generic [ref=e765] [cursor=pointer]:
+              - img "Black Knight"
+            - generic [ref=e767] [cursor=pointer]:
+              - img "Black Rook"
+            - generic [ref=e768] [cursor=pointer]:
+              - generic [ref=e769]:
+                - img "Black Pawn"
+              - generic [ref=e770]: "7"
+            - generic [ref=e772] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e774] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e776] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e778] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e780] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e782] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e784] [cursor=pointer]:
+              - img "Black Pawn"
+            - generic [ref=e785] [cursor=pointer]: "6"
+            - generic [ref=e787] [cursor=pointer]
+            - generic [ref=e788] [cursor=pointer]
+            - generic [ref=e789] [cursor=pointer]
+            - generic [ref=e790] [cursor=pointer]
+            - generic [ref=e791] [cursor=pointer]
+            - generic [ref=e792] [cursor=pointer]
+            - generic [ref=e793] [cursor=pointer]
+            - generic [ref=e794] [cursor=pointer]: "5"
+            - generic [ref=e796] [cursor=pointer]
+            - generic [ref=e797] [cursor=pointer]
+            - generic [ref=e798] [cursor=pointer]
+            - generic [ref=e799] [cursor=pointer]
+            - generic [ref=e800] [cursor=pointer]
+            - generic [ref=e801] [cursor=pointer]
+            - generic [ref=e802] [cursor=pointer]
+            - generic [ref=e803] [cursor=pointer]: "4"
+            - generic [ref=e805] [cursor=pointer]
+            - generic [ref=e806] [cursor=pointer]
+            - generic [ref=e807] [cursor=pointer]
+            - generic [ref=e808] [cursor=pointer]
+            - generic [ref=e809] [cursor=pointer]
+            - generic [ref=e810] [cursor=pointer]
+            - generic [ref=e811] [cursor=pointer]
+            - generic [ref=e812] [cursor=pointer]: "3"
+            - generic [ref=e814] [cursor=pointer]
+            - generic [ref=e815] [cursor=pointer]
+            - generic [ref=e816] [cursor=pointer]
+            - generic [ref=e817] [cursor=pointer]
+            - generic [ref=e818] [cursor=pointer]
+            - generic [ref=e819] [cursor=pointer]
+            - generic [ref=e820] [cursor=pointer]
+            - generic [ref=e821] [cursor=pointer]:
+              - generic [ref=e822]:
+                - img "White Pawn"
+              - generic [ref=e823]: "2"
+            - generic [ref=e825] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e827] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e829] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e831] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e833] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e835] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e837] [cursor=pointer]:
+              - img "White Pawn"
+            - generic [ref=e838] [cursor=pointer]:
+              - generic [ref=e839]:
+                - img "White Rook"
+              - generic [ref=e840]: "1"
+              - generic [ref=e841]: a
+            - generic [ref=e842] [cursor=pointer]:
+              - generic [ref=e843]:
+                - img "White Knight"
+              - generic [ref=e844]: b
+            - generic [ref=e845] [cursor=pointer]:
+              - generic [ref=e846]:
+                - img "White Bishop"
+              - generic [ref=e847]: c
+            - generic [ref=e848] [cursor=pointer]:
+              - generic [ref=e849]:
+                - img "White Queen"
+              - generic [ref=e850]: d
+            - generic [ref=e851] [cursor=pointer]:
+              - generic [ref=e852]:
+                - img "White King"
+              - generic [ref=e853]: e
+            - generic [ref=e854] [cursor=pointer]:
+              - generic [ref=e855]:
+                - img "White Bishop"
+              - generic [ref=e856]: f
+            - generic [ref=e857] [cursor=pointer]:
+              - generic [ref=e858]:
+                - img "White Knight"
+              - generic [ref=e859]: g
+            - generic [ref=e860] [cursor=pointer]:
+              - generic [ref=e861]:
+                - img "White Rook"
+              - generic [ref=e862]: h
+          - generic [ref=e863]:
+            - generic [ref=e864]:
+              - generic [ref=e865]: Board FEN Position
+              - generic [ref=e870]: Copy & upload to AI assistant
+            - generic [ref=e871]:
+              - generic "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" [ref=e872]
+              - button "Copy FEN" [ref=e873] [cursor=pointer]
+            - generic [ref=e878]:
+              - paragraph [ref=e879]: Upload FEN to AI to get instant Grandmaster explanations
+              - button "Upload FEN to AI" [ref=e880] [cursor=pointer]
+        - generic [ref=e885]:
+          - generic [ref=e886]:
+            - generic [ref=e887]:
+              - generic [ref=e888]: Board Status
+              - generic [ref=e889]: Playable Board
+            - generic [ref=e890]:
+              - generic [ref=e891]: "Side to move:"
+              - generic [ref=e892]: White to play
+            - generic [ref=e895]:
+              - generic [ref=e896]: "Current Mode:"
+              - generic [ref=e897]: Move & Play Pieces
+          - paragraph [ref=e903]:
+            - strong [ref=e904]: "Playable Board:"
+            - text: Click any piece to move it on the board! Use the palette below to place or clear pieces, and click the
+            - strong [ref=e905]: Stockfish Engine Icon
+            - text: to analyze.
+      - generic [ref=e906]:
+        - generic [ref=e907]:
+          - button "1. Board Editor" [ref=e908] [cursor=pointer]
+          - button "2. Opening Explorer" [ref=e911] [cursor=pointer]
+          - button "3. Play Engine" [ref=e916] [cursor=pointer]
+          - button "4. Puzzles Puzzels" [ref=e927] [cursor=pointer]:
+            - generic [ref=e930]: 4. Puzzles
+            - generic [ref=e931]: Puzzels
+        - generic [ref=e932]:
+          - generic [ref=e933]:
+            - generic [ref=e934]:
+              - generic [ref=e935]: Board Palette & Actions
+              - generic [ref=e940]: "● Move Mode Active: Click any piece to play"
+            - generic [ref=e941]:
+              - button "Move / Play" [ref=e942] [cursor=pointer]
+              - generic [ref=e949]:
+                - button "White King" [ref=e950] [cursor=pointer]:
+                  - img "White King"
+                - button "White Queen" [ref=e951] [cursor=pointer]:
+                  - img "White Queen"
+                - button "White Rook" [ref=e952] [cursor=pointer]:
+                  - img "White Rook"
+                - button "White Bishop" [ref=e953] [cursor=pointer]:
+                  - img "White Bishop"
+                - button "White Knight" [ref=e954] [cursor=pointer]:
+                  - img "White Knight"
+                - button "White Pawn" [ref=e955] [cursor=pointer]:
+                  - img "White Pawn"
+              - generic [ref=e956]:
+                - button "Black King" [ref=e957] [cursor=pointer]:
+                  - img "Black King"
+                - button "Black Queen" [ref=e958] [cursor=pointer]:
+                  - img "Black Queen"
+                - button "Black Rook" [ref=e959] [cursor=pointer]:
+                  - img "Black Rook"
+                - button "Black Bishop" [ref=e960] [cursor=pointer]:
+                  - img "Black Bishop"
+                - button "Black Knight" [ref=e961] [cursor=pointer]:
+                  - img "Black Knight"
+                - button "Black Pawn" [ref=e962] [cursor=pointer]:
+                  - img "Black Pawn"
+              - button "Erase" [ref=e963] [cursor=pointer]
+              - generic [ref=e968]:
+                - button "Starting Board" [ref=e969] [cursor=pointer]
+                - button "Clear All" [ref=e970] [cursor=pointer]
+          - generic [ref=e975]:
+            - generic [ref=e981]:
+              - heading "Stockfish Engine Analysis DEPTH 18" [level=4] [ref=e982]:
+                - generic [ref=e983]: Stockfish Engine Analysis
+                - generic [ref=e984]: DEPTH 18
+              - paragraph [ref=e985]: Calculate exact position evaluation, tactical threats, and recommended continuation
+            - button "Run Stockfish 18 Analysis" [ref=e986] [cursor=pointer]
+          - generic [ref=e990]:
+            - generic [ref=e991]: "FEN:"
+            - textbox "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" [ref=e993]
+            - generic [ref=e994]:
+              - button "Load FEN" [ref=e995] [cursor=pointer]
+              - button "Copy" [ref=e996] [cursor=pointer]
+    - generic [ref=e1001]:
+      - generic [ref=e1002]: Stockfish 18 Engine Analysis • Depth 18 Evaluation
+      - button "Close Practice" [ref=e1007] [cursor=pointer]
+  - button "chat with ai" [ref=e710] [cursor=pointer]

@@ -476,6 +476,24 @@ function generateMoveExplanations(fen: string, pvMoves: any[]): MoveExplanationI
   return explanations;
 }
 
+export function explainPlayedMove(fen: string, san: string): MoveExplanationItem | null {
+  try {
+    const chess = new Chess(fen);
+    const previousPlyCount = chess.history().length;
+    const move = chess.move(san);
+    if (!move) return null;
+
+    const explanation = generateMoveExplanations(fen, [move])[0];
+    return {
+      ...explanation,
+      ply: previousPlyCount + 1,
+      moveNumber: Math.floor(previousPlyCount / 2) + 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Stockfish Level 18 Position Analyzer: Thorough Position Assessment with Move-by-Move Explanations
  */
