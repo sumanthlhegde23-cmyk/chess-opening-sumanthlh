@@ -70,6 +70,7 @@ interface OpeningPuzzlesSectionProps {
     result: 'correct' | 'wrong';
   } | null) => void;
   onPuzzleInteractionLockChange?: (locked: boolean) => void;
+  onPuzzleScreenChange?: (isSolving: boolean) => void;
   initialOpeningId?: string;
   initialVariationId?: string;
   onOpenChatAiWithFen?: (fen: string) => void;
@@ -83,6 +84,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   onRegisterMoveAttempt,
   onPuzzleMoveFeedback,
   onPuzzleInteractionLockChange,
+  onPuzzleScreenChange,
   initialOpeningId,
   initialVariationId,
   onOpenChatAiWithFen,
@@ -99,6 +101,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   // Selected Puzzle Number (1 to 200) and Palette input value
   const [puzzleNumber, setPuzzleNumber] = useState<number>(1);
   const [puzzleInputVal, setPuzzleInputVal] = useState<string>('1');
+  const [isPuzzleActive, setIsPuzzleActive] = useState(false);
   const [selectedVarietyFilter, setSelectedVarietyFilter] = useState<number | 'all'>('all');
 
   // Solver interactive states
@@ -197,13 +200,15 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
 
   // Load the puzzle into the board
   const loadPuzzle = useCallback(
-    (num: number) => {
+    (num: number, openSolver = false) => {
       puzzleSessionRef.current += 1;
       const safeNum = Math.max(1, Math.min(200, Math.round(num)));
       const p = getPuzzleForVariation(selectedOpeningId, selectedVariationId, safeNum);
 
       setPuzzleNumber(safeNum);
       setPuzzleInputVal(String(safeNum));
+      setIsPuzzleActive(openSolver);
+      onPuzzleScreenChange?.(openSolver);
       setCurrentMoveStep(0);
       setPuzzleStatus('playing');
       setFeedbackMessage(null);
@@ -228,6 +233,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
       onSetIsFlipped,
       onPuzzleMoveFeedback,
       onPuzzleInteractionLockChange,
+      onPuzzleScreenChange,
       onPreviewFenChange,
     ]
   );
@@ -325,6 +331,8 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
           // Puzzle completed!
           setPuzzleStatus('solved');
           setFeedbackMessage('Tactical execution complete! Puzzle solved.');
+          setIsPuzzleActive(false);
+          onPuzzleScreenChange?.(false);
           onPuzzleInteractionLockChange?.(true);
           saveSolvedPuzzle(selectedOpeningId, selectedVariationId, puzzleNumber);
           setSolvedList((prev) => (prev.includes(puzzleNumber) ? prev : [...prev, puzzleNumber]));
@@ -372,6 +380,8 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                 if (isPuzzleComplete) {
                   setPuzzleStatus('solved');
                   setFeedbackMessage('Tactical execution complete! Puzzle solved.');
+                  setIsPuzzleActive(false);
+                  onPuzzleScreenChange?.(false);
                   onPuzzleInteractionLockChange?.(true);
                   saveSolvedPuzzle(selectedOpeningId, selectedVariationId, puzzleNumber);
                   setSolvedList((prev) => (prev.includes(puzzleNumber) ? prev : [...prev, puzzleNumber]));
@@ -455,6 +465,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
       onUpdateBoardFen,
       onPuzzleMoveFeedback,
       onPuzzleInteractionLockChange,
+      onPuzzleScreenChange,
       onPreviewFenChange,
     ]
   );
@@ -537,6 +548,104 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   }, [selectedVarietyFilter]);
 
   const solvedCount = solvedList.length;
+
+  if (isPuzzleActive) {
+    return (
+      <div className="space-y-3 text-zinc-100" id="opening-puzzles-container">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2">
+          <div>
+            <h3 className="text-sm font-bold text-white">
+              #{currentPuzzle.puzzleNumber} · {currentPuzzle.varietyName}
+            </h3>
+            <p className="text-[11px] text-zinc-400">
+              {currentPuzzle.variationName} · {currentPuzzle.sideToPlay === 'white' ? 'White' : 'Black'} to play
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              puzzleSessionRef.current += 1;
+              setIsPuzzleActive(false);
+              onPuzzleScreenChange?.(false);
+              onPuzzleInteractionLockChange?.(false);
+            }}
+            className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
+          >
+            <ChevronLeft className="mr-1 inline h-3.5 w-3.5" />
+            Puzzle Menu
+          </button>
+        </header>
+
+        <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-xs">
+          <p><span className="font-bold text-cyan-300">Objective: </span>{puzzleObjective}</p>
+          <p className="mt-1 text-zinc-200"><span className="font-semibold text-zinc-300">Plan: </span>{currentPuzzle.hint}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setShowHint((shown) => !shown)}
+            className="rounded-md border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/25"
+          >
+            <HelpCircle className="mr-1 inline h-3.5 w-3.5" />
+            {showHint ? 'Hide Hint' : 'Hint'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSolution((shown) => !shown)}
+            className="rounded-md border border-cyan-400/40 bg-cyan-500/15 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-500/25"
+          >
+            <Eye className="mr-1 inline h-3.5 w-3.5" />
+            {showSolution ? 'Hide Solution' : 'See Solution'}
+          </button>
+          <button
+            type="button"
+            onClick={handleUndoMove}
+            disabled={playedMoves.length === 0}
+            className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
+          >
+            <Undo2 className="mr-1 inline h-3.5 w-3.5" /> Undo
+          </button>
+          <button
+            type="button"
+            onClick={() => loadPuzzle(puzzleNumber, true)}
+            className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
+          >
+            <RotateCcw className="mr-1 inline h-3.5 w-3.5" /> Reset
+          </button>
+        </div>
+
+        {showHint && (
+          <p className="rounded-md border border-amber-400/30 bg-amber-500/10 p-2.5 text-xs text-amber-100">
+            {currentPuzzle.hint}
+          </p>
+        )}
+        {showSolution && (
+          <div className="flex flex-wrap gap-1 rounded-md border border-cyan-400/30 bg-cyan-500/10 p-2.5">
+            {currentPuzzle.solutionMoves.map((move, index) => (
+              <span key={`${index}-${move}`} className="rounded bg-zinc-950/60 px-2 py-1 font-mono text-xs text-cyan-100">
+                {index % 2 === 0 ? `${Math.floor(index / 2) + 1}. ` : ''}{move}
+              </span>
+            ))}
+          </div>
+        )}
+        {feedbackMessage && (
+          <p
+            aria-live="polite"
+            className={`rounded-md border p-2.5 text-xs font-semibold ${
+              puzzleStatus === 'incorrect'
+                ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                : puzzleStatus === 'solved'
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+            }`}
+          >
+            {feedbackMessage}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 text-zinc-100" id="opening-puzzles-container">
@@ -627,6 +736,8 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
         </div>
       </div>
 
+      {isPuzzleActive && (
+        <>
       {/* Active Puzzle Bar & Direct Number Input */}
       <div className="p-3.5 rounded-xl bg-[#11131c] border border-zinc-800 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
@@ -1100,6 +1211,9 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
         )}
       </div>
 
+        </>
+      )}
+
       {/* 200 Puzzles Quick Navigator Grid & Variety Filter */}
       <div className="p-3.5 rounded-xl bg-[#11131c] border border-zinc-800 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1143,12 +1257,12 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                   key={num}
                   id={`btn-jump-puzzle-${num}`}
                   type="button"
-                  onClick={() => loadPuzzle(num)}
+                  onClick={() => loadPuzzle(num, true)}
                   className={`h-7 rounded text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center justify-center ${
-                    isCurrent
-                      ? 'bg-cyan-500 text-zinc-950 ring-2 ring-cyan-300 font-black shadow-md'
-                      : isSolved
+                    isSolved
                       ? 'bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50 border border-emerald-500/40'
+                      : isCurrent
+                      ? 'bg-cyan-500 text-zinc-950 ring-2 ring-cyan-300 font-black shadow-md'
                       : 'bg-[#181a26] text-zinc-400 hover:text-zinc-100 hover:bg-[#222536] border border-zinc-800'
                   }`}
                 >

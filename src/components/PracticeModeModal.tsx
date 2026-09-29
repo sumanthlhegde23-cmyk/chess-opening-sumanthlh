@@ -156,6 +156,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const [isEngineBoardFullscreen, setIsEngineBoardFullscreen] = useState(false);
   const [puzzleMoveFeedback, setPuzzleMoveFeedback] = useState<PuzzleMoveFeedback | null>(null);
   const [isPuzzleInteractionLocked, setIsPuzzleInteractionLocked] = useState(false);
+  const [isPuzzleActive, setIsPuzzleActive] = useState(false);
 
   // Callback ref for puzzles move attempt
   const onPuzzleMoveAttemptRef = useRef<((san: string, nextFen: string, from?: Square, to?: Square) => void) | null>(null);
@@ -306,6 +307,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Handle Tab changes
   const handleTabChange = (tab: PracticeTab) => {
+    setIsPuzzleActive(false);
     setIsCompletedGameReviewOpen(false);
     setActiveTab(tab);
     setIsEngineBoardFullscreen(false);
@@ -1499,7 +1501,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           ) : (
           <>
           {/* Top Board & Status Layout */}
-          <div className={`flex flex-col items-center justify-center gap-5 ${isEngineBoardFullscreen ? 'min-h-0 flex-1 gap-2' : 'lg:flex-row lg:items-start'}`}>
+          <div className={`flex flex-col items-center justify-center gap-5 ${activeTab === 'puzzles' && !isPuzzleActive ? 'hidden' : ''} ${isEngineBoardFullscreen ? 'min-h-0 flex-1 gap-2' : 'lg:flex-row lg:items-start'}`}>
             {/* Left Column: Board + Dedicated Bottom-of-Board FEN Bar */}
             <div className={`flex flex-col items-center gap-2.5 ${isEngineBoardFullscreen ? 'min-h-0 w-full flex-1 justify-center' : 'w-full max-w-[380px] sm:max-w-[420px]'}`}>
               {previewFen && (
@@ -1887,7 +1889,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           </div>
 
           {/* Quick Status Sidebar */}
-            <div className={`${isEngineBoardFullscreen && activeTab === 'play_engine' ? 'hidden ' : ''}flex w-full flex-col gap-3 lg:w-72`}>
+            <div className={`${(isEngineBoardFullscreen && activeTab === 'play_engine') || activeTab === 'puzzles' ? 'hidden ' : ''}flex w-full flex-col gap-3 lg:w-72`}>
               <div className="p-3.5 rounded-xl bg-[#181a24] border border-zinc-800 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -2054,7 +2056,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           {/* ==================================================== */}
           <div className={`space-y-4 ${isEngineBoardFullscreen && activeTab === 'play_engine' ? '' : 'border-t border-zinc-800 pt-2'}`}>
             {/* Main Tabs Selection (4 Modes) */}
-            {!(isEngineBoardFullscreen && activeTab === 'play_engine') && (
+            {!(isEngineBoardFullscreen && activeTab === 'play_engine') && !(activeTab === 'puzzles' && isPuzzleActive) && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-[#10121a] border border-zinc-800/80 max-w-2xl mx-auto">
               <button
                 id="tab-btn-board-editor"
@@ -3192,6 +3194,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 }}
                 onPuzzleMoveFeedback={setPuzzleMoveFeedback}
                 onPuzzleInteractionLockChange={setIsPuzzleInteractionLocked}
+                onPuzzleScreenChange={setIsPuzzleActive}
                 initialOpeningId={initialOpeningId}
                 initialVariationId={initialVariationId}
                 onOpenChatAiWithFen={onOpenChatAiWithFen}
