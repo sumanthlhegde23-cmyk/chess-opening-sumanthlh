@@ -37,6 +37,7 @@ import {
 import { chessAudio } from '../utils/sound';
 import {
   analyzePositionStockfish18,
+  getStockfish18Move,
   EngineAnalysisResult,
   MoveExplanationItem,
 } from '../utils/stockfishService';
@@ -50,6 +51,7 @@ export interface PlayedMoveItem {
   moveNum: number;
   color: 'White' | 'Black';
   isSolutionMove: boolean;
+  isEngineReply?: boolean;
   expectedMove?: string;
   tacticalConcept?: string;
   explanation?: string;
@@ -62,6 +64,12 @@ interface OpeningPuzzlesSectionProps {
   onRegisterMoveAttempt?: (
     fn: ((san: string, fen: string, from?: Square, to?: Square) => void) | null
   ) => void;
+  onPuzzleMoveFeedback?: (feedback: {
+    from: Square;
+    to: Square;
+    result: 'correct' | 'wrong';
+  } | null) => void;
+  onPuzzleInteractionLockChange?: (locked: boolean) => void;
   initialOpeningId?: string;
   initialVariationId?: string;
   onOpenChatAiWithFen?: (fen: string) => void;
@@ -73,6 +81,8 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   onUpdateBoardFen,
   onSetIsFlipped,
   onRegisterMoveAttempt,
+  onPuzzleMoveFeedback,
+  onPuzzleInteractionLockChange,
   initialOpeningId,
   initialVariationId,
   onOpenChatAiWithFen,
@@ -94,7 +104,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   // Solver interactive states
   const [currentMoveStep, setCurrentMoveStep] = useState<number>(0);
   const [puzzleStatus, setPuzzleStatus] = useState<
-    'playing' | 'exploring' | 'correct' | 'solved'
+    'playing' | 'exploring' | 'correct' | 'incorrect' | 'solved'
   >('playing');
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [showHint, setShowHint] = useState<boolean>(false);
@@ -131,6 +141,43 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   const currentPuzzle: OpeningPuzzle = useMemo(() => {
     return getPuzzleForVariation(selectedOpeningId, selectedVariationId, puzzleNumber);
   }, [selectedOpeningId, selectedVariationId, puzzleNumber]);
+  const puzzleSessionRef = useRef(0);
+
+  const puzzleObjective = useMemo(() => {
+    const solverColor = currentPuzzle.sideToPlay === 'white' ? 'w' : 'b';
+    const motifDescription =
+      PUZZLE_VARIETIES.find((variety) => variety.index === currentPuzzle.varietyIndex)?.description ??
+      currentPuzzle.varietyName;
+    const materialValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+    const materialBalance = (chess: Chess) =>
+      chess.board().flat().reduce((balance, piece) => {
+        if (!piece) return balance;
+        const value = materialValues[piece.type];
+        return balance + (piece.color === solverColor ? value : -value);
+      }, 0);
+
+    try {
+      const chess = new Chess(currentPuzzle.fen);
+      const startingBalance = materialBalance(chess);
+      for (let index = 0; index < currentPuzzle.solutionMoves.length; index += 1) {
+        chess.move(currentPuzzle.solutionMoves[index]);
+        if (chess.isCheckmate()) {
+          const movesToMate = Math.ceil((index + 1) / 2);
+          return `Force checkmate in ${movesToMate} ${movesToMate === 1 ? 'move' : 'moves'}.`;
+        }
+      }
+
+      const materialGain = materialBalance(chess) - startingBalance;
+      if (materialGain >= 1) {
+        const gain = Number.isInteger(materialGain) ? materialGain : Number(materialGain.toFixed(1));
+        return `Win material: gain approximately ${gain} pawn-equivalent${gain === 1 ? '' : 's'}.`;
+      }
+    } catch {
+      return motifDescription;
+    }
+
+    return motifDescription;
+  }, [currentPuzzle]);
 
   // Execute Stockfish 18 analysis for a given position
   const runStockfishAnalysis = useCallback(
@@ -151,6 +198,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   // Load the puzzle into the board
   const loadPuzzle = useCallback(
     (num: number) => {
+      puzzleSessionRef.current += 1;
       const safeNum = Math.max(1, Math.min(200, Math.round(num)));
       const p = getPuzzleForVariation(selectedOpeningId, selectedVariationId, safeNum);
 
@@ -164,6 +212,8 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
       setPlayedMoves([]);
       setActivePreviewMoveIndex(null);
       setEngineAnalysis(null);
+      onPuzzleMoveFeedback?.(null);
+      onPuzzleInteractionLockChange?.(false);
       onPreviewFenChange?.(null);
 
       // Set position on board
@@ -171,7 +221,15 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
       onSetIsFlipped(p.sideToPlay === 'black');
       chessAudio.playMove();
     },
-    [selectedOpeningId, selectedVariationId, onUpdateBoardFen, onSetIsFlipped, onPreviewFenChange]
+    [
+      selectedOpeningId,
+      selectedVariationId,
+      onUpdateBoardFen,
+      onSetIsFlipped,
+      onPuzzleMoveFeedback,
+      onPuzzleInteractionLockChange,
+      onPreviewFenChange,
+    ]
   );
 
   // Track previous opening/variation to only reset when the opening actually changes
@@ -223,8 +281,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
     };
   };
 
-  // Handle move verification when user plays on the board
-  // ALLOW EVERY TYPE OF MOVE WITHOUT IMMEDIATE ERROR
+  // Verify user moves and play forced replies for correct moves
   const handleUserMoveAttempt = useCallback(
     (san: string, nextFen: string, from?: Square, to?: Square) => {
       const ply = playedMoves.length + 1;
@@ -268,16 +325,20 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
           // Puzzle completed!
           setPuzzleStatus('solved');
           setFeedbackMessage('Tactical execution complete! Puzzle solved.');
+          onPuzzleInteractionLockChange?.(true);
           saveSolvedPuzzle(selectedOpeningId, selectedVariationId, puzzleNumber);
           setSolvedList((prev) => (prev.includes(puzzleNumber) ? prev : [...prev, puzzleNumber]));
           chessAudio.playCheck();
         } else {
           // Opponent has a reply move in the sequence
           const opponentMove = currentPuzzle.solutionMoves[nextStep];
+          const puzzleSession = puzzleSessionRef.current;
           setPuzzleStatus('correct');
           setFeedbackMessage(`Great move (${san})! Playing opponent response...`);
+          onPuzzleInteractionLockChange?.(true);
 
           setTimeout(() => {
+            if (puzzleSessionRef.current !== puzzleSession) return;
             try {
               const chess = new Chess(nextFen);
               const m = chess.move(opponentMove);
@@ -307,24 +368,79 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                 };
 
                 setPlayedMoves([...updatedMoves, oppItem]);
-                setFeedbackMessage(`Your turn: play the decisive finish!`);
+                const isPuzzleComplete = nextStep + 1 >= currentPuzzle.solutionMoves.length || chess.isGameOver();
+                if (isPuzzleComplete) {
+                  setPuzzleStatus('solved');
+                  setFeedbackMessage('Tactical execution complete! Puzzle solved.');
+                  onPuzzleInteractionLockChange?.(true);
+                  saveSolvedPuzzle(selectedOpeningId, selectedVariationId, puzzleNumber);
+                  setSolvedList((prev) => (prev.includes(puzzleNumber) ? prev : [...prev, puzzleNumber]));
+                  chessAudio.playCheck();
+                } else {
+                  setPuzzleStatus('playing');
+                  setFeedbackMessage(`Your turn: play the decisive finish!`);
+                  onPuzzleInteractionLockChange?.(false);
+                }
 
                 if (autoAnalyseEnabled) {
                   runStockfishAnalysis(oppFen);
                 }
               }
             } catch {
-              // Opponent move fallback
+              setPuzzleStatus('playing');
+              setFeedbackMessage('Could not play the forced reply. Undo or reset the puzzle.');
+              onPuzzleInteractionLockChange?.(false);
             }
           }, 600);
         }
+        if (from && to) onPuzzleMoveFeedback?.({ from, to, result: 'correct' });
       } else {
-        // User made an alternative move
-        // ALLOW IT AND DO NOT GIVE AN IMMEDIATE ERROR!
-        setPuzzleStatus('exploring');
-        setFeedbackMessage(
-          `Move played: ${san} • Exploring position (${updatedMoves.length} moves on board). Click 'Analyse & Explain' below to inspect this line.`
-        );
+        setPuzzleStatus('incorrect');
+        setFeedbackMessage(`Wrong move (${san}). Stockfish is calculating a reply...`);
+        onPuzzleInteractionLockChange?.(true);
+        if (from && to) onPuzzleMoveFeedback?.({ from, to, result: 'wrong' });
+
+        const puzzleSession = puzzleSessionRef.current;
+        setTimeout(async () => {
+          try {
+            const engineMove = await getStockfish18Move(nextFen, 8);
+            if (puzzleSessionRef.current !== puzzleSession) return;
+            const chess = new Chess(nextFen);
+            const reply = chess.move({
+              from: engineMove.from,
+              to: engineMove.to,
+              promotion: engineMove.promotion || 'q',
+            });
+            if (!reply) throw new Error('Stockfish returned an invalid reply.');
+
+            if (reply.captured) chessAudio.playCapture();
+            else chessAudio.playMove();
+
+            const replyFen = chess.fen();
+            const replyPly = updatedMoves.length + 1;
+            const opponentColor: 'White' | 'Black' = color === 'White' ? 'Black' : 'White';
+            onUpdateBoardFen(replyFen);
+            setPlayedMoves([
+              ...updatedMoves,
+              {
+                san: reply.san,
+                from: reply.from as Square,
+                to: reply.to as Square,
+                fen: replyFen,
+                ply: replyPly,
+                moveNum: Math.floor((replyPly - 1) / 2) + 1,
+                color: opponentColor,
+                isSolutionMove: false,
+                isEngineReply: true,
+                tacticalConcept: 'Stockfish Refutation',
+                explanation: `Stockfish replies with ${reply.san} after the incorrect move. Reset or undo to retry the puzzle.`,
+              },
+            ]);
+            setFeedbackMessage(`Wrong move (${san}). Stockfish replies ${reply.san}; undo or reset to try again.`);
+          } catch {
+            setFeedbackMessage(`Wrong move (${san}). Stockfish could not reply; undo or reset to try again.`);
+          }
+        }, 0);
       }
     },
     [
@@ -337,6 +453,8 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
       autoAnalyseEnabled,
       runStockfishAnalysis,
       onUpdateBoardFen,
+      onPuzzleMoveFeedback,
+      onPuzzleInteractionLockChange,
       onPreviewFenChange,
     ]
   );
@@ -356,7 +474,9 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   // Undo the last played move on the board
   const handleUndoMove = () => {
     if (playedMoves.length === 0) return;
-    const nextMoves = playedMoves.slice(0, -1);
+    puzzleSessionRef.current += 1;
+    const removeCount = playedMoves[playedMoves.length - 1].isEngineReply ? 2 : 1;
+    const nextMoves = playedMoves.slice(0, -removeCount);
     setPlayedMoves(nextMoves);
     setActivePreviewMoveIndex(null);
     onPreviewFenChange?.(null);
@@ -365,18 +485,16 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
     onUpdateBoardFen(prevFen);
     chessAudio.playMove();
 
-    // Adjust step
-    if (currentMoveStep > 0 && currentMoveStep <= nextMoves.length) {
-      setCurrentMoveStep(nextMoves.length);
-    } else {
-      setCurrentMoveStep(0);
-    }
+    setCurrentMoveStep(nextMoves.filter((move) => move.isSolutionMove).length);
 
     setFeedbackMessage(
       nextMoves.length > 0
         ? `Stepped back to move ${nextMoves.length}. Board ready.`
         : 'Reset to puzzle starting position.'
     );
+    setPuzzleStatus('playing');
+    onPuzzleMoveFeedback?.(null);
+    onPuzzleInteractionLockChange?.(false);
 
     if (autoAnalyseEnabled) {
       runStockfishAnalysis(prevFen);
@@ -439,7 +557,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Interactive puzzle solver with free-move exploration & Stockfish 18 move-by-move explanations
+                Guided tactical puzzles with forced replies and Stockfish move-by-move analysis
               </p>
             </div>
           </div>
@@ -579,10 +697,19 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
         <div className="p-2.5 rounded-lg bg-[#161824] border border-cyan-500/20 flex items-start gap-2 text-xs">
           <Sparkles className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold text-cyan-300">Goal: </span>
-            <span className="text-zinc-200">{currentPuzzle.hint}</span>
-            <div className="text-[11px] text-zinc-400 mt-0.5">
-              Click pieces on the board to play your moves. Free moves are allowed without immediate error.
+            <div className="space-y-1">
+              <div>
+                <span className="font-bold text-cyan-300">Objective: </span>
+                <span className="text-zinc-100">{puzzleObjective}</span>
+              </div>
+              <div>
+                <span className="font-bold text-zinc-300">Plan: </span>
+                <span className="text-zinc-200">{currentPuzzle.hint}</span>
+              </div>
+              <p className="text-[11px] text-zinc-400">{currentPuzzle.explanation}</p>
+              <div className="text-[11px] text-zinc-400 mt-0.5">
+                Correct moves are highlighted green. Incorrect moves are red; undo or reset to try again.
+              </div>
             </div>
           </div>
         </div>
@@ -594,7 +721,9 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
               puzzleStatus === 'solved'
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 font-semibold'
                 : puzzleStatus === 'correct'
-                ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                : puzzleStatus === 'incorrect'
+                ? 'bg-red-500/10 border-red-500/30 text-red-300 font-semibold'
                 : 'bg-zinc-800/60 border-zinc-700 text-zinc-300'
             }`}
           >
@@ -800,7 +929,13 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                         <span className="font-mono font-bold text-zinc-400 text-[11px]">
                           {m.ply % 2 !== 0 ? `${m.moveNum}.` : `${m.moveNum}...`}
                         </span>
-                        <span className="font-bold text-zinc-100 px-2 py-0.5 rounded bg-[#1c1f2e] border border-zinc-700 font-mono">
+                        <span className={`font-bold px-2 py-0.5 rounded font-mono border ${
+                          m.isSolutionMove
+                            ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
+                            : m.isEngineReply
+                            ? 'text-cyan-300 bg-cyan-500/10 border-cyan-500/30'
+                            : 'text-red-300 bg-red-500/10 border-red-500/30'
+                        }`}>
                           {m.san}
                         </span>
                         <span className="text-[11px] text-zinc-400">
@@ -811,9 +946,13 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             Solution Move
                           </span>
+                        ) : m.isEngineReply ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                            Engine Reply
+                          </span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            Alternative Move
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                            Incorrect Move
                           </span>
                         )}
                       </div>

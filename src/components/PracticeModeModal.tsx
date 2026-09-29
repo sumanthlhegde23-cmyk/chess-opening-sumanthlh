@@ -71,6 +71,7 @@ interface PracticeModeModalProps {
 
 type PracticeTab = 'editor' | 'explorer' | 'play_engine' | 'puzzles';
 type EngineGameMove = { san: string; from: string; to: string };
+type PuzzleMoveFeedback = { from: Square; to: Square; result: 'correct' | 'wrong' };
 type CompletedGameReview = {
   moves: EngineGameMove[];
   fens: string[];
@@ -153,6 +154,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // Current active sub-mode (starts in editor with playable board)
   const [activeTab, setActiveTab] = useState<PracticeTab>('editor');
   const [isEngineBoardFullscreen, setIsEngineBoardFullscreen] = useState(false);
+  const [puzzleMoveFeedback, setPuzzleMoveFeedback] = useState<PuzzleMoveFeedback | null>(null);
+  const [isPuzzleInteractionLocked, setIsPuzzleInteractionLocked] = useState(false);
 
   // Callback ref for puzzles move attempt
   const onPuzzleMoveAttemptRef = useRef<((san: string, nextFen: string, from?: Square, to?: Square) => void) | null>(null);
@@ -264,6 +267,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       }
     };
     if (isOpen) {
+      void prepareStockfish().catch(() => undefined);
       window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
@@ -670,6 +674,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Puzzle Square Click (interactive solving and free move exploration on board)
   const handleSquareClickPuzzles = (square: Square) => {
+    if (isPuzzleInteractionLocked) return;
+
     const file = square.charCodeAt(0) - 97;
     const rank = 8 - parseInt(square[1], 10);
     const clickedPiece = boardMatrix[rank]?.[file];
@@ -1561,6 +1567,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       activeTab === 'play_engine' && lastEngineMove?.from === square;
                     const isEngineMoveTo =
                       activeTab === 'play_engine' && lastEngineMove?.to === square;
+                    const puzzleFeedbackClass =
+                      activeTab === 'puzzles' &&
+                      puzzleMoveFeedback &&
+                      (puzzleMoveFeedback.from === square || puzzleMoveFeedback.to === square)
+                        ? puzzleMoveFeedback.result === 'correct'
+                          ? 'ring-2 ring-emerald-400 ring-inset bg-emerald-500/30'
+                          : 'ring-2 ring-red-400 ring-inset bg-red-500/30'
+                        : '';
                     const isCheckedKing = checkedKingSquare === square;
 
                     return (
@@ -1583,6 +1597,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                         } ${isPopularTo ? 'bg-emerald-500/25 ring-2 ring-emerald-400 ring-inset' : ''} ${
                           isEngineMoveFrom ? 'engine-move-origin' : ''
                         } ${isEngineMoveTo ? 'engine-move-target' : ''} ${
+                          puzzleFeedbackClass
+                        } ${
                           isCheckedKing ? 'engine-checked-king' : ''
                         }`}
                       >
@@ -3174,6 +3190,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 onRegisterMoveAttempt={(fn) => {
                   onPuzzleMoveAttemptRef.current = fn;
                 }}
+                onPuzzleMoveFeedback={setPuzzleMoveFeedback}
+                onPuzzleInteractionLockChange={setIsPuzzleInteractionLocked}
                 initialOpeningId={initialOpeningId}
                 initialVariationId={initialVariationId}
                 onOpenChatAiWithFen={onOpenChatAiWithFen}
