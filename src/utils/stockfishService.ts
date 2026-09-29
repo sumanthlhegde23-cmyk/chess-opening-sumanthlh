@@ -552,7 +552,9 @@ function getStockfishWorker(): Promise<void> {
   if (stockfishReady) return stockfishReady;
 
   stockfishReady = new Promise<void>((resolve, reject) => {
-    const worker = new Worker('/engine/stockfish-19-lite-single.js');
+    const worker = new Worker(
+      '/engine/stockfish-19-lite-single.js#' + encodeURIComponent('/engine/stockfish.wasm')
+    );
     stockfishWorker = worker;
     resolveUciReady = resolve;
     rejectStockfishReady = reject;
