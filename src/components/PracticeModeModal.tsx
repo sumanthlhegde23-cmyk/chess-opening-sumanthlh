@@ -44,6 +44,7 @@ import { chessAudio } from '../utils/sound';
 import {
   analyzePositionStockfish18,
   getStockfish18Move,
+  prepareStockfish,
   getEloForLevel,
   EngineAnalysisResult,
   MoveExplanationItem,
@@ -1122,6 +1123,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // PLAY ENGINE START & UNDO
   // ----------------------------------------------------
   const startNewEngineGame = useCallback((color: Color) => {
+    void prepareStockfish().catch(() => undefined);
     const chess = new Chess(START_FEN);
     setIsCompletedGameReviewOpen(false);
     setCompletedGameReview(null);

@@ -599,6 +599,10 @@ function getStockfishWorker(): Promise<void> {
   return stockfishReady;
 }
 
+export function prepareStockfish(): Promise<void> {
+  return getStockfishWorker();
+}
+
 function waitForStockfishReady(): Promise<void> {
   if (!stockfishWorker) return Promise.reject(new Error('Stockfish is not initialized.'));
   return new Promise((resolve, reject) => {
@@ -625,7 +629,7 @@ function searchWithStockfish(fen: string, level: number): Promise<UciSearchResul
 
     return new Promise<UciSearchResult>((resolve, reject) => {
       activeUciSearch = { resolve, reject };
-      const moveTime = Math.round(250 + safeLevel * 70);
+      const moveTime = Math.min(600, 250 + safeLevel * 20);
       stockfishWorker?.postMessage(`position fen ${fen}`);
       stockfishWorker?.postMessage(`go movetime ${moveTime}`);
     });
