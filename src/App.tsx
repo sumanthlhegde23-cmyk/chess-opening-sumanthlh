@@ -19,6 +19,7 @@ import { chessAudio } from './utils/sound';
 import { getGamesForVariation } from './data/grandmasterGames';
 import { getGrandmasterGameExplanations } from './utils/gameExplainer';
 import { GrandmasterShowcaseHeader } from './components/GrandmasterShowcaseHeader';
+import { OpeningCinematic } from './components/OpeningCinematic';
 import {
   PaidPlanTier,
   UserRole,
@@ -67,6 +68,7 @@ interface UserDeviationState {
 }
 
 export default function App() {
+  const [showOpeningCinematic, setShowOpeningCinematic] = useState(true);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>('ruy-lopez');
   const [selectedVariationId, setSelectedVariationId] = useState<string>('ruy-lopez-berlin');
   const [currentMoveIndex, setCurrentMoveIndex] = useState<number>(-1); // -1 = start position
@@ -617,6 +619,10 @@ export default function App() {
       chessAudio.playMove();
     }
   }, [activeGmGame]);
+
+  if (showOpeningCinematic) {
+    return <OpeningCinematic onEnter={() => setShowOpeningCinematic(false)} />;
+  }
 
   return (
     <div data-color-mode={colorMode} className="min-h-screen bg-[#0f1115] text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
