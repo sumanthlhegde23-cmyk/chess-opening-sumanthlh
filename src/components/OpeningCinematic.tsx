@@ -1,37 +1,83 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { Chess } from 'chess.js';
 import { ArrowRight, LogOut } from 'lucide-react';
 
-type Piece = {
+type AnimatedPiece = {
+  id: string;
   code: string;
   file: number;
   rank: number;
-  motion?: string;
 };
 
-const backRank = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
-const pieces: Piece[] = [
-  ...backRank.map((code, file) => ({ code: `b${code}`, file, rank: 7 })),
-  ...Array.from({ length: 8 }, (_, file) => ({ code: 'bp', file, rank: 6 })),
-  ...Array.from({ length: 8 }, (_, file) => ({ code: 'wp', file, rank: 1 })),
-  ...backRank.map((code, file) => ({ code: `w${code}`, file, rank: 0 })),
-].map((piece) => {
-  if (piece.code === 'wp' && piece.file === 4) {
-    return { ...piece, motion: 'opening-piece--e4' };
+const openingLine = [
+  'e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6',
+  'Nc3', 'a6', 'Bg5', 'e6', 'f4', 'Be7', 'Qf3', 'Qc7', '0-0-0', 'Nbd7',
+];
+
+function buildOpeningFrames() {
+  const chess = new Chess();
+  const pieceIds = new Map<string, string>();
+  let nextPieceId = 0;
+
+  const readPieces = (): AnimatedPiece[] => chess.board().flatMap((row) =>
+    row.flatMap((piece) => {
+      if (!piece) return [];
+      const id = pieceIds.get(piece.square) || `piece-${nextPieceId++}`;
+      pieceIds.set(piece.square, id);
+      return [{
+        id,
+        code: `${piece.color}${piece.type}`,
+        file: piece.square.charCodeAt(0) - 97,
+        rank: Number(piece.square[1]) - 1,
+      }];
+    })
+  );
+
+  const frames = [{ san: '', pieces: readPieces() }];
+  for (const san of openingLine) {
+    const move = chess.move(san);
+    const pieceId = pieceIds.get(move.from);
+    pieceIds.delete(move.from);
+    pieceIds.delete(move.to);
+    if (pieceId) pieceIds.set(move.to, pieceId);
+    if (move.flags.includes('k') || move.flags.includes('q')) {
+      const kingSide = move.flags.includes('k');
+      const homeRank = move.color === 'w' ? '1' : '8';
+      const rookFrom = `${kingSide ? 'h' : 'a'}${homeRank}`;
+      const rookTo = `${kingSide ? 'f' : 'd'}${homeRank}`;
+      const rookId = pieceIds.get(rookFrom);
+      pieceIds.delete(rookFrom);
+      if (rookId) pieceIds.set(rookTo, rookId);
+    }
+    frames.push({ san: move.san, pieces: readPieces() });
   }
-  if (piece.code === 'bp' && piece.file === 4) {
-    return { ...piece, motion: 'opening-piece--e5' };
-  }
-  if (piece.code === 'wn' && piece.file === 6) {
-    return { ...piece, motion: 'opening-piece--knight' };
-  }
-  if (piece.code === 'bn' && piece.file === 1) {
-    return { ...piece, motion: 'opening-piece--reply' };
-  }
-  return piece;
-});
+
+  return frames;
+}
+
+const openingFrames = buildOpeningFrames();
 
 export function OpeningCinematic({ onEnter }: { onEnter: () => void }) {
   const [exitBlocked, setExitBlocked] = useState(false);
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [isResetting, setIsResetting] = useState(false);
+  const frame = openingFrames[frameIndex];
+
+  useEffect(() => {
+    let timer: number;
+
+    if (frameIndex === openingFrames.length - 1) {
+      setIsResetting(true);
+      timer = window.setTimeout(() => {
+        setFrameIndex(0);
+        window.requestAnimationFrame(() => setIsResetting(false));
+      }, 2300);
+    } else {
+      timer = window.setTimeout(() => setFrameIndex((current) => current + 1), 1500);
+    }
+
+    return () => window.clearTimeout(timer);
+  }, [frameIndex]);
 
   const handleExit = () => {
     window.close();
@@ -70,7 +116,7 @@ export function OpeningCinematic({ onEnter }: { onEnter: () => void }) {
           <div className="opening-cinematic__caption"><span>01</span> THE ROYAL GAME, REIMAGINED</div>
         </div>
 
-        <div className="opening-cinematic__art" aria-label="An animated chessboard showing the opening moves e4, e5, Nf3, and Nc6">
+        <div className="opening-cinematic__art" aria-label="Slow-motion animation of the Sicilian Najdorf opening">
           <div className="opening-cinematic__halo" />
           <div className="opening-cinematic__board-frame">
             <div className="opening-cinematic__board">
@@ -80,10 +126,10 @@ export function OpeningCinematic({ onEnter }: { onEnter: () => void }) {
                 return <div key={index} className={`opening-cinematic__square ${(file + rank) % 2 === 0 ? 'is-light' : 'is-dark'}`} />;
               })}
               <div className="opening-cinematic__pieces" aria-hidden="true">
-                {pieces.map((piece, index) => (
+                {frame.pieces.map((piece) => (
                   <img
-                    key={`${piece.code}-${index}`}
-                    className={`opening-cinematic__piece ${piece.motion || ''}`}
+                    key={piece.id}
+                    className={`opening-cinematic__piece${isResetting ? ' is-resetting' : ''}`}
                     src={`/pieces/neo/${piece.code}.png`}
                     alt=""
                     draggable={false}
@@ -96,9 +142,14 @@ export function OpeningCinematic({ onEnter }: { onEnter: () => void }) {
               </div>
             </div>
           </div>
-          <div className="opening-cinematic__move opening-cinematic__move--one"><span>01</span> e4</div>
-          <div className="opening-cinematic__move opening-cinematic__move--two"><span>02</span> e5</div>
-          <div className="opening-cinematic__signature">WHITE TO MOVE <span>·</span> EST. 1475</div>
+          <div className="opening-cinematic__move opening-cinematic__move--one">
+            <span>{String(Math.ceil(frameIndex / 2)).padStart(2, '0')}</span>
+            {frame.san || 'Initial position'}
+          </div>
+          <div className="opening-cinematic__move opening-cinematic__move--two">
+            <span>PLY</span> {String(frameIndex).padStart(2, '0')} / {openingFrames.length - 1}
+          </div>
+          <div className="opening-cinematic__signature">SICILIAN NAJDORF <span>·</span> SLOW STUDY</div>
         </div>
       </section>
 
