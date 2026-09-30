@@ -36,6 +36,7 @@ import {
   Unlock,
   Undo2,
   Puzzle,
+  Flag,
 } from 'lucide-react';
 import { ChessPiece } from './ChessPiece';
 import { Chessboard } from './Chessboard';
@@ -205,6 +206,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const [lastEngineMove, setLastEngineMove] = useState<{ from: Square; to: Square } | null>(null);
   const [isEngineThinking, setIsEngineThinking] = useState<boolean>(false);
   const [gameResult, setGameResult] = useState<'player' | 'engine' | 'draw' | null>(null);
+  const [didPlayerResign, setDidPlayerResign] = useState<boolean>(false);
   const [engineEvalBar, setEngineEvalBar] = useState<string>('0.00');
 
   const currentTheme: BoardTheme = boardThemes[boardTheme] || boardThemes.maple;
@@ -1141,6 +1143,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setEngineGameHistory([]);
     setLastEngineMove(null);
     setGameResult(null);
+    setDidPlayerResign(false);
     setSelectedSquare(null);
     setEngineEvalBar('0.00');
     setIsFlipped(color === 'b');
@@ -1165,6 +1168,13 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     }
   }, [engineLevel]);
 
+  const handleResignEngineGame = () => {
+    if (isEngineThinking || gameResult) return;
+    setSelectedSquare(null);
+    setDidPlayerResign(true);
+    setGameResult('engine');
+  };
+
   const handleUndoMoveEngine = () => {
     if (engineGameHistory.length < 2 || isEngineThinking) return;
     try {
@@ -1177,6 +1187,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       setEngineGameHistory(historyToKeep);
       setLastEngineMove(null);
       setGameResult(null);
+      setDidPlayerResign(false);
       setSelectedSquare(null);
       chessAudio.playMove();
     } catch {
@@ -1232,6 +1243,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setEngineGameHistory([]);
     setLastEngineMove(null);
     setGameResult(null);
+    setDidPlayerResign(false);
     setEngineEvalBar('0.00');
     setEngineAnalysis(null);
     setAnalysisError(null);
@@ -1782,7 +1794,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   {gameResult === 'player' ? 'You Won!!' : gameResult === 'engine' ? 'Engine Won' : 'Game Draw'}
                 </h2>
                 <p className="mt-1 text-sm text-zinc-200">
-                  {gameResult === 'draw' ? 'The game ended in a draw.' : 'Checkmate. Well played.'}
+                  {didPlayerResign
+                    ? 'You resigned. Stockfish wins.'
+                    : gameResult === 'draw'
+                    ? 'The game ended in a draw.'
+                    : 'Checkmate. Well played.'}
                 </p>
                 <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
                   <button
@@ -3137,6 +3153,19 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Takeback</span>
                     </button>
+
+                    {!gameResult && (
+                      <button
+                        id="btn-play-resign"
+                        type="button"
+                        onClick={handleResignEngineGame}
+                        disabled={isEngineThinking}
+                        className="px-3 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 disabled:opacity-40 text-rose-200 border border-rose-800/80 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                        <span>Resign</span>
+                      </button>
+                    )}
 
                     <button
                       id="btn-play-new-game"

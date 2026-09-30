@@ -101,6 +101,16 @@ export default function App() {
   const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699' | '399'>('999');
 
   useEffect(() => {
+    window.history.replaceState({ chessAppScreen: 'intro' }, '', window.location.href);
+    const handlePopState = (event: PopStateEvent) => {
+      setShowOpeningCinematic(event.state?.chessAppScreen !== 'main-menu');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('chess-openings-color-mode', colorMode);
   }, [colorMode]);
 
@@ -620,8 +630,13 @@ export default function App() {
     }
   }, [activeGmGame]);
 
+  const handleEnterMainMenu = useCallback(() => {
+    window.history.pushState({ chessAppScreen: 'main-menu' }, '', window.location.href);
+    setShowOpeningCinematic(false);
+  }, []);
+
   if (showOpeningCinematic) {
-    return <OpeningCinematic onEnter={() => setShowOpeningCinematic(false)} />;
+    return <OpeningCinematic onEnter={handleEnterMainMenu} />;
   }
 
   return (
