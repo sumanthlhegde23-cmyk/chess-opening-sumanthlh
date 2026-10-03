@@ -13,7 +13,9 @@ import {
   Sun,
   MoreVertical,
   Check,
-  Search
+  Search,
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 import { boardThemes } from '../utils/boardThemes';
 import { PaidPlanTier } from '../utils/pricingLocks';
@@ -35,6 +37,8 @@ interface NavbarProps {
   onOpenHelp: () => void;
   onOpenPremium: () => void;
   onOpenPractice: () => void;
+  onReplayAppTour: () => void;
+  onReplayChessBasics: () => void;
   onOpenChatAi?: () => void;
   isPremium?: boolean;
   userTier?: PaidPlanTier;
@@ -55,6 +59,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenHelp,
   onOpenPremium,
   onOpenPractice,
+  onReplayAppTour,
+  onReplayChessBasics,
   onOpenChatAi,
   isPremium = false,
   userTier = 'none',
@@ -200,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          <details ref={languageMenuRef} className="relative">
+          <details ref={languageMenuRef} id="navbar-language-menu" className="relative">
             <summary
               aria-label="More options"
               title="More options"
@@ -209,7 +215,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               <MoreVertical className="h-4 w-4" />
             </summary>
             <div className="absolute left-0 right-auto top-full z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-lg border border-zinc-700 bg-[#181a20] p-1.5 shadow-xl sm:left-auto sm:right-0">
-              <p className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Language ({languages.length})</p>
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Take Demo</div>
+              <div className="grid grid-cols-2 gap-1 px-1 pb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReplayAppTour();
+                    if (languageMenuRef.current) languageMenuRef.current.open = false;
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-2 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/20"
+                >
+                  <GraduationCap className="h-3.5 w-3.5" /> App Tour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReplayChessBasics();
+                    if (languageMenuRef.current) languageMenuRef.current.open = false;
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-800"
+                >
+                  <BookOpen className="h-3.5 w-3.5" /> Chess Basics
+                </button>
+              </div>
+              <div className="mx-1 border-t border-zinc-700/70" />
+              <p className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Languages ({languages.length})</p>
               <label className="relative block px-1 pb-2">
                 <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
                 <input

@@ -8,6 +8,768 @@
     linear-gradient(116deg, #0b100e 0%, #101a15 53%, #0b100e 100%);
 }
 
+.onboarding-tour {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  pointer-events: none;
+  color: #f2eee4;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.onboarding-tour__shade,
+.onboarding-tour__full-shade {
+  position: fixed;
+  z-index: 0;
+  background: rgba(3, 7, 5, 0.78);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+}
+
+.onboarding-tour__full-shade {
+  inset: 0;
+}
+
+.onboarding-tour__spotlight {
+  position: fixed;
+  z-index: 1;
+  border: 1px solid rgba(232, 202, 145, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px rgba(216, 189, 135, 0.17), 0 0 35px rgba(216, 189, 135, 0.27);
+  pointer-events: none;
+  animation: onboarding-spotlight-in 280ms ease-out both;
+}
+
+.onboarding-tour__arrow {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.onboarding-tour__arrow path {
+  fill: none;
+  stroke: #d8bd87;
+  stroke-width: 1.4;
+  stroke-dasharray: 5 4;
+  animation: onboarding-arrow-dash 900ms linear infinite;
+  filter: drop-shadow(0 0 4px rgba(216, 189, 135, 0.5));
+}
+
+.onboarding-tour__card {
+  position: fixed;
+  z-index: 3;
+  max-height: min(310px, calc(100dvh - 28px));
+  overflow-y: auto;
+  padding: 16px 17px 13px;
+  border: 1px solid rgba(216, 189, 135, 0.38);
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 100% 0, rgba(76, 103, 75, 0.16), transparent 48%),
+    linear-gradient(145deg, rgba(23, 29, 24, 0.98), rgba(16, 20, 22, 0.99));
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.56), 0 0 30px rgba(216, 189, 135, 0.08);
+  pointer-events: auto;
+  animation: onboarding-card-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.onboarding-tour__progress,
+.onboarding-tour__progress > span:first-child,
+.onboarding-tour__actions,
+.onboarding-tour__action-group {
+  display: flex;
+  align-items: center;
+}
+
+.onboarding-tour__progress {
+  justify-content: space-between;
+  color: rgba(237, 230, 211, 0.56);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+.onboarding-tour__progress > span:first-child {
+  gap: 6px;
+  color: #dfc58f;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+}
+
+.onboarding-tour__progress-track,
+.chess-lesson__progress {
+  height: 2px;
+  overflow: hidden;
+  background: rgba(231, 225, 208, 0.12);
+}
+
+.onboarding-tour__progress-track {
+  margin-top: 10px;
+}
+
+.onboarding-tour__progress-track > span,
+.chess-lesson__progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #879c79, #dfc58f);
+  transition: width 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.onboarding-tour__copy {
+  padding: 14px 0 15px;
+  animation: onboarding-copy-in 250ms ease-out both;
+}
+
+.onboarding-tour__eyebrow,
+.chess-lesson__eyebrow {
+  margin: 0 0 6px;
+  color: #d8bd87;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
+.onboarding-tour__copy h2 {
+  margin: 0;
+  color: #f3efe3;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.onboarding-tour__copy > p:last-child {
+  margin: 8px 0 0;
+  color: rgba(231, 231, 219, 0.76);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.onboarding-tour__actions {
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid rgba(231, 225, 208, 0.12);
+  padding-top: 11px;
+}
+
+.onboarding-tour__action-group {
+  gap: 6px;
+}
+
+.onboarding-tour__skip,
+.onboarding-tour__back,
+.onboarding-tour__next,
+.onboarding-icon-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  cursor: pointer;
+}
+
+.onboarding-tour__skip {
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(232, 228, 215, 0.63);
+}
+
+.onboarding-tour__skip:hover,
+.onboarding-tour__back:hover:not(:disabled) {
+  color: #f4efdf;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.onboarding-tour__back {
+  padding: 0 8px;
+  border: 1px solid rgba(231, 225, 208, 0.13);
+  background: rgba(255, 255, 255, 0.03);
+  color: #d5d2c8;
+}
+
+.onboarding-tour__back:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.onboarding-tour__next {
+  padding: 0 11px;
+  border: 1px solid #dfc58f;
+  background: #d8bd87;
+  color: #171a14;
+}
+
+.onboarding-tour__next:hover {
+  background: #ebd7aa;
+}
+
+.onboarding-icon-button {
+  width: 34px;
+  padding: 0;
+  border: 1px solid rgba(231, 225, 208, 0.16);
+  background: rgba(255, 255, 255, 0.035);
+  color: #dfc58f;
+}
+
+.onboarding-icon-button:hover {
+  background: rgba(216, 189, 135, 0.13);
+}
+
+.chess-lesson {
+  --lesson-ink: #090f0d;
+  --lesson-brass: #d8bd87;
+  --lesson-sage: #91a383;
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  flex-direction: column;
+  overflow-y: auto;
+  color: #f1eee3;
+  background:
+    radial-gradient(ellipse at 70% 38%, rgba(64, 92, 68, 0.28), transparent 39%),
+    radial-gradient(ellipse at 6% 90%, rgba(150, 109, 61, 0.13), transparent 28%),
+    linear-gradient(118deg, #0a100d 0%, #111a15 55%, #0b100e 100%);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  animation: chess-lesson-arrive 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.chess-lesson__header {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px clamp(16px, 4vw, 54px);
+  border-bottom: 1px solid rgba(230, 224, 208, 0.12);
+}
+
+.chess-lesson__brand,
+.chess-lesson__header-actions,
+.chess-lesson__brand-mark,
+.chess-lesson__board-caption,
+.chess-lesson__board-caption > span,
+.chess-lesson__legend,
+.chess-lesson__legend > span,
+.chess-lesson__voice-row,
+.chess-lesson__voice-toggle,
+.chess-lesson__speaking,
+.chess-lesson__coach-note,
+.chess-lesson__panel-footer,
+.chess-lesson__back,
+.chess-lesson__next,
+.chess-lesson__footer,
+.chess-lesson__footer > span {
+  display: flex;
+  align-items: center;
+}
+
+.chess-lesson__brand {
+  gap: 12px;
+}
+
+.chess-lesson__brand-mark {
+  width: 39px;
+  height: 39px;
+  justify-content: center;
+  border: 1px solid rgba(216, 189, 135, 0.5);
+  color: var(--lesson-brass);
+  background: rgba(216, 189, 135, 0.08);
+}
+
+.chess-lesson__brand p {
+  margin: 0 0 2px;
+  color: rgba(230, 224, 208, 0.5);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.chess-lesson__brand h1 {
+  margin: 0;
+  color: #f0ecdf;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.chess-lesson__header-actions {
+  gap: 14px;
+}
+
+.chess-lesson__step-count {
+  color: rgba(231, 225, 208, 0.54);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+}
+
+.chess-lesson__skip {
+  display: inline-flex;
+  min-height: 35px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid rgba(230, 224, 208, 0.23);
+  border-radius: 6px;
+  background: rgba(8, 12, 9, 0.4);
+  color: #e5e0d2;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.chess-lesson__skip:hover {
+  border-color: rgba(216, 189, 135, 0.72);
+  background: rgba(216, 189, 135, 0.1);
+}
+
+.chess-lesson__progress {
+  width: 100%;
+  height: 2px;
+}
+
+.chess-lesson__main {
+  display: grid;
+  width: min(100%, 1380px);
+  flex: 1;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(300px, 0.75fr);
+  align-items: center;
+  gap: clamp(22px, 5vw, 76px);
+  margin: 0 auto;
+  padding: 26px clamp(16px, 4vw, 58px);
+}
+
+.chess-lesson__board-column {
+  min-width: 0;
+  animation: chess-board-arrive 520ms 70ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.onboarding-board-wrap {
+  width: min(100%, 690px);
+  margin: 0 auto;
+}
+
+.onboarding-board {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 8px solid transparent;
+  border-image: linear-gradient(145deg, #a88a5a, #504937 47%, #b69a67) 1;
+  background: #151b16;
+  box-shadow: 0 24px 74px rgba(0, 0, 0, 0.52), 0 0 52px rgba(146, 164, 119, 0.11), inset 0 0 0 1px rgba(255, 242, 202, 0.13);
+}
+
+.onboarding-board__squares {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+}
+
+.onboarding-board__square {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-board__square.is-light {
+  background: linear-gradient(135deg, #d6c8a7, #b9a77f);
+}
+
+.onboarding-board__square.is-dark {
+  background: linear-gradient(135deg, #62775b, #405443);
+}
+
+.onboarding-board__square.is-highlighted::after {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(246, 203, 111, 0.96);
+  background: rgba(236, 187, 80, 0.35);
+  box-shadow: inset 0 0 18px rgba(255, 222, 145, 0.35);
+  content: '';
+  animation: lesson-square-glow 1.8s ease-in-out infinite alternate;
+}
+
+.onboarding-board__square img {
+  z-index: 1;
+  width: 87%;
+  height: 87%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.22));
+  animation: lesson-piece-arrive 300ms ease-out both;
+  user-select: none;
+}
+
+.onboarding-board__rank,
+.onboarding-board__file {
+  position: absolute;
+  z-index: 3;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(7px, 1.05vw, 10px);
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.onboarding-board__rank {
+  top: 4px;
+  left: 5px;
+}
+
+.onboarding-board__file {
+  right: 5px;
+  bottom: 4px;
+}
+
+.onboarding-board__square.is-light .onboarding-board__rank,
+.onboarding-board__square.is-light .onboarding-board__file {
+  color: #52604a;
+}
+
+.onboarding-board__square.is-dark .onboarding-board__rank,
+.onboarding-board__square.is-dark .onboarding-board__file {
+  color: #eee6d4;
+}
+
+.onboarding-board__arrows {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.onboarding-board__arrows g path {
+  fill: none;
+  stroke: #e8bf66;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 3 1.8;
+  animation: lesson-arrow-draw 500ms ease-out both, lesson-arrow-pulse 1.8s 500ms ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(22, 19, 11, 0.62));
+}
+
+.onboarding-board__arrows g.is-illegal path {
+  stroke: #e87565;
+  stroke-dasharray: 1.5 2.6;
+}
+
+.onboarding-board__arrows text {
+  fill: #fff6dc;
+  stroke: rgba(20, 25, 18, 0.82);
+  stroke-width: 0.8px;
+  paint-order: stroke;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 2.1px;
+  font-weight: 800;
+}
+
+.onboarding-board__coordinate-tag {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  padding: 3px 5px;
+  border: 1px solid rgba(240, 207, 133, 0.75);
+  border-radius: 4px;
+  background: rgba(15, 22, 16, 0.82);
+  color: #fff1cc;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.onboarding-board__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 0 0;
+  color: rgba(231, 225, 208, 0.58);
+  font-size: 9px;
+}
+
+.onboarding-board__legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.onboarding-board__legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.onboarding-board__legend i.is-light { background: #cabb9b; }
+.onboarding-board__legend i.is-dark { background: #52684d; }
+.onboarding-board__legend i.is-arrow { width: 13px; height: 2px; border-radius: 0; background: #e8bf66; }
+
+.chess-lesson__board-caption {
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 2px 0;
+  color: rgba(231, 225, 208, 0.53);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+.chess-lesson__board-caption > span:first-child {
+  gap: 6px;
+  color: #e6ca8f;
+}
+
+.chess-lesson__lesson-panel {
+  max-width: 460px;
+  justify-self: center;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid rgba(231, 225, 208, 0.14);
+  border-radius: 9px;
+  background: linear-gradient(148deg, rgba(24, 31, 26, 0.91), rgba(17, 21, 24, 0.96));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.26);
+  animation: chess-copy-arrive 420ms 130ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.chess-lesson__lesson-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(231, 225, 208, 0.13);
+  color: rgba(231, 225, 208, 0.55);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.chess-lesson__lesson-topline svg { color: var(--lesson-brass); }
+.chess-lesson__eyebrow { margin-top: 22px; color: #91a383; }
+
+.chess-lesson__lesson-panel h2 {
+  margin: 0;
+  color: #f0ecdf;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(22px, 2.5vw, 31px);
+  font-weight: 600;
+  line-height: 1.23;
+}
+
+.chess-lesson__narration {
+  min-height: 94px;
+  margin: 16px 0 0;
+  color: rgba(235, 234, 222, 0.78);
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.chess-lesson__voice-row {
+  gap: 9px;
+  margin-top: 17px;
+}
+
+.chess-lesson__voice-toggle {
+  min-height: 34px;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid rgba(231, 225, 208, 0.17);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(231, 225, 208, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chess-lesson__voice-toggle.is-on {
+  border-color: rgba(145, 163, 131, 0.5);
+  background: rgba(94, 122, 83, 0.17);
+  color: #c8d4b9;
+}
+
+.chess-lesson__speaking {
+  gap: 3px;
+  color: #9cbb8c;
+  font-size: 9px;
+}
+
+.chess-lesson__speaking i {
+  width: 2px;
+  height: 8px;
+  border-radius: 2px;
+  background: #9cbb8c;
+  animation: narration-wave 620ms ease-in-out infinite alternate;
+}
+
+.chess-lesson__speaking i:nth-child(2) { animation-delay: 170ms; }
+.chess-lesson__speaking i:nth-child(3) { animation-delay: 330ms; }
+
+.chess-lesson__replay {
+  display: inline-flex;
+  width: 31px;
+  height: 31px;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  border: 1px solid rgba(231, 225, 208, 0.16);
+  border-radius: 5px;
+  background: transparent;
+  color: #d8bd87;
+  cursor: pointer;
+}
+
+.chess-lesson__replay:hover { background: rgba(216, 189, 135, 0.1); }
+
+.chess-lesson__voice-note {
+  margin: 7px 0 0;
+  color: #d9c28f;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.chess-lesson__coach-note {
+  gap: 9px;
+  margin-top: 18px;
+  padding: 11px 12px;
+  border-left: 2px solid rgba(216, 189, 135, 0.62);
+  background: rgba(216, 189, 135, 0.06);
+  color: rgba(231, 225, 208, 0.64);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.chess-lesson__coach-note svg { flex: 0 0 auto; color: #d8bd87; }
+
+.chess-lesson__panel-footer {
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(231, 225, 208, 0.13);
+}
+
+.chess-lesson__back,
+.chess-lesson__next {
+  min-height: 40px;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.chess-lesson__back {
+  padding: 0 10px;
+  border: 1px solid rgba(231, 225, 208, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  color: #d7d4ca;
+}
+
+.chess-lesson__back:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.chess-lesson__next {
+  padding: 0 13px;
+  border: 1px solid #dfc58f;
+  background: #d8bd87;
+  color: #15190f;
+}
+
+.chess-lesson__next:hover:not(:disabled) { transform: translateY(-1px); background: #ecd7a9; }
+
+.chess-lesson__footer {
+  min-height: 38px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 clamp(16px, 4vw, 54px);
+  border-top: 1px solid rgba(230, 224, 208, 0.1);
+  color: rgba(231, 225, 208, 0.46);
+  font-size: 9px;
+}
+
+.chess-lesson__footer > span { gap: 6px; }
+.chess-lesson__footer svg { color: #d8bd87; }
+
+@keyframes onboarding-spotlight-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes onboarding-arrow-dash { to { stroke-dashoffset: -18; } }
+@keyframes onboarding-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes onboarding-copy-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes chess-lesson-arrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes chess-board-arrive { from { opacity: 0; transform: translateX(-10px) scale(0.99); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@keyframes chess-copy-arrive { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lesson-square-glow { from { opacity: 0.6; } to { opacity: 1; } }
+@keyframes lesson-piece-arrive { from { opacity: 0.5; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
+@keyframes lesson-arrow-draw { from { stroke-dasharray: 0 100; opacity: 0.4; } to { opacity: 1; } }
+@keyframes lesson-arrow-pulse { 0%, 100% { stroke-width: 1.8; } 50% { stroke-width: 2.3; } }
+@keyframes narration-wave { from { transform: scaleY(0.45); } to { transform: scaleY(1.35); } }
+
+@media (max-width: 760px) {
+  .chess-lesson__header { min-height: 62px; padding: 9px 13px; }
+  .chess-lesson__brand-mark { width: 34px; height: 34px; }
+  .chess-lesson__brand h1 { font-size: 14px; }
+  .chess-lesson__brand p { font-size: 7px; }
+  .chess-lesson__header-actions { gap: 8px; }
+  .chess-lesson__step-count { display: none; }
+  .chess-lesson__skip { min-height: 33px; padding: 0 8px; font-size: 10px; }
+  .chess-lesson__main { grid-template-columns: minmax(0, 1fr); gap: 17px; padding: 16px 14px 18px; }
+  .onboarding-board-wrap { width: min(100%, 520px); }
+  .onboarding-board { border-width: 6px; }
+  .chess-lesson__lesson-panel { width: min(100%, 520px); padding: 16px; }
+  .chess-lesson__eyebrow { margin-top: 15px; }
+  .chess-lesson__narration { min-height: auto; margin-top: 10px; font-size: 13px; }
+  .chess-lesson__coach-note { margin-top: 12px; }
+  .chess-lesson__panel-footer { margin-top: 14px; }
+  .chess-lesson__footer { min-height: 32px; font-size: 8px; }
+}
+
+@media (max-width: 420px) {
+  .onboarding-tour__card { padding: 13px 13px 11px; }
+  .onboarding-tour__copy h2 { font-size: 18px; }
+  .onboarding-tour__copy > p:last-child { font-size: 11px; }
+  .onboarding-tour__action-group { gap: 4px; }
+  .onboarding-tour__back { padding: 0 6px; }
+  .onboarding-tour__next { padding: 0 8px; }
+  .onboarding-icon-button { width: 31px; min-height: 31px; }
+  .chess-lesson__main { padding-inline: 10px; }
+  .chess-lesson__lesson-panel { padding: 14px; }
+  .chess-lesson__footer > span:last-child { max-width: 150px; text-align: right; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-tour *,
+  .chess-lesson *,
+  .onboarding-board__square.is-highlighted::after,
+  .onboarding-board__arrows g path {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 [data-color-mode="light"].app-shell {
   background-color: #edf1ec !important;
   background-image:

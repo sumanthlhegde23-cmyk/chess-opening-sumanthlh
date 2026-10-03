@@ -9,6 +9,7 @@ import { VariationSelector } from './components/VariationSelector';
 import { DeviationRefutationCard } from './components/DeviationRefutationCard';
 import { analyzeDeviation, DeviationAnalysis } from './utils/deviationAnalyzer';
 import { Navbar, type LanguageCode } from './components/Navbar';
+import { OnboardingExperience } from './components/OnboardingExperience';
 import { isRightToLeftLanguage, isSupportedLanguage } from './data/languages';
 import { startLiveTranslation } from './utils/liveTranslation';
 import { HelpModal } from './components/HelpModal';
@@ -70,6 +71,7 @@ interface UserDeviationState {
 
 export default function App() {
   const [showOpeningCinematic, setShowOpeningCinematic] = useState(true);
+  const [onboardingMode, setOnboardingMode] = useState<'tour' | 'basics' | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>('ruy-lopez');
   const [selectedVariationId, setSelectedVariationId] = useState<string>('ruy-lopez-berlin');
   const [currentMoveIndex, setCurrentMoveIndex] = useState<number>(-1); // -1 = start position
@@ -138,6 +140,18 @@ export default function App() {
 
   const isOwner = userRole === 'owner';
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
+
+  const startOnboarding = useCallback((mode: 'tour' | 'basics') => {
+    setShowOpeningCinematic(false);
+    setIsPracticeOpen(false);
+    setOnboardingMode(mode);
+  }, []);
+
+  const finishOnboarding = useCallback((skipped: boolean) => {
+    localStorage.setItem('chess-openings-onboarding-status', skipped ? 'skipped' : 'completed');
+    setOnboardingMode(null);
+    setIsPracticeOpen(false);
+  }, []);
 
   const handleActivateTier = useCallback((tier: PaidPlanTier) => {
     saveStoredPaidPlan(tier);
@@ -652,6 +666,9 @@ export default function App() {
   const handleEnterMainMenu = useCallback(() => {
     window.history.pushState({ chessAppScreen: 'main-menu' }, '', window.location.href);
     setShowOpeningCinematic(false);
+    if (!localStorage.getItem('chess-openings-onboarding-status')) {
+      setOnboardingMode('tour');
+    }
   }, []);
 
   if (showOpeningCinematic) {
@@ -676,6 +693,8 @@ export default function App() {
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenPremium={() => handleOpenPremiumModal(paidPlanTier === '999' ? '999' : '699')}
         onOpenPractice={() => setIsPracticeOpen(true)}
+        onReplayAppTour={() => startOnboarding('tour')}
+        onReplayChessBasics={() => startOnboarding('basics')}
         onOpenChatAi={() => setIsChatAiOpen(true)}
         isPremium={isPremiumUser}
         userTier={paidPlanTier}
@@ -1002,6 +1021,16 @@ export default function App() {
                   : undefined
               }
             />
+
+            {onboardingMode && (
+              <OnboardingExperience
+                initialMode={onboardingMode}
+                language={language}
+                onFinish={finishOnboarding}
+                onOpenPractice={() => setIsPracticeOpen(true)}
+                onClosePractice={() => setIsPracticeOpen(false)}
+              />
+            )}
           </div>
         </section>
         )}
