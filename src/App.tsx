@@ -8,7 +8,7 @@ import { OpeningExplorer } from './components/OpeningExplorer';
 import { VariationSelector } from './components/VariationSelector';
 import { DeviationRefutationCard } from './components/DeviationRefutationCard';
 import { analyzeDeviation, DeviationAnalysis } from './utils/deviationAnalyzer';
-import { Navbar } from './components/Navbar';
+import { Navbar, type LanguageCode } from './components/Navbar';
 import { HelpModal } from './components/HelpModal';
 import { PremiumModal } from './components/PremiumModal';
 import { PoliteUpgradeModal } from './components/PoliteUpgradeModal';
@@ -83,6 +83,12 @@ export default function App() {
     localStorage.getItem('chess-openings-color-mode') === 'light' ? 'light' : 'dark'
   );
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [language, setLanguage] = useState<LanguageCode>(() => {
+    const storedLanguage = localStorage.getItem('chess-openings-language');
+    return storedLanguage === 'hi' || storedLanguage === 'es' || storedLanguage === 'fr' || storedLanguage === 'de'
+      ? storedLanguage
+      : 'en';
+  });
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeed] = useState<number>(2200); // 2.2s interval
   const [trainingMode, setTrainingMode] = useState<boolean>(false);
@@ -113,6 +119,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chess-openings-color-mode', colorMode);
   }, [colorMode]);
+
+  useEffect(() => {
+    localStorage.setItem('chess-openings-language', language);
+    document.documentElement.lang = language;
+  }, [language]);
 
   const isOwner = userRole === 'owner';
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
@@ -649,6 +660,8 @@ export default function App() {
         onToggleColorMode={() => setColorMode((mode) => mode === 'dark' ? 'light' : 'dark')}
         boardTheme={boardTheme}
         onChangeBoardTheme={setBoardTheme}
+        language={language}
+        onChangeLanguage={setLanguage}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onOpenHelp={() => setIsHelpOpen(true)}
