@@ -1,4 +1,4 @@
-// Generator script to construct and validate all 20 chess openings x 12 variations with move-by-move explanations
+// Generator script to construct and validate all 32 chess openings x 12 variations with move-by-move explanations
 import { Chess } from 'chess.js';
 import fs from 'fs';
 import path from 'path';

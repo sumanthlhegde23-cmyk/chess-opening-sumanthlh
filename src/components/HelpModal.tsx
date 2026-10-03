@@ -34,10 +34,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           <div className="p-3 rounded-xl bg-[#20242e] border border-zinc-800 space-y-1.5">
             <div className="font-semibold text-amber-300 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-amber-400" />
-              <span>Complete Repertoire: 20 Openings • 240 Variations</span>
+              <span>Complete Repertoire: 32 Openings • 384 Variations</span>
             </div>
             <p className="text-zinc-400">
-              This interactive platform features 10 foundational White systems (Ruy Lopez, Italian, Queen’s Gambit, English, Catalan, etc.) and 10 premier Black defenses (Sicilian, French, Caro-Kann, King’s Indian, Nimzo-Indian, Slav, etc.). Every single opening features exactly 12 variations with deep move-by-move strategic commentary.
+              This interactive platform features 16 White systems, including the Ruy Lopez, King's Gambit, Danish Gambit, Catalan, and Nimzo-Larsen, plus 16 Black defenses, including the Sicilian, Petrov, Benoni, Grünfeld, and Benko. Every opening features 12 variations with move-by-move strategic commentary.
             </p>
           </div>
 

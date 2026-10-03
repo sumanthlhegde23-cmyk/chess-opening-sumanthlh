@@ -155,7 +155,7 @@ export function OpeningCinematic({ onEnter }: { onEnter: () => void }) {
 
       <footer className="opening-cinematic__footer">
         <span>OPENING THEORY, MADE HUMAN</span>
-        <span>20 OPENINGS <i /> 240 VARIATIONS <i /> INFINITE POSSIBILITIES</span>
+        <span>32 OPENINGS <i /> 384 VARIATIONS <i /> INFINITE POSSIBILITIES</span>
       </footer>
     </main>
   );

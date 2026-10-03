@@ -328,13 +328,13 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
 
             {isAllOpeningsUnlocked && !isFullyUnlocked && (
               <p className="text-xs text-zinc-300">
-                All 20 openings are unlocked! To unlock the 5 elite variations across all openings, you can upgrade to the ₹999/- Lifetime Pass below (annual renewal ₹199/-).
+                All 32 openings are unlocked! To unlock the 5 elite variations across all openings, you can upgrade to the ₹999/- Lifetime Pass below (annual renewal ₹199/-).
               </p>
             )}
 
             {isFullyUnlocked && (
               <p className="text-xs text-emerald-300">
-                You have full access to all 20 openings and all 240 variations! Everything is completely unlocked (Annual renewal ₹199/-).
+                You have full access to all 32 openings and all 384 variations! Everything is completely unlocked (Annual renewal ₹199/-).
               </p>
             )}
           </div>
@@ -416,7 +416,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                     </div>
 
                     <p className="text-xs font-semibold text-amber-200 leading-snug">
-                      Unlocks all 20 openings + unlocks all 5 locked variations in every opening forever!
+                      Unlocks all 32 openings + unlocks all 5 locked variations in every opening forever!
                     </p>
 
                     {/* Annual renewal prompt */}
@@ -530,7 +530,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                         <span>Unlocks Catalan, Réti, Dutch & Alekhine</span>
                       </div>
                       <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
-                        Completes all 20 openings on your active 3-year pass.
+                        Completes all 32 openings on your active 3-year pass.
                       </p>
                     </div>
                   </div>

@@ -80,11 +80,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Chess Openings Master
               </h1>
               <span className="hidden lg:inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
-                20 Openings • 240 Variations
+                32 Openings • 384 Variations
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 hidden sm:block">
-              10 White & 10 Black Openings with 12 variations each & move-by-move master explanations
+              16 White & 16 Black Openings with 12 variations each & move-by-move master explanations
             </p>
           </div>
         </div>

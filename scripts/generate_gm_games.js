@@ -189,4 +189,4 @@ for (let opIdx = 0; opIdx < openingsData.length; opIdx++) {
 
 const outputPath = path.resolve(__dirname, '../src/data/grandmasterGamesData.json');
 fs.writeFileSync(outputPath, JSON.stringify(allGmGames, null, 2), 'utf-8');
-console.log(`Successfully generated ${totalGamesGenerated} Grandmaster games across all 240 variations into ${outputPath}!`);
+console.log(`Successfully generated ${totalGamesGenerated} Grandmaster games across all 384 variations into ${outputPath}!`);

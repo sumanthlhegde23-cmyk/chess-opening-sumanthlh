@@ -26,7 +26,7 @@ For Gemini-backed chat locally, set `GEMINI_API_KEY` in `.env`; without it, `/ap
 
 ## Repository-specific conventions
 
-- Treat the raw opening definitions and generator logic as the source of truth. When changing repertoire content or its explanations, update the corresponding script sources and regenerate with `node scripts/compile_all_openings.js`; do not make a generated JSON-only change. The compiler enforces exactly 20 openings with 12 variations each, and validates each SAN line by replaying it.
+- Treat the raw opening definitions and generator logic as the source of truth. When changing repertoire content or its explanations, update the corresponding script sources and regenerate with `node scripts/compile_all_openings.js`; do not make a generated JSON-only change. The compiler enforces exactly 32 openings with 12 variations each, and validates each SAN line by replaying it.
 - Keep chess move data in SAN and use `chess.js` to apply moves or produce FENs. `MoveExplanation` entries are aligned by index with their variation's move array; preserve that relationship when adding or editing annotations.
 - Grandmaster records are keyed by variation ID. `scripts/generate_gm_games.js` generates heuristic continuations with randomized move scoring and assigned player/event metadata; its output should not be treated as verified historical game scores.
 - The UI uses Tailwind CSS v4 through the Vite plugin and utility classes in JSX; global theme and color-mode overrides are in `src/index.css`.

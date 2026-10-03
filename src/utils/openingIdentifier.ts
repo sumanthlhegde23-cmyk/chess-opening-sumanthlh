@@ -185,7 +185,7 @@ export function identifyOpeningAndVariation(
   }
   formattedMoves = formattedMoves.trim();
 
-  // 1. Priority Match: Deep search across all 20 openings and 240 variations in the master app database
+  // 1. Priority Match: Deep search across all 32 openings and 384 variations in the master app database
   let bestDbMatch: {
     openingName: string;
     variationName: string;
@@ -229,7 +229,7 @@ export function identifyOpeningAndVariation(
     }
   }
 
-  // If we found a full match from our 240 variations database where matchLen covers all played moves
+  // If we found a full match from our 384 variations database where matchLen covers all played moves
   if (bestDbMatch && bestDbMatch.matchLen === normMoves.length) {
     return {
       openingName: bestDbMatch.openingName,

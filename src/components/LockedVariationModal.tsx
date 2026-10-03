@@ -77,11 +77,11 @@ export const LockedVariationModal: React.FC<LockedVariationModalProps> = ({
             <ul className="space-y-1 text-xs text-zinc-300">
               <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Unlocks all 5 locked variations across all 20 openings</span>
+                <span>Unlocks all 5 locked variations across all 32 openings</span>
               </li>
               <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Unlocks all 240 master variations in total</span>
+                <span>Unlocks all 384 master variations in total</span>
               </li>
               <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />

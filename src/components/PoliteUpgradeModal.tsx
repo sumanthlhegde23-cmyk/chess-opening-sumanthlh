@@ -302,7 +302,7 @@ export const PoliteUpgradeModal: React.FC<PoliteUpgradeModalProps> = ({
                     ₹999/-
                   </div>
                   <p className="text-[11px] text-zinc-300 mt-1">
-                    Unlocks ALL 20 openings + ALL 5 locked variations in every opening forever!
+                    Unlocks ALL 32 openings + ALL 5 locked variations in every opening forever!
                   </p>
                   <div className="text-[10px] text-amber-300/90 font-medium mt-1 pt-1 border-t border-zinc-700/50">
                     * Annual renewal ₹199/- every year

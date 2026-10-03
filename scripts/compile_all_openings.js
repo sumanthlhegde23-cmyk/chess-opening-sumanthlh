@@ -13,8 +13,8 @@ const allRaw = [...whiteOpeningsRaw, ...blackOpeningsRaw];
 
 console.log(`Processing ${allRaw.length} openings...`);
 
-if (allRaw.length !== 20) {
-  throw new Error(`Expected exactly 20 openings, got ${allRaw.length}`);
+if (allRaw.length !== 32) {
+  throw new Error(`Expected exactly 32 openings, got ${allRaw.length}`);
 }
 
 const compiledOpenings = [];
