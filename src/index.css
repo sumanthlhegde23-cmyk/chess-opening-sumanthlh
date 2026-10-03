@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+.app-shell {
+  background-color: #0b100e;
+  background-image:
+    radial-gradient(ellipse at 73% 10%, rgba(67, 99, 74, 0.28), transparent 40%),
+    radial-gradient(ellipse at 8% 82%, rgba(151, 103, 50, 0.12), transparent 30%),
+    linear-gradient(116deg, #0b100e 0%, #101a15 53%, #0b100e 100%);
+}
+
+[data-color-mode="light"].app-shell {
+  background-color: #edf1ec !important;
+  background-image:
+    radial-gradient(ellipse at 73% 10%, rgba(117, 153, 120, 0.2), transparent 40%),
+    radial-gradient(ellipse at 8% 82%, rgba(196, 157, 96, 0.12), transparent 30%),
+    linear-gradient(116deg, #f5f6f0 0%, #e9eee8 53%, #f5f6f0 100%);
+}
+
 [data-color-mode="light"] {
   color-scheme: light;
   background-color: #f1f5f9 !important;

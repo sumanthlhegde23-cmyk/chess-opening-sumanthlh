@@ -9,6 +9,8 @@ import { VariationSelector } from './components/VariationSelector';
 import { DeviationRefutationCard } from './components/DeviationRefutationCard';
 import { analyzeDeviation, DeviationAnalysis } from './utils/deviationAnalyzer';
 import { Navbar, type LanguageCode } from './components/Navbar';
+import { isRightToLeftLanguage, isSupportedLanguage } from './data/languages';
+import { startLiveTranslation } from './utils/liveTranslation';
 import { HelpModal } from './components/HelpModal';
 import { PremiumModal } from './components/PremiumModal';
 import { PoliteUpgradeModal } from './components/PoliteUpgradeModal';
@@ -85,10 +87,10 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [language, setLanguage] = useState<LanguageCode>(() => {
     const storedLanguage = localStorage.getItem('chess-openings-language');
-    return storedLanguage === 'hi' || storedLanguage === 'es' || storedLanguage === 'fr' || storedLanguage === 'de'
-      ? storedLanguage
-      : 'en';
+    return isSupportedLanguage(storedLanguage) ? storedLanguage : 'en';
   });
+  const [translationAttempt, setTranslationAttempt] = useState(0);
+  const [translationStatus, setTranslationStatus] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeed] = useState<number>(2200); // 2.2s interval
   const [trainingMode, setTrainingMode] = useState<boolean>(false);
@@ -123,6 +125,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chess-openings-language', language);
     document.documentElement.lang = language;
+    document.documentElement.dir = isRightToLeftLanguage(language) ? 'rtl' : 'ltr';
+    setTranslationStatus(null);
+    return startLiveTranslation(language, setTranslationStatus);
+  }, [language, translationAttempt]);
+
+  const handleChangeLanguage = useCallback((nextLanguage: LanguageCode) => {
+    setTranslationStatus(null);
+    if (nextLanguage === language) {
+      setTranslationAttempt((attempt) => attempt + 1);
+    } else {
+      setLanguage(nextLanguage);
+    }
   }, [language]);
 
   const isOwner = userRole === 'owner';
@@ -651,7 +665,7 @@ export default function App() {
   }
 
   return (
-    <div data-color-mode={colorMode} className="min-h-screen bg-[#0f1115] text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
+    <div data-color-mode={colorMode} className="app-shell min-h-screen text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
       {/* Top Navbar */}
       <Navbar
         flipped={flipped}
@@ -661,7 +675,8 @@ export default function App() {
         boardTheme={boardTheme}
         onChangeBoardTheme={setBoardTheme}
         language={language}
-        onChangeLanguage={setLanguage}
+        onChangeLanguage={handleChangeLanguage}
+        translationStatus={translationStatus}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onOpenHelp={() => setIsHelpOpen(true)}
@@ -671,6 +686,15 @@ export default function App() {
         isPremium={isPremiumUser}
         userTier={paidPlanTier}
       />
+      {translationStatus && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed right-4 top-16 z-[70] max-w-sm rounded-lg border border-amber-500/35 bg-[#111812]/95 p-3 text-sm text-amber-100 shadow-xl backdrop-blur"
+        >
+          {translationStatus}
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">

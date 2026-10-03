@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import { supportedLanguageCodes } from './src/data/languages';
 
 dotenv.config();
 
@@ -160,6 +161,63 @@ Feel free to ask about specific openings, move orders (like **1.e4** or **1.d4**
 // API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'chess-ai-assistant' });
+});
+
+const translationRequestCounts = new Map<string, { startedAt: number; count: number }>();
+
+app.post('/api/translate', async (req, res) => {
+  try {
+    const { language, texts } = req.body || {};
+    if (typeof language !== 'string' || !supportedLanguageCodes.includes(language)) {
+      res.status(400).json({ error: 'Choose a supported language.' });
+      return;
+    }
+    if (!Array.isArray(texts) || texts.length < 1 || texts.length > 30 || texts.some((text) => typeof text !== 'string')) {
+      res.status(400).json({ error: 'Provide between 1 and 30 text strings.' });
+      return;
+    }
+    if (texts.some((text: string) => text.length > 10000) || texts.reduce((total: number, text: string) => total + text.length, 0) > 10000) {
+      res.status(413).json({ error: 'The translation batch is too large.' });
+      return;
+    }
+
+    const now = Date.now();
+    const clientAddress = req.ip || 'unknown';
+    const clientLimit = translationRequestCounts.get(clientAddress);
+    if (clientLimit && now - clientLimit.startedAt < 60_000 && clientLimit.count >= 120) {
+      res.status(429).json({ error: 'Translation rate limit reached. Please wait a minute and try again.' });
+      return;
+    }
+    translationRequestCounts.set(clientAddress, {
+      startedAt: clientLimit && now - clientLimit.startedAt < 60_000 ? clientLimit.startedAt : now,
+      count: clientLimit && now - clientLimit.startedAt < 60_000 ? clientLimit.count + 1 : 1,
+    });
+
+    const ai = getAI();
+    if (!ai) {
+      res.status(503).json({ error: 'Live translation requires GEMINI_API_KEY in the server .env file.' });
+      return;
+    }
+
+    const languageName = new Intl.DisplayNames(['en'], { type: 'language' }).of(language) || language;
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `Translate every string in the JSON array into ${languageName}. Return only a JSON array of translated strings in the same order and with the same number of items. Preserve chess SAN move notation, FEN, ECO codes, numbers, Markdown structure, and placeholders exactly. Translate explanatory prose, headings, buttons, labels, and messages.\n\n${JSON.stringify(texts)}`,
+      config: { temperature: 0.1 },
+    });
+
+    const output = (response.text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const translations = JSON.parse(output);
+    if (!Array.isArray(translations) || translations.length !== texts.length || translations.some((text) => typeof text !== 'string')) {
+      res.status(502).json({ error: 'The translation service returned an invalid response.' });
+      return;
+    }
+
+    res.json({ translations });
+  } catch (error) {
+    console.error('Gemini translation error:', error);
+    res.status(502).json({ error: 'Translation failed. Please try selecting the language again.' });
+  }
 });
 
 app.post('/api/chat', async (req, res) => {
