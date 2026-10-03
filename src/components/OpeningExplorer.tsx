@@ -1,8 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { Opening } from '../types/chess';
-import { Search, Filter, Shield, Swords, Sparkles, BookOpen, Globe, Radio, Lock, Crown } from 'lucide-react';
+import { Search, Shield, Swords, Sparkles, BookOpen, Globe, Radio, Lock, Crown } from 'lucide-react';
 import { CurrentAffairsModal } from './CurrentAffairsModal';
-import { PaidPlanTier, isOpeningLocked } from '../utils/pricingLocks';
+import {
+  LOCKED_OPENING_IDS,
+  THREE_YEAR_LOCKED_OPENING_IDS,
+  PaidPlanTier,
+  getOpeningClassification,
+  isOpeningAccessRestricted,
+  isOpeningLocked,
+} from '../utils/pricingLocks';
 
 interface OpeningExplorerProps {
   openings: Opening[];
@@ -12,7 +19,7 @@ interface OpeningExplorerProps {
   onSideFilterChange: (side: 'all' | 'white' | 'black') => void;
   userPlan: PaidPlanTier;
   isOwner?: boolean;
-  onLockedOpeningClick: (openingId: string) => void;
+  onOpenPremium: (plan: '699' | '999') => void;
 }
 
 export const OpeningExplorer: React.FC<OpeningExplorerProps> = ({
@@ -23,7 +30,7 @@ export const OpeningExplorer: React.FC<OpeningExplorerProps> = ({
   onSideFilterChange,
   userPlan,
   isOwner = false,
-  onLockedOpeningClick,
+  onOpenPremium,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [styleFilter, setStyleFilter] = useState<string>('all');
@@ -150,21 +157,35 @@ export const OpeningExplorer: React.FC<OpeningExplorerProps> = ({
         </div>
       </div>
 
-      {/* Polite Upsell Banner if user has 699/399 plan and not owner */}
-      {!isOwner && (userPlan === '699' || userPlan === '399') && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-gradient-to-r from-[#241e17] via-[#1a1c24] to-[#151720] border border-amber-500/40 text-xs shadow-sm">
-          <div className="flex items-center gap-2 text-amber-200">
-            <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>
-              2 White & 2 Black openings are reserved under ₹699/- (with ₹159/yr renewal). Would you kindly consider an add-up payment of <strong>₹399/-</strong> to unlock them?
-            </span>
+      {!isOwner && userPlan === 'none' && (
+        <div className="flex flex-col gap-3 rounded-lg border border-zinc-700/80 bg-[#141a17]/90 p-3 text-xs shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5 text-zinc-300">
+            <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+            <p>
+              <strong className="text-emerald-300">Free · Explore</strong> {openings.length - LOCKED_OPENING_IDS.length} openings are fully playable. Preview the other {LOCKED_OPENING_IDS.length} semi-major systems, with 8 lines open and 4 premium lines reserved in each.
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => onLockedOpeningClick('catalan-opening')}
-            className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shrink-0 transition-colors cursor-pointer shadow"
-          >
-            Politely Unlock for ₹399/-
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button type="button" onClick={() => onOpenPremium('699')} className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 font-bold text-amber-200 transition-colors hover:bg-amber-500/20">
+              Expanded · ₹699
+            </button>
+            <button type="button" onClick={() => onOpenPremium('999')} className="rounded-md bg-amber-500 px-3 py-1.5 font-bold text-zinc-950 transition-colors hover:bg-amber-400">
+              Complete · ₹999
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isOwner && (userPlan === '699' || userPlan === '399') && (
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-500/40 bg-[#201b14]/90 p-3 text-xs shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5 text-zinc-300">
+            <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <p>
+              <strong className="text-amber-200">₹699 Expanded Repertoire</strong> · {openings.length - THREE_YEAR_LOCKED_OPENING_IDS.length} openings are fully playable with every variation. {THREE_YEAR_LOCKED_OPENING_IDS.length} semi-major openings remain reserved for the complete library.
+            </p>
+          </div>
+          <button type="button" onClick={() => onOpenPremium('999')} className="shrink-0 rounded-md bg-amber-500 px-3 py-1.5 font-bold text-zinc-950 transition-colors hover:bg-amber-400">
+            Complete Library · ₹999
           </button>
         </div>
       )}
@@ -174,24 +195,20 @@ export const OpeningExplorer: React.FC<OpeningExplorerProps> = ({
         {filteredOpenings.map((op) => {
           const isSelected = op.id === selectedOpeningId;
           const isWhite = op.side === 'white';
+          const restricted = isOpeningAccessRestricted(op.id, userPlan, isOwner);
           const locked = isOpeningLocked(op.id, userPlan, isOwner);
+          const classification = getOpeningClassification(op.id);
 
           return (
             <button
               key={op.id}
               id={`opening-card-${op.id}`}
-              onClick={() => {
-                if (locked) {
-                  onLockedOpeningClick(op.id);
-                } else {
-                  onSelectOpening(op.id);
-                }
-              }}
+              onClick={() => onSelectOpening(op.id)}
               className={`shrink-0 w-64 p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
                 isSelected
                   ? 'bg-[#222734] border-amber-500 shadow-lg shadow-amber-950/20 ring-1 ring-amber-500/50'
-                  : locked
-                  ? 'bg-[#15171d]/95 border-zinc-800/90 hover:border-amber-500/50 hover:bg-[#1d1f2a]'
+                  : restricted
+                  ? 'bg-[#171a18]/95 border-amber-500/25 hover:border-amber-400/60 hover:bg-[#1d211e]'
                   : 'bg-[#181a20] border-zinc-800/90 hover:bg-[#1f232c] hover:border-zinc-700'
               }`}
             >
@@ -207,10 +224,19 @@ export const OpeningExplorer: React.FC<OpeningExplorerProps> = ({
                     >
                       {isWhite ? 'White Opening' : 'Black Defense'}
                     </span>
-                    {locked && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
-                        <Lock className="w-2.5 h-2.5" />
-                        <span>Locked</span>
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${
+                      classification === 'Major'
+                        ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                        : classification === 'Semi-Major'
+                        ? 'border-sky-500/25 bg-sky-500/10 text-sky-300'
+                        : 'border-zinc-600/60 bg-zinc-800/70 text-zinc-400'
+                    }`}>
+                      {classification}
+                    </span>
+                    {restricted && (
+                      <span className="flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                        {locked ? <Lock className="h-2.5 w-2.5" /> : <Crown className="h-2.5 w-2.5" />}
+                        <span>{userPlan === 'none' ? 'Preview' : 'Reserved'}</span>
                       </span>
                     )}
                   </div>
@@ -232,9 +258,9 @@ export const OpeningExplorer: React.FC<OpeningExplorerProps> = ({
                 <span className="text-zinc-400">
                   <strong className="text-amber-400 font-medium">12</strong> Variations
                 </span>
-                {locked ? (
-                  <span className="text-[10px] font-semibold text-amber-400">
-                    {(userPlan === '699' || userPlan === '399') ? 'Unlock for ₹399' : '₹699 / ₹999'}
+                {restricted ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-300">
+                    {userPlan === 'none' ? <><Lock className="h-3 w-3" />8 preview · 4 locked</> : 'Complete · ₹999'}
                   </span>
                 ) : (
                   <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px]">

@@ -8,20 +8,131 @@ export type PaidPlanTier =
   | '599';
 export type UserRole = 'owner' | 'visitor';
 
-/**
- * 2 Openings from White and 2 Openings from Black locked under the ₹699/- (or legacy ₹399/-) plan.
- * (Can be unlocked with an extra polite payment of ₹399/-, or fully via ₹999/-).
- */
-export const LOCKED_WHITE_OPENINGS: string[] = ['catalan-opening', 'reti-opening'];
-export const LOCKED_BLACK_OPENINGS: string[] = ['dutch-defense', 'alekhine-defense'];
+export type OpeningClassification = 'Major' | 'Semi-Major' | 'Minor';
+
+export const OPENING_CLASSIFICATION: Record<string, OpeningClassification> = {
+  'ruy-lopez': 'Major',
+  'italian-game': 'Major',
+  'queens-gambit': 'Major',
+  'english-opening': 'Major',
+  'catalan-opening': 'Major',
+  'london-system': 'Major',
+  'scotch-game': 'Semi-Major',
+  'kings-indian-attack': 'Semi-Major',
+  'vienna-game': 'Semi-Major',
+  'reti-opening': 'Semi-Major',
+  'kings-gambit': 'Semi-Major',
+  'danish-gambit': 'Semi-Major',
+  'ponziani-opening': 'Semi-Major',
+  'birds-opening': 'Semi-Major',
+  'colle-system': 'Minor',
+  'nimzo-larsen-attack': 'Minor',
+  'sicilian-defense': 'Major',
+  'french-defense': 'Major',
+  'caro-kann-defense': 'Major',
+  'kings-indian-defense': 'Major',
+  'nimzo-indian-defense': 'Major',
+  'slav-defense': 'Major',
+  'grunfeld-defense': 'Semi-Major',
+  'queens-indian-defense': 'Semi-Major',
+  'scandinavian-defense': 'Semi-Major',
+  'pirc-defense': 'Semi-Major',
+  'dutch-defense': 'Semi-Major',
+  'alekhine-defense': 'Semi-Major',
+  'petrov-defense': 'Semi-Major',
+  'philidor-defense': 'Minor',
+  'benoni-defense': 'Semi-Major',
+  'benko-gambit': 'Minor',
+};
+
+const WHITE_SEMI_MAJOR_OPENINGS = [
+  'scotch-game', 'kings-indian-attack', 'vienna-game', 'reti-opening',
+  'kings-gambit', 'danish-gambit', 'ponziani-opening', 'birds-opening',
+];
+const BLACK_SEMI_MAJOR_OPENINGS = [
+  'grunfeld-defense', 'queens-indian-defense', 'scandinavian-defense', 'pirc-defense',
+  'dutch-defense', 'alekhine-defense', 'petrov-defense', 'benoni-defense',
+];
+
+function sampleOpenings(candidates: string[]): string[] {
+  const shuffled = [...candidates];
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled.slice(0, 6);
+}
+
+function getFreeOpeningSelection(): { white: string[]; black: string[] } {
+  const storageKey = 'chess_openings_free_lock_selection_v1';
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      const validSelection = stored &&
+        Array.isArray(stored.white) && stored.white.length === 6 &&
+        Array.isArray(stored.black) && stored.black.length === 6 &&
+        stored.white.every((id: string) => WHITE_SEMI_MAJOR_OPENINGS.includes(id)) &&
+        stored.black.every((id: string) => BLACK_SEMI_MAJOR_OPENINGS.includes(id)) &&
+        new Set(stored.white).size === 6 && new Set(stored.black).size === 6;
+      if (validSelection) return stored;
+
+      const selection = {
+        white: sampleOpenings(WHITE_SEMI_MAJOR_OPENINGS),
+        black: sampleOpenings(BLACK_SEMI_MAJOR_OPENINGS),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(selection));
+      return selection;
+    } catch {}
+  }
+
+  return {
+    white: sampleOpenings(WHITE_SEMI_MAJOR_OPENINGS),
+    black: sampleOpenings(BLACK_SEMI_MAJOR_OPENINGS),
+  };
+}
+
+const freeOpeningSelection = getFreeOpeningSelection();
+export const LOCKED_WHITE_OPENINGS = freeOpeningSelection.white;
+export const LOCKED_BLACK_OPENINGS = freeOpeningSelection.black;
 export const LOCKED_OPENING_IDS: string[] = [...LOCKED_WHITE_OPENINGS, ...LOCKED_BLACK_OPENINGS];
 
-/**
- * 5 variations in ALL openings are locked and require the ₹999/- (or legacy ₹599/-) plan to open.
- * In our database, each opening has 12 variations (indices 0 through 11).
- * Variations at index 7, 8, 9, 10, 11 (the 5 elite lines) are locked!
- */
-export const LOCKED_VARIATION_START_INDEX = 7; // 5 variations (8, 9, 10, 11, 12)
+export const THREE_YEAR_LOCKED_WHITE_OPENINGS = [
+  'scotch-game',
+  'kings-indian-attack',
+  'vienna-game',
+  'danish-gambit',
+];
+export const THREE_YEAR_LOCKED_BLACK_OPENINGS = [
+  'scandinavian-defense',
+  'pirc-defense',
+  'dutch-defense',
+  'alekhine-defense',
+];
+export const THREE_YEAR_LOCKED_OPENING_IDS: string[] = [
+  ...THREE_YEAR_LOCKED_WHITE_OPENINGS,
+  ...THREE_YEAR_LOCKED_BLACK_OPENINGS,
+];
+
+export const LOCKED_FREE_VARIATION_INDICES = [8, 9, 10, 11];
+
+const openingNames: Record<string, string> = {
+  'scotch-game': 'Scotch Game',
+  'kings-indian-attack': "King's Indian Attack",
+  'vienna-game': 'Vienna Game & Gambit',
+  'danish-gambit': 'Danish Gambit',
+  'ponziani-opening': 'Ponziani Opening',
+  'birds-opening': "Bird's Opening",
+  'scandinavian-defense': 'Scandinavian Defense',
+  'pirc-defense': 'Pirc / Modern Defense',
+  'dutch-defense': 'Dutch Defense',
+  'alekhine-defense': 'Alekhine Defense',
+  'petrov-defense': 'Petrov Defense',
+  'benoni-defense': 'Benoni Defense',
+};
+
+export function getOpeningClassification(openingId: string): OpeningClassification {
+  return OPENING_CLASSIFICATION[openingId] || 'Minor';
+}
 
 /**
  * Plan amounts and renewal rates requested by the user:
@@ -126,25 +237,29 @@ export function saveStoredPaidPlan(tier: PaidPlanTier): void {
 }
 
 /**
- * Checks if a variation is locked.
- * NEVER locked for Sumanth Hegde (Owner mode).
- * For others (visitors), 5 variations of ALL openings are locked unless user paid ₹999/- (or legacy ₹599/-).
+ * Free users can preview 8 lines of the 12 selected semi-major openings.
+ * The ₹699 plan has no variation locks in its accessible openings; the 8 reserved
+ * openings are locked as a whole. The ₹999 plan removes all locks.
  */
 export function isVariationLocked(
   variationIndex: number,
   tier: PaidPlanTier,
-  isOwner: boolean = false
+  isOwner: boolean = false,
+  openingId?: string
 ): boolean {
   if (isOwner) return false;
-  if (tier === '999' || tier === '599') return false;
-  return variationIndex >= LOCKED_VARIATION_START_INDEX;
+  if (tier === '999' || tier === '599' || tier === '699_plus_399' || tier === '399_plus_179') return false;
+  if (tier === '699' || tier === '399') return openingId ? THREE_YEAR_LOCKED_OPENING_IDS.includes(openingId) : false;
+  return Boolean(
+    openingId &&
+    LOCKED_OPENING_IDS.includes(openingId) &&
+    LOCKED_FREE_VARIATION_INDICES.includes(variationIndex)
+  );
 }
 
 /**
- * Checks if an opening is locked.
- * NEVER locked for Sumanth Hegde (Owner mode).
- * For others (visitors), 2 White openings and 2 Black openings are locked under ₹699/- (or free),
- * unless user paid ₹999/- (or legacy ₹599/-) or paid the extra ₹399/- (or legacy ₹179/-).
+ * Checks if an opening is fully reserved on the selected paid tier.
+ * Free-tier semi-major openings stay previewable; only selected lines are gated.
  */
 export function isOpeningLocked(
   openingId: string,
@@ -160,6 +275,21 @@ export function isOpeningLocked(
   ) {
     return false;
   }
+  if (tier === '699' || tier === '399') {
+    return THREE_YEAR_LOCKED_OPENING_IDS.includes(openingId);
+  }
+  return false;
+}
+
+export function isOpeningAccessRestricted(
+  openingId: string,
+  tier: PaidPlanTier,
+  isOwner: boolean = false
+): boolean {
+  if (isOwner || tier === '999' || tier === '599' || tier === '699_plus_399' || tier === '399_plus_179') {
+    return false;
+  }
+  if (tier === '699' || tier === '399') return THREE_YEAR_LOCKED_OPENING_IDS.includes(openingId);
   return LOCKED_OPENING_IDS.includes(openingId);
 }
 
@@ -173,15 +303,6 @@ export function getOpeningLockDetails(openingId: string): {
   return {
     isLockedOpening: isWhite || isBlack,
     side: isWhite ? 'white' : isBlack ? 'black' : null,
-    name:
-      openingId === 'catalan-opening'
-        ? 'Catalan Opening'
-        : openingId === 'reti-opening'
-        ? 'Réti Opening'
-        : openingId === 'dutch-defense'
-        ? 'Dutch Defense'
-        : openingId === 'alekhine-defense'
-        ? 'Alekhine Defense'
-        : '',
+    name: openingNames[openingId] || '',
   };
 }

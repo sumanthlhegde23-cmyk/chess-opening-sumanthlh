@@ -127,13 +127,12 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
 }) => {
   const normalizePlan = (
     plan?: string
-  ): '999' | '699' | '399' => {
+  ): '999' | '699' => {
     if (plan === '999' || plan === '599') return '999';
-    if (plan === '699') return '699';
-    return '399';
+    return '699';
   };
 
-  const [selectedPlan, setSelectedPlan] = useState<'999' | '699' | '399'>(
+  const [selectedPlan, setSelectedPlan] = useState<'999' | '699'>(
     normalizePlan(initialSelectedPlan)
   );
   const [selectedApp, setSelectedApp] = useState<PaymentApp | null>(null);
@@ -153,13 +152,11 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
   const accountNumber = '3758323042';
   const accountHolder = 'Sumanth Hegde';
 
-  const amount = selectedPlan === '999' ? 999 : selectedPlan === '699' ? 699 : 399;
+  const amount = selectedPlan === '999' ? 999 : 699;
   const planLabel =
     selectedPlan === '999'
       ? 'Lifetime Membership (₹999/- with ₹199/yr annual renewal)'
-      : selectedPlan === '699'
-      ? '3-Year Standard Plan (₹699/- with ₹159/yr annual renewal)'
-      : 'Polite Extra Add-on (₹399/- Remaining Openings)';
+      : '₹699 Expanded Repertoire (24 openings, 8 reserved)';
 
   // Standard UPI URI
   const upiLink = useMemo(() => {
@@ -220,10 +217,8 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
       setActivationSuccess(true);
       if (selectedPlan === '999') {
         onActivateTier('999');
-      } else if (selectedPlan === '699') {
-        onActivateTier('699');
       } else {
-        onActivateTier('699_plus_399');
+        onActivateTier('699');
       }
     }, 1000);
   };
@@ -232,11 +227,8 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
 
   const currentAppObj = PAYMENT_APPS.find((a) => a.id === selectedApp) || null;
   const isFullyUnlocked = currentTier === '999' || currentTier === '599';
-  const isAllOpeningsUnlocked =
-    isFullyUnlocked ||
-    currentTier === '699_plus_399' ||
-    currentTier === '399_plus_179';
-  const is3YearPlan = currentTier === '699' || currentTier === '399';
+  const isCompleteTier = isFullyUnlocked || currentTier === '699_plus_399' || currentTier === '399_plus_179';
+  const isExpandedPlan = currentTier === '699' || currentTier === '399';
 
   return (
     <div
@@ -291,10 +283,10 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                 <span className="text-xs font-bold text-zinc-100">
                   Current Membership:{' '}
                   {isFullyUnlocked
-                    ? '₹999/- Lifetime Master (Annual renewal ₹199/-)'
-                    : isAllOpeningsUnlocked
-                    ? '₹699 + ₹399 All Openings Unlocked'
-                    : '₹699/- Standard 3-Year Pass (Annual renewal ₹159/-)'}
+                    ? '₹999 Complete Library (Annual renewal ₹199/-)'
+                    : isCompleteTier
+                    ? 'Complete Library Active'
+                    : '₹699 Expanded Repertoire (Annual renewal ₹159/-)'}
                 </span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -302,33 +294,26 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
               </span>
             </div>
 
-            {is3YearPlan && !isAllOpeningsUnlocked && (
+            {isExpandedPlan && !isCompleteTier && (
               <div className="text-xs text-amber-200/90 leading-relaxed bg-black/30 p-2.5 rounded-lg border border-amber-500/20 space-y-2">
                 <p>
-                  <strong>A polite note:</strong> Under your 3-Year pass, 2 White openings (Catalan & Réti), 2 Black openings (Dutch & Alekhine), and 5 variations per opening are kept reserved.
+                  <strong>Expanded Repertoire:</strong> Your plan includes 24 openings with all 12 variations each. Eight semi-major openings (four White and four Black) are reserved for the Complete Library.
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlan('399')}
-                    className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow cursor-pointer transition-all"
-                  >
-                    Politely Unlock Remaining Openings for ₹399/-
-                  </button>
                   <button
                     type="button"
                     onClick={() => setSelectedPlan('999')}
                     className="px-3 py-1 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 cursor-pointer"
                   >
-                    Get Full Lifetime Pass (₹999/-)
+                    Upgrade to Complete · ₹999
                   </button>
                 </div>
               </div>
             )}
 
-            {isAllOpeningsUnlocked && !isFullyUnlocked && (
+            {isCompleteTier && !isFullyUnlocked && (
               <p className="text-xs text-zinc-300">
-                All 32 openings are unlocked! To unlock the 5 elite variations across all openings, you can upgrade to the ₹999/- Lifetime Pass below (annual renewal ₹199/-).
+                Complete Library access is active. All 32 openings and all 384 variations are available.
               </p>
             )}
 
@@ -376,7 +361,11 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                 Select Your Plan
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-zinc-700/70 bg-[#111713] px-3 py-2.5 text-xs text-zinc-300">
+                <strong className="text-emerald-300">Free · Explore</strong> · 20 openings are fully open; preview 12 semi-major openings with 8 lines available and 4 reserved in each.
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* 999 Lifetime Deal */}
                 <div
                   id="plan-card-999"
@@ -416,7 +405,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                     </div>
 
                     <p className="text-xs font-semibold text-amber-200 leading-snug">
-                      Unlocks all 32 openings + unlocks all 5 locked variations in every opening forever!
+                      Complete access to all 32 openings and all 384 variations. No library locks.
                     </p>
 
                     {/* Annual renewal prompt */}
@@ -448,7 +437,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-bold uppercase text-zinc-300">
-                        ₹699/- Standard
+                        ₹699/- Expanded
                       </span>
                       <div
                         className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -469,7 +458,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                     </div>
 
                     <p className="text-xs font-semibold text-zinc-300 leading-snug">
-                      Unlocks 16 openings (2 White & 2 Black openings locked, 5 variations per opening locked).
+                      Full access to 24 openings with every variation unlocked. Eight semi-major openings remain reserved for ₹999 Complete Library.
                     </p>
 
                     {/* Annual renewal prompt till completion of 3 years */}
@@ -484,57 +473,6 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                   </div>
                 </div>
 
-                {/* 399 Add-up Plan */}
-                <div
-                  id="plan-card-399"
-                  onClick={() => setSelectedPlan('399')}
-                  className={`relative p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                    selectedPlan === '399'
-                      ? 'bg-gradient-to-b from-[#221f15] via-[#1a1c24] to-[#151720] border-amber-500 shadow-lg shadow-amber-950/30 ring-1 ring-amber-500/50'
-                      : 'bg-[#181a22] border-zinc-800 hover:border-zinc-700 hover:bg-[#1c1e28]'
-                  }`}
-                >
-                  <div className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    Add-up Plan
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-bold uppercase text-amber-400">
-                        ₹399/- Add-up
-                      </span>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          selectedPlan === '399'
-                            ? 'border-amber-400 bg-amber-400 text-black'
-                            : 'border-zinc-600'
-                        }`}
-                      >
-                        {selectedPlan === '399' && <Check className="w-3 h-3 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    <div className="flex items-baseline gap-1 mb-1.5">
-                      <span className="text-2xl font-black text-zinc-100 font-mono">
-                        ₹399/-
-                      </span>
-                      <span className="text-[10px] text-zinc-400">courtesy upgrade</span>
-                    </div>
-
-                    <p className="text-xs font-semibold text-amber-200/90 leading-snug">
-                      Politely unlock remaining 2 White & 2 Black openings to complete your repertoire!
-                    </p>
-
-                    <div className="mt-2.5 pt-2 border-t border-amber-500/20 text-[11px] bg-amber-500/5 -mx-1.5 px-2 py-1.5 rounded-lg border border-amber-500/20">
-                      <div className="font-semibold text-amber-300 flex items-center gap-1">
-                        <span>Unlocks Catalan, Réti, Dutch & Alekhine</span>
-                      </div>
-                      <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
-                        Completes all 32 openings on your active 3-year pass.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 

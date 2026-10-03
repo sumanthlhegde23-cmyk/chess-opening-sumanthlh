@@ -1,10 +1,12 @@
 import React from 'react';
 import { Variation } from '../types/chess';
 import { Layers, Lock, Sparkles, Crown } from 'lucide-react';
-import { PaidPlanTier, isVariationLocked } from '../utils/pricingLocks';
+import { PaidPlanTier, isOpeningLocked, isVariationLocked } from '../utils/pricingLocks';
 
 interface VariationSelectorProps {
   variations: Variation[];
+  openingId: string;
+  openingLocked: boolean;
   selectedVariationId: string;
   onSelectVariation: (variationId: string) => void;
   userPlan: PaidPlanTier;
@@ -14,21 +16,36 @@ interface VariationSelectorProps {
 
 export const VariationSelector: React.FC<VariationSelectorProps> = ({
   variations,
+  openingId,
+  openingLocked,
   selectedVariationId,
   onSelectVariation,
   userPlan,
   isOwner = false,
   onLockedVariationClick,
 }) => {
+  const reservedAt699 = isOpeningLocked(openingId, '699', false);
+  const lockedCount = variations.filter((_, index) => isVariationLocked(index, userPlan, isOwner, openingId)).length;
+
   return (
     <div id="variation-selector" className="space-y-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
           <Layers className="w-3.5 h-3.5 text-amber-400" />
           <span>12 Variations</span>
-          {!isOwner && userPlan !== '999' && userPlan !== '599' && (
+          {openingLocked && userPlan === 'none' && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5" /> 5 Locked (Requires ₹999/-)
+              <Lock className="w-2.5 h-2.5" /> 8 preview lines · 4 reserved
+            </span>
+          )}
+          {openingLocked && userPlan !== 'none' && !isOwner && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1">
+              <Lock className="w-2.5 h-2.5" /> 12 reserved · Complete tier
+            </span>
+          )}
+          {!openingLocked && lockedCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1">
+              <Lock className="w-2.5 h-2.5" /> {lockedCount} premium lines
             </span>
           )}
         </div>
@@ -40,7 +57,8 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
         {variations.map((v, idx) => {
           const isSelected = v.id === selectedVariationId;
-          const locked = isVariationLocked(idx, userPlan, isOwner);
+          const locked = isVariationLocked(idx, userPlan, isOwner, openingId);
+          const requiresCompleteTier = isOpeningLocked(openingId, '699', false);
 
           return (
             <button
@@ -70,7 +88,7 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
                     {locked ? (
                       <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-0.5">
                         <Lock className="w-2.5 h-2.5 text-amber-400" />
-                        <span>₹999</span>
+                        <span>{requiresCompleteTier ? '₹999' : '₹699'}</span>
                       </span>
                     ) : (
                       <span className="text-[10px] text-zinc-500">#{idx + 1}</span>

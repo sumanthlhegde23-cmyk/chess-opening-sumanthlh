@@ -7,7 +7,8 @@ interface LockedVariationModalProps {
   onClose: () => void;
   variation: Variation | null;
   openingName: string;
-  onProceedToPay599?: () => void;
+  requiredPlan: '699' | '999';
+  onProceedToPay699?: () => void;
   onProceedToPay999?: () => void;
 }
 
@@ -16,12 +17,16 @@ export const LockedVariationModal: React.FC<LockedVariationModalProps> = ({
   onClose,
   variation,
   openingName,
-  onProceedToPay599,
+  requiredPlan,
+  onProceedToPay699,
   onProceedToPay999,
 }) => {
   if (!isOpen || !variation) return null;
 
-  const handleProceed = onProceedToPay999 || onProceedToPay599 || onClose;
+  const requiresCompleteTier = requiredPlan === '999';
+  const handleProceed = requiresCompleteTier
+    ? onProceedToPay999 || onClose
+    : onProceedToPay699 || onClose;
 
   return (
     <div
@@ -43,7 +48,7 @@ export const LockedVariationModal: React.FC<LockedVariationModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-zinc-100">Variation Locked</h3>
-              <span className="text-[10px] text-amber-400 font-semibold">Requires ₹999/- Lifetime Pass</span>
+              <span className="text-[10px] text-amber-400 font-semibold">Requires ₹{requiredPlan} {requiresCompleteTier ? 'Complete Library' : 'Expanded Repertoire'}</span>
             </div>
           </div>
           <button
@@ -69,39 +74,43 @@ export const LockedVariationModal: React.FC<LockedVariationModalProps> = ({
           <div className="p-3 rounded-xl bg-gradient-to-r from-[#201d15] to-[#171a24] border border-amber-500/40 space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
               <Crown className="w-4 h-4 text-amber-400" />
-              <span>₹999/- Lifetime Unlock</span>
+              <span>₹{requiredPlan} {requiresCompleteTier ? 'Complete Library' : 'Expanded Repertoire'}</span>
             </div>
             <p className="text-xs text-zinc-300 leading-relaxed">
-              Any <strong>5 variations of all openings</strong> unlock when a user acquires the Lifetime membership for <strong>₹999/-</strong>.
+              {requiresCompleteTier
+                ? <>This opening is reserved for the Complete Library. Upgrade to <strong>₹999/-</strong> to unlock all 32 openings and all 384 variations.</>
+                : <>The Expanded Repertoire unlocks every variation in this opening and 23 other openings for <strong>₹699/-</strong>. Eight semi-major openings remain reserved for the Complete Library.</>}
             </p>
             <ul className="space-y-1 text-xs text-zinc-300">
               <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Unlocks all 5 locked variations across all 32 openings</span>
+                <span>{requiresCompleteTier ? 'Unlocks all 32 openings' : 'Unlocks all 12 variations in 24 openings'}</span>
               </li>
               <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Unlocks all 384 master variations in total</span>
+                <span>{requiresCompleteTier ? 'Unlocks all 384 variations' : 'Reserves 8 semi-major openings for ₹999'}</span>
               </li>
               <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Annual renewal: ₹199/- every year</span>
+                <span>{requiresCompleteTier ? 'Annual renewal: ₹199/- every year' : 'Annual renewal: ₹159/- per year for 3 years'}</span>
               </li>
             </ul>
             <div className="mt-1 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] text-amber-200">
-              Please renew membership every year for ₹199/- to maintain active updates & engine support.
+              {requiresCompleteTier
+                ? 'Please renew the Complete Library membership every year for ₹199/- to maintain access and updates.'
+                : 'Please renew the Expanded Repertoire every year for ₹159/- through the 3-year term.'}
             </div>
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row gap-2">
             <button
-              id="btn-unlock-variation-999"
+              id={`btn-unlock-variation-${requiredPlan}`}
               type="button"
               onClick={handleProceed}
               className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 flex items-center justify-center gap-2 shadow transition-all cursor-pointer hover:scale-[1.02]"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Unlock All Variations for ₹999/-</span>
+              <span>Unlock with ₹{requiredPlan}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button

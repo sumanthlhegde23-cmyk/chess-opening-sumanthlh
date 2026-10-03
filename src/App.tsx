@@ -13,7 +13,6 @@ import { isRightToLeftLanguage, isSupportedLanguage } from './data/languages';
 import { startLiveTranslation } from './utils/liveTranslation';
 import { HelpModal } from './components/HelpModal';
 import { PremiumModal } from './components/PremiumModal';
-import { PoliteUpgradeModal } from './components/PoliteUpgradeModal';
 import { LockedVariationModal } from './components/LockedVariationModal';
 import { PracticeModeModal } from './components/PracticeModeModal';
 import { ChatWithAiWindow } from './components/ChatWithAiWindow';
@@ -31,7 +30,7 @@ import {
   saveStoredUserRole,
   isVariationLocked,
   isOpeningLocked,
-  getOpeningLockDetails,
+  isOpeningAccessRestricted,
 } from './utils/pricingLocks';
 import {
   BookOpen,
@@ -102,11 +101,9 @@ export default function App() {
   const [chatAiInitialFen, setChatAiInitialFen] = useState<string | undefined>(undefined);
   const [paidPlanTier, setPaidPlanTier] = useState<PaidPlanTier>(() => getStoredPaidPlan());
   const [userRole, setUserRole] = useState<UserRole>(() => getStoredUserRole());
-  const [isPoliteUpgradeOpen, setIsPoliteUpgradeOpen] = useState<boolean>(false);
-  const [politeTargetOpeningName, setPoliteTargetOpeningName] = useState<string | undefined>(undefined);
   const [isLockedVariationModalOpen, setIsLockedVariationModalOpen] = useState<boolean>(false);
   const [lockedVariationTarget, setLockedVariationTarget] = useState<Variation | null>(null);
-  const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699' | '399'>('999');
+  const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699'>('999');
 
   useEffect(() => {
     window.history.replaceState({ chessAppScreen: 'intro' }, '', window.location.href);
@@ -147,16 +144,6 @@ export default function App() {
     setPaidPlanTier(tier);
   }, []);
 
-  const handleLockedOpeningClick = useCallback((openingId: string) => {
-    if (isOwner) {
-      setSelectedOpeningId(openingId);
-      return;
-    }
-    const details = getOpeningLockDetails(openingId);
-    setPoliteTargetOpeningName(details.name || undefined);
-    setIsPoliteUpgradeOpen(true);
-  }, [isOwner]);
-
   const handleLockedVariationClick = useCallback((variation: Variation, _index: number) => {
     if (isOwner) {
       setSelectedVariationId(variation.id);
@@ -172,7 +159,13 @@ export default function App() {
     setIsPremiumOpen(true);
   }, []);
 
-  const handleOpenPremiumModal = useCallback((plan: '999' | '699' | '399' = '999') => {
+  const handleProceedToPay699FromVariation = useCallback(() => {
+    setIsLockedVariationModalOpen(false);
+    setPremiumInitialPlan('699');
+    setIsPremiumOpen(true);
+  }, []);
+
+  const handleOpenPremiumModal = useCallback((plan: '999' | '699' = '999') => {
     setPremiumInitialPlan(plan);
     setIsPremiumOpen(true);
   }, []);
@@ -195,7 +188,8 @@ export default function App() {
   }, [currentOpening, currentVariation]);
 
   const isCurrentOpeningLocked = isOpeningLocked(currentOpening.id, paidPlanTier, isOwner);
-  const isCurrentVariationLocked = isVariationLocked(currentVariationIndex, paidPlanTier, isOwner);
+  const isCurrentOpeningRestricted = isOpeningAccessRestricted(currentOpening.id, paidPlanTier, isOwner);
+  const isCurrentVariationLocked = isVariationLocked(currentVariationIndex, paidPlanTier, isOwner, currentOpening.id);
 
   // Grandmaster games for current variation
   const variationGmGames = useMemo(() => {
@@ -680,7 +674,7 @@ export default function App() {
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onOpenHelp={() => setIsHelpOpen(true)}
-        onOpenPremium={() => handleOpenPremiumModal(paidPlanTier === '399' ? '179' : '599')}
+        onOpenPremium={() => handleOpenPremiumModal(paidPlanTier === '999' ? '999' : '699')}
         onOpenPractice={() => setIsPracticeOpen(true)}
         onOpenChatAi={() => setIsChatAiOpen(true)}
         isPremium={isPremiumUser}
@@ -708,7 +702,7 @@ export default function App() {
             onSideFilterChange={setSideFilter}
             userPlan={paidPlanTier}
             isOwner={isOwner}
-            onLockedOpeningClick={handleLockedOpeningClick}
+            onOpenPremium={handleOpenPremiumModal}
           />
         </section>
 
@@ -733,9 +727,9 @@ export default function App() {
                 <span className="text-xs font-mono text-amber-400 font-semibold">
                   ({currentOpening.ecoCode})
                 </span>
-                {isCurrentOpeningLocked && (
+                {isCurrentOpeningRestricted && (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> Locked Opening
+                    <Lock className="w-2.5 h-2.5" /> {isCurrentOpeningLocked ? 'Reserved Opening' : 'Preview Opening'}
                   </span>
                 )}
               </div>
@@ -757,38 +751,28 @@ export default function App() {
           </div>
 
           {/* Polite Locked Opening Banner */}
-          {isCurrentOpeningLocked && (
-            <div className="p-3 rounded-xl bg-gradient-to-r from-[#291f16] via-[#1f1d26] to-[#161822] border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
-              <div className="flex items-center gap-2.5 text-amber-200">
-                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="font-bold text-amber-300">Notice:</span> 2 White & 2 Black openings are reserved on the standard plan. Would you kindly consider an add-up payment of <strong>₹399/-</strong> to unlock this opening?
-                </div>
+          {isCurrentOpeningRestricted && (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-500/35 bg-gradient-to-r from-[#241e17] via-[#1a1c24] to-[#151720] p-3 text-xs shadow-md sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5 text-amber-100">
+                <div className="shrink-0 rounded-md bg-amber-500/15 p-1.5 text-amber-300"><Lock className="h-4 w-4" /></div>
+                <p>
+                  <strong className="text-amber-200">{paidPlanTier === 'none' ? 'Preview mode' : 'Reserved on Expanded Repertoire'}.</strong>{' '}
+                  {paidPlanTier === 'none'
+                    ? 'Explore 8 variations here. Four additional lines are reserved for the Complete Library.'
+                    : 'This semi-major opening is reserved for the ₹999 Complete Library. Your other 24 openings and every variation remain open.'}
+                </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleLockedOpeningClick(currentOpening.id)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition-all cursor-pointer"
-                >
-                  Politely Unlock for ₹399/-
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenPremiumModal('999')}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 cursor-pointer"
-                >
-                  All 32 for ₹999
-                </button>
-              </div>
+              <button type="button" onClick={() => handleOpenPremiumModal('999')} className="shrink-0 rounded-md bg-amber-500 px-3 py-1.5 font-bold text-zinc-950 transition-colors hover:bg-amber-400">
+                Complete Library · ₹999
+              </button>
             </div>
           )}
 
           {/* 12 Variations Grid */}
           <VariationSelector
             variations={currentOpening.variations}
+            openingId={currentOpening.id}
+            openingLocked={isCurrentOpeningRestricted}
             selectedVariationId={selectedVariationId}
             onSelectVariation={handleSelectVariation}
             userPlan={paidPlanTier}
@@ -797,14 +781,14 @@ export default function App() {
           />
 
           {/* Current Variation Locked Notice */}
-          {isCurrentVariationLocked && (
+          {isCurrentVariationLocked && !isCurrentOpeningLocked && (
             <div className="p-3 rounded-xl bg-gradient-to-r from-[#291f16] via-[#1f1d26] to-[#161822] border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
               <div className="flex items-center gap-2.5 text-amber-200">
                 <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
                   <Lock className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="font-bold text-amber-300">{currentVariation.name} is Locked:</span> 5 variations across all openings require Lifetime membership of <strong>₹999/-</strong> (with annual renewal ₹199/-).
+                  <span className="font-bold text-amber-300">{currentVariation.name} is reserved:</span> this preview line is included in the ₹999 Complete Library.
                 </div>
               </div>
               <button
@@ -812,14 +796,14 @@ export default function App() {
                 onClick={() => handleOpenPremiumModal('999')}
                 className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition-all cursor-pointer shrink-0"
               >
-                Unlock All 5 Variations for ₹999/-
+                Unlock Complete Library · ₹999
               </button>
             </div>
           )}
         </section>
 
         {/* Grandmaster Showcase & Repertoire Mode Selector */}
-        <GrandmasterShowcaseHeader
+        {!isCurrentOpeningLocked && <GrandmasterShowcaseHeader
           viewMode={viewMode}
           onSelectViewMode={(mode) => {
             setViewMode(mode);
@@ -841,9 +825,26 @@ export default function App() {
             setActiveRefutation(null);
           }}
           onJumpToTurningPoint={handleJumpToTurningPoint}
-        />
+        />}
 
         {/* Central Workspace: Interactive Board & Move Explanations Panel */}
+        {isCurrentOpeningLocked ? (
+          <section aria-label="Reserved opening preview" className="flex min-h-[420px] items-center justify-center rounded-xl border border-amber-500/30 bg-gradient-to-br from-[#1b1c19] via-[#141820] to-[#111713] p-6 text-center shadow-lg">
+            <div className="max-w-lg space-y-4">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-amber-500/35 bg-amber-500/10 text-amber-300">
+                <Crown className="h-7 w-7" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase text-amber-300">Complete Library · ₹999</p>
+                <h3 className="text-xl font-bold text-zinc-100">{currentOpening.name}</h3>
+                <p className="text-sm leading-relaxed text-zinc-400">This semi-major system is reserved in the ₹699 Expanded Repertoire. Upgrade to explore all 12 variations, move explanations, and board analysis for this opening.</p>
+              </div>
+              <button type="button" onClick={() => handleOpenPremiumModal('999')} className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-400">
+                <Crown className="h-4 w-4" /> Complete Library · ₹999
+              </button>
+            </div>
+          </section>
+        ) : (
         <section aria-label="Interactive Board & Analysis" className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
           {/* Left / Center Column: Interactive Chessboard */}
           <div className="lg:col-span-6 xl:col-span-6 flex flex-col items-center justify-start space-y-3">
@@ -1003,6 +1004,7 @@ export default function App() {
             />
           </div>
         </section>
+        )}
       </main>
 
       {/* Help Modal */}
@@ -1018,21 +1020,14 @@ export default function App() {
         initialSelectedPlan={premiumInitialPlan}
       />
 
-      {/* Polite Upgrade Modal (₹399/- add-up plan to unlock remaining 4 openings) */}
-      <PoliteUpgradeModal
-        isOpen={isPoliteUpgradeOpen}
-        onClose={() => setIsPoliteUpgradeOpen(false)}
-        currentTier={paidPlanTier}
-        onActivateTier={handleActivateTier}
-        targetOpeningName={politeTargetOpeningName}
-      />
-
       {/* Locked Variation Modal (5 variations per opening requiring ₹999/-) */}
       <LockedVariationModal
         isOpen={isLockedVariationModalOpen}
         onClose={() => setIsLockedVariationModalOpen(false)}
         variation={lockedVariationTarget}
         openingName={currentOpening.name}
+        requiredPlan={isOpeningLocked(currentOpening.id, '699') ? '999' : '699'}
+        onProceedToPay699={handleProceedToPay699FromVariation}
         onProceedToPay999={handleProceedToPay999FromVariation}
       />
 
