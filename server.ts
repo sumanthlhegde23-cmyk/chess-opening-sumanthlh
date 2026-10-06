@@ -196,7 +196,7 @@ app.post('/api/translate', async (req, res) => {
 
     const ai = getAI();
     if (!ai) {
-      res.status(503).json({ error: 'Live translation requires GEMINI_API_KEY in the server .env file.' });
+      res.json({ translations: texts, source: 'fallback' });
       return;
     }
 

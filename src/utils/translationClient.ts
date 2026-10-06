@@ -62,8 +62,14 @@ export async function translateTexts(language: string, texts: string[], signal?:
       || result.translations.some((translated: unknown) => typeof translated !== 'string')) {
       throw new Error('The translation service returned an invalid response.');
     }
-    missing.forEach((text, index) => cache.set(cacheKey(language, text), result.translations[index]));
-    saveLanguage(language);
+    if (result.source !== 'fallback') {
+      missing.forEach((text, index) => cache.set(cacheKey(language, text), result.translations[index]));
+      saveLanguage(language);
+    }
+    return texts.map((text) => {
+      const translated = cache.get(cacheKey(language, text));
+      return translated ?? text;
+    });
   }
 
   return texts.map((text) => cache.get(cacheKey(language, text)) || text);
