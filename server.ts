@@ -166,6 +166,29 @@ app.get('/api/health', (req, res) => {
 
 const translationRequestCounts = new Map<string, { startedAt: number; count: number }>();
 
+function protectChessNotation(text: string): { text: string; restore: (translated: string) => string } {
+  const protectedValues: string[] = [];
+  const notationPattern = /(?<![\p{L}\p{N}])(?:(?:\d+\.{1,3})?(?:O-O-O|O-O|0-0-0|0-0|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|[+#])|(?:[prnbqkPRNBQK1-8]+\/){7}[prnbqkPRNBQK1-8]+ [wb] (?:KQ?k?q?|kq?|-|-) (?:[a-h][36]|-) \d+ \d+)(?![\p{L}\p{N}])/gu;
+  const protectedText = text.replace(notationPattern, (notation) => {
+    const token = `ZXQCHESSNOTATION${protectedValues.length}ZXQ`;
+    protectedValues.push(notation);
+    return token;
+  });
+
+  return {
+    text: protectedText,
+    restore: (translated) => {
+      const everyTokenPresent = protectedValues.every((_, index) =>
+        translated.includes(`ZXQCHESSNOTATION${index}ZXQ`)
+      );
+      if (!everyTokenPresent) return null;
+      return translated.replace(/ZXQCHESSNOTATION(\d+)ZXQ/g, (token, index: string) =>
+        protectedValues[Number(index)] ?? token
+      );
+    },
+  };
+}
+
 app.post('/api/translate', async (req, res) => {
   try {
     const { language, texts } = req.body || {};
@@ -201,20 +224,26 @@ app.post('/api/translate', async (req, res) => {
     }
 
     const languageName = new Intl.DisplayNames(['en'], { type: 'language' }).of(language) || language;
+    const protectedTexts = texts.map(protectChessNotation);
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
-      contents: `Translate every string in the JSON array into ${languageName}. Return only a JSON array of translated strings in the same order and with the same number of items. Preserve chess SAN move notation, FEN, ECO codes, numbers, Markdown structure, and placeholders exactly. Translate explanatory prose, headings, buttons, labels, and messages.\n\n${JSON.stringify(texts)}`,
+      contents: `Translate every string in the JSON array into ${languageName}. Return only a JSON array of translated strings in the same order and with the same number of items. Keep every ZXQCHESSNOTATION<number>ZXQ token exactly unchanged; each token represents chess notation, coordinates, or FEN and must be copied verbatim. Preserve ECO codes, numbers, Markdown structure, and placeholders. Translate explanatory prose, headings, buttons, labels, and messages.\n\n${JSON.stringify(protectedTexts.map(({ text }) => text))}`,
       config: { temperature: 0.1 },
     });
 
     const output = (response.text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-    const translations = JSON.parse(output);
-    if (!Array.isArray(translations) || translations.length !== texts.length || translations.some((text) => typeof text !== 'string')) {
+    const translatedTexts: unknown = JSON.parse(output);
+    if (!Array.isArray(translatedTexts) || translatedTexts.length !== texts.length || translatedTexts.some((text) => typeof text !== 'string')) {
       res.status(502).json({ error: 'The translation service returned an invalid response.' });
       return;
     }
 
-    res.json({ translations });
+    const translations = translatedTexts.map((text, index) => protectedTexts[index].restore(text));
+    if (translations.some((text) => text === null)) {
+      res.status(502).json({ error: 'The translation service changed protected chess notation.' });
+      return;
+    }
+    res.json({ translations, source: 'gemini' });
   } catch (error) {
     console.error('Gemini translation error:', error);
     res.status(502).json({ error: 'Translation failed. Please try selecting the language again.' });
