@@ -208,8 +208,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <details ref={languageMenuRef} id="navbar-language-menu" className="relative">
             <summary
-              aria-label="More options"
-              title="More options"
+              aria-label="Settings and language"
+              title="Settings and language"
               className="flex list-none cursor-pointer items-center justify-center rounded-lg border border-zinc-800 bg-[#181a20] p-1.5 text-zinc-300 transition-colors hover:bg-[#20242e] [&::-webkit-details-marker]:hidden"
             >
               <MoreVertical className="h-4 w-4" />
@@ -239,7 +239,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
               <div className="mx-1 border-t border-zinc-700/70" />
-              <p className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Languages ({languages.length})</p>
+              <p className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Settings · Language ({languages.length})</p>
               <label className="relative block px-1 pb-2">
                 <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
                 <input
@@ -252,7 +252,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 />
               </label>
               <p className="px-2 pb-2 text-[10px] leading-relaxed text-zinc-500">
-                Visible text, including AI and practice content, is sent to Gemini for translation.
+                New visible text is translated as needed and cached on this device. Chess notation stays unchanged.
               </p>
               {translationStatus && (
                 <p role="status" aria-live="polite" className="mx-1 mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-200">
@@ -270,6 +270,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     if (languageMenuRef.current) languageMenuRef.current.open = false;
                   }}
                   aria-current={language === option.code ? 'true' : undefined}
+                  aria-pressed={language === option.code}
                   className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                 >
                   <span className="flex min-w-0 flex-col">

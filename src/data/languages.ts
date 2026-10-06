@@ -4,8 +4,22 @@ aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr
   .split(/\s+/);
 
 const englishNames = new Intl.DisplayNames(['en'], { type: 'language' });
+const nativeNameOverrides: Record<string, string> = {
+  as: 'অসমীয়া',
+  bn: 'বাংলা',
+  gu: 'ગુજરાતી',
+  hi: 'हिन्दी',
+  kn: 'ಕನ್ನಡ',
+  ml: 'മലയാളം',
+  mr: 'मराठी',
+  or: 'ଓଡ଼ିଆ',
+  pa: 'ਪੰਜਾਬੀ',
+  ta: 'தமிழ்',
+  te: 'తెలుగు',
+};
 
 function getNativeName(code: string, englishName: string): string {
+  if (nativeNameOverrides[code]) return nativeNameOverrides[code];
   try {
     return new Intl.DisplayNames([code], { type: 'language' }).of(code) || englishName;
   } catch {

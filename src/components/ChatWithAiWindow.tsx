@@ -29,6 +29,7 @@ interface ChatWithAiWindowProps {
   currentOpeningName?: string;
   currentVariationName?: string;
   initialFen?: string;
+  language: string;
 }
 
 const INITIAL_GREETING: ChatMessage = {
@@ -51,6 +52,7 @@ export const ChatWithAiWindow: React.FC<ChatWithAiWindowProps> = ({
   currentOpeningName,
   currentVariationName,
   initialFen,
+  language,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_GREETING]);
   const [input, setInput] = useState('');
@@ -105,6 +107,7 @@ export const ChatWithAiWindow: React.FC<ChatWithAiWindowProps> = ({
           prompt: query,
           currentOpening: currentOpeningName,
           currentVariation: currentVariationName,
+          language,
         }),
       });
 

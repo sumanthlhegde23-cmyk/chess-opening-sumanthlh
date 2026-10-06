@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { supportedLanguageCodes } from './src/data/languages';
+import { buildChessLanguageInstruction, getLanguageName } from './src/utils/aiLanguage';
 
 dotenv.config();
 
@@ -223,6 +224,10 @@ app.post('/api/translate', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { prompt, currentOpening, currentVariation, chatHistory } = req.body;
+    const requestedLanguage = req.body?.language;
+    const language = typeof requestedLanguage === 'string' && supportedLanguageCodes.includes(requestedLanguage)
+      ? requestedLanguage
+      : 'en';
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       res.status(400).json({ error: 'Prompt is required' });
@@ -278,13 +283,13 @@ app.post('/api/chat', async (req, res) => {
       contextStr += '.\n';
     }
 
-    const fullPrompt = `${contextStr}User question: ${trimmedPrompt}`;
+    const fullPrompt = `${buildChessLanguageInstruction(language)}\n\n${contextStr}User question: ${trimmedPrompt}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: fullPrompt,
       config: {
-        systemInstruction: CHESS_SYSTEM_INSTRUCTION,
+        systemInstruction: `${CHESS_SYSTEM_INSTRUCTION}\n\n${buildChessLanguageInstruction(language)}`,
         temperature: 0.7,
       },
     });

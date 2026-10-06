@@ -1,3 +1,5 @@
+import { getCachedTranslation, translateTexts } from './translationClient';
+
 type TranslationEntry = {
   original: string;
   read: () => string | null;
@@ -15,7 +17,6 @@ const trackedText = new Set<Text>();
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 const lastWrittenAttributes = new WeakMap<Element, Map<string, string>>();
 const trackedAttributes = new Map<Element, Set<string>>();
-const cache = new Map<string, string>();
 const translatedAttributes = ['title', 'aria-label', 'placeholder'];
 const ignoredSelector = 'script, style, noscript, svg, [data-no-translate], .opening-cinematic__board';
 
@@ -80,7 +81,6 @@ function startTranslation(language: string, onError: (message: string) => void):
       if (generation === currentGeneration) generation += 1;
     };
   }
-
   const pending = new Map<string, TranslationBatchEntry>();
   let scheduled = false;
   let flushing = false;
@@ -94,8 +94,7 @@ function startTranslation(language: string, onError: (message: string) => void):
 
   const queueTranslation = (text: string, entry: TranslationEntry) => {
     if (failed || generation !== currentGeneration) return;
-    const key = `${language}\u0000${text}`;
-    const cached = cache.get(key);
+    const cached = getCachedTranslation(language, text);
     if (cached !== undefined) {
       applyTranslation(entry, cached);
       return;
@@ -126,22 +125,9 @@ function startTranslation(language: string, onError: (message: string) => void):
         }
         if (!batch.length) break;
 
-        const response = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language, texts: batch.map(({ text }) => text) }),
-          signal: controller?.signal,
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Translation request failed.');
-        if (!Array.isArray(result.translations) || result.translations.length !== batch.length) {
-          throw new Error('The translation service returned an invalid response.');
-        }
-
+        const translations = await translateTexts(language, batch.map(({ text }) => text), controller?.signal);
         batch.forEach((item, index) => {
-          const translated = result.translations[index];
-          if (typeof translated !== 'string') return;
-          cache.set(`${language}\u0000${item.text}`, translated);
+          const translated = translations[index];
           item.entries.forEach((entry) => applyTranslation(entry, translated));
         });
       }

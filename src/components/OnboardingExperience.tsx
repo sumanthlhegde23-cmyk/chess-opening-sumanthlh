@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
+import { getCachedTranslation, translateTexts } from '../utils/translationClient';
 import {
   ArrowDown,
   ArrowLeft,
@@ -286,7 +287,6 @@ export function OnboardingExperience({
   const [voiceEnabled, setVoiceEnabled] = useState(initialMode === 'basics');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState('');
-  const [translatedNarration, setTranslatedNarration] = useState<Map<string, string>>(() => new Map());
   const [tourProgress, setTourProgress] = useState(0);
   const isEnglish = language === 'en';
   const tourStep = tourSteps[tourIndex];
@@ -302,23 +302,12 @@ export function OnboardingExperience({
     stopSpeech();
     let spokenText = text;
     if (!isEnglish) {
-      const cached = translatedNarration.get(text);
+      const cached = getCachedTranslation(language, text);
       if (cached) {
         spokenText = cached;
       } else {
         try {
-          const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language, texts: [text] }),
-          });
-          const result = await response.json();
-          if (!response.ok || typeof result.translations?.[0] !== 'string') {
-            setVoiceNotice('Narration is available in English; translated voice needs the app translation service.');
-            return;
-          }
-          spokenText = result.translations[0];
-          setTranslatedNarration((previous) => new Map(previous).set(text, spokenText));
+          [spokenText] = await translateTexts(language, [text]);
         } catch {
           setVoiceNotice('Narration is available in English; translated voice needs the app translation service.');
           return;
@@ -337,7 +326,7 @@ export function OnboardingExperience({
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utterance);
-  }, [isEnglish, language, stopSpeech, translatedNarration, voiceEnabled]);
+  }, [isEnglish, language, stopSpeech, voiceEnabled]);
 
   useEffect(() => () => stopSpeech(), [stopSpeech]);
 

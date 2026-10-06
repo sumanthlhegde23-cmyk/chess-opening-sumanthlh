@@ -12,6 +12,7 @@ import { Navbar, type LanguageCode } from './components/Navbar';
 import { OnboardingExperience } from './components/OnboardingExperience';
 import { isRightToLeftLanguage, isSupportedLanguage } from './data/languages';
 import { startLiveTranslation } from './utils/liveTranslation';
+import { LanguageSetup } from './components/LanguageSetup';
 import { HelpModal } from './components/HelpModal';
 import { PremiumModal } from './components/PremiumModal';
 import { LockedVariationModal } from './components/LockedVariationModal';
@@ -70,6 +71,9 @@ interface UserDeviationState {
 }
 
 export default function App() {
+  const [isLanguageSetupComplete, setIsLanguageSetupComplete] = useState(() =>
+    Boolean(localStorage.getItem('chess-openings-language-setup') || localStorage.getItem('chess-openings-language'))
+  );
   const [showOpeningCinematic, setShowOpeningCinematic] = useState(true);
   const [onboardingMode, setOnboardingMode] = useState<'tour' | 'basics' | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>('ruy-lopez');
@@ -137,6 +141,13 @@ export default function App() {
       setLanguage(nextLanguage);
     }
   }, [language]);
+
+  const handleLanguageSetupContinue = useCallback((countryCode: string, nextLanguage: LanguageCode) => {
+    localStorage.setItem('chess-openings-country', countryCode);
+    localStorage.setItem('chess-openings-language-setup', 'complete');
+    setLanguage(nextLanguage);
+    setIsLanguageSetupComplete(true);
+  }, []);
 
   const isOwner = userRole === 'owner';
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
@@ -671,6 +682,10 @@ export default function App() {
     }
   }, []);
 
+  if (!isLanguageSetupComplete) {
+    return <LanguageSetup currentLanguage={language} onContinue={handleLanguageSetupContinue} />;
+  }
+
   if (showOpeningCinematic) {
     return <OpeningCinematic onEnter={handleEnterMainMenu} />;
   }
@@ -1080,6 +1095,7 @@ export default function App() {
         currentOpeningName={currentOpening?.name}
         currentVariationName={currentVariation?.name}
         initialFen={chatAiInitialFen}
+        language={language}
       />
 
       {/* Floating Trigger Button for "chat with ai" when window is closed */}
