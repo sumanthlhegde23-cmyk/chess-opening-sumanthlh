@@ -90,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="whitespace-nowrap text-sm font-bold text-zinc-100 tracking-tight sm:text-base">
-                Chess Openings Master
+                Prof.Chess
               </h1>
               <span className="hidden lg:inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">
                 32 Openings • 384 Variations

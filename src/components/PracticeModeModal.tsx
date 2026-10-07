@@ -37,6 +37,7 @@ import {
   Undo2,
   Puzzle,
   Flag,
+  Clock3,
 } from 'lucide-react';
 import { ChessPiece } from './ChessPiece';
 import { Chessboard } from './Chessboard';
@@ -60,6 +61,8 @@ import {
   IdentifiedOpening,
 } from '../utils/openingIdentifier';
 import { OpeningPuzzlesSection } from './OpeningPuzzlesSection';
+import { TimeControlPicker } from './TimeControlPicker';
+import { formatClock, TimeControl } from '../types/timeControl';
 
 interface PracticeModeModalProps {
   isOpen: boolean;
@@ -204,6 +207,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Play Engine states
   const [playerColor, setPlayerColor] = useState<Color>('w');
+  const [selectedEngineTimeControlId, setSelectedEngineTimeControlId] = useState('blitz-5-0');
+  const [engineTimeControl, setEngineTimeControl] = useState<TimeControl | null>(null);
+  const [isTimeControlPickerOpen, setIsTimeControlPickerOpen] = useState(false);
+  const [engineGameStarted, setEngineGameStarted] = useState(false);
+  const [engineClock, setEngineClock] = useState<{ w: number; b: number } | null>(null);
+  const engineClockRef = useRef<{ w: number; b: number } | null>(null);
+  const activeClockColorRef = useRef<Color>('w');
+  const lastClockTickRef = useRef(Date.now());
   const [engineGameHistory, setEngineGameHistory] = useState<{ san: string; from: string; to: string }[]>([]);
   const [lastEngineMove, setLastEngineMove] = useState<{ from: Square; to: Square } | null>(null);
   const [isEngineThinking, setIsEngineThinking] = useState<boolean>(false);
@@ -215,6 +226,46 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     if (!gameResult) return;
     onEngineGameCompleted?.(gameResult === 'player' ? 'win' : gameResult === 'engine' ? 'loss' : 'draw');
   }, [gameResult, onEngineGameCompleted]);
+
+  const syncEngineClock = useCallback((): boolean => {
+    if (!engineGameStarted || gameResult || !engineTimeControl || engineTimeControl.minutes === null || !engineClockRef.current) {
+      return true;
+    }
+    const now = Date.now();
+    const activeColor = activeClockColorRef.current;
+    const elapsed = Math.max(0, now - lastClockTickRef.current);
+    lastClockTickRef.current = now;
+    engineClockRef.current = {
+      ...engineClockRef.current,
+      [activeColor]: Math.max(0, engineClockRef.current[activeColor] - elapsed),
+    };
+    setEngineClock(engineClockRef.current);
+    if (engineClockRef.current[activeColor] === 0) {
+      setGameResult(activeColor === playerColor ? 'engine' : 'player');
+      return false;
+    }
+    return true;
+  }, [engineGameStarted, engineTimeControl, gameResult, playerColor]);
+
+  useEffect(() => {
+    if (!engineGameStarted || gameResult || engineTimeControl?.minutes === null || !engineTimeControl) return;
+    const timer = window.setInterval(() => syncEngineClock(), 100);
+    return () => window.clearInterval(timer);
+  }, [engineGameStarted, engineTimeControl, gameResult, syncEngineClock]);
+
+  const completeEngineClockMove = useCallback((color: Color): boolean => {
+    if (!engineTimeControl || engineTimeControl.minutes === null || !engineClockRef.current) return true;
+    if (!syncEngineClock()) return false;
+    if (activeClockColorRef.current !== color) return false;
+    engineClockRef.current = {
+      ...engineClockRef.current,
+      [color]: engineClockRef.current[color] + engineTimeControl.incrementSeconds * 1000,
+    };
+    activeClockColorRef.current = color === 'w' ? 'b' : 'w';
+    lastClockTickRef.current = Date.now();
+    setEngineClock(engineClockRef.current);
+    return true;
+  }, [engineTimeControl, syncEngineClock]);
 
   const currentTheme: BoardTheme = boardThemes[boardTheme] || boardThemes.maple;
 
@@ -336,7 +387,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       setExplorerMoveHistory([]);
       setExplorerFenHistory([START_FEN]);
     } else if (tab === 'play_engine') {
-      startNewEngineGame(playerColor);
+      openEngineTimePicker(playerColor);
     } else if (tab === 'editor') {
       setSelectedTool('move'); // Board is playable by default!
     } else if (tab === 'puzzles') {
@@ -588,7 +639,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Play Engine Square Click (play against Stockfish)
   const handleSquareClickPlayEngine = async (square: Square) => {
-    if (isEngineThinking || gameResult) return;
+    if (!engineGameStarted || isEngineThinking || gameResult || !syncEngineClock()) return;
 
     const file = square.charCodeAt(0) - 97;
     const rank = 8 - parseInt(square[1], 10);
@@ -624,6 +675,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         }
         return;
       }
+      if (!completeEngineClockMove(move.color)) return;
 
       // Execute Player move
       setSelectedSquare(null);
@@ -649,11 +701,13 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       try {
         const engineMove = await getStockfish18Move(fenAfterPlayer, engineLevel);
         const engineChess = new Chess(fenAfterPlayer);
+        const engineColor = engineChess.turn();
         const engineResult = engineChess.move({
           from: engineMove.from,
           to: engineMove.to,
           promotion: engineMove.promotion || 'q',
         });
+        if (!completeEngineClockMove(engineColor)) return;
 
         if (engineResult.captured) chessAudio.playCapture();
         else chessAudio.playMove();
@@ -1139,9 +1193,29 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // ----------------------------------------------------
   // PLAY ENGINE START & UNDO
   // ----------------------------------------------------
-  const startNewEngineGame = useCallback((color: Color) => {
+  const openEngineTimePicker = (color: Color) => {
+    setPlayerColor(color);
+    setEngineGameStarted(false);
+    setEngineClock(null);
+    engineClockRef.current = null;
+    setIsTimeControlPickerOpen(true);
+  };
+
+  const startNewEngineGame = useCallback((color: Color, timeControl: TimeControl) => {
     void prepareStockfish().catch(() => undefined);
     const chess = new Chess(START_FEN);
+    setEngineTimeControl(timeControl);
+    setSelectedEngineTimeControlId(timeControl.id);
+    setIsTimeControlPickerOpen(false);
+    setEngineGameStarted(true);
+    setEngineClock(timeControl.minutes === null
+      ? null
+      : { w: timeControl.minutes * 60_000, b: timeControl.minutes * 60_000 });
+    engineClockRef.current = timeControl.minutes === null
+      ? null
+      : { w: timeControl.minutes * 60_000, b: timeControl.minutes * 60_000 };
+    activeClockColorRef.current = 'w';
+    lastClockTickRef.current = Date.now();
     setIsCompletedGameReviewOpen(false);
     setCompletedGameReview(null);
     setReviewPlyIndex(0);
@@ -1160,6 +1234,23 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       setTimeout(async () => {
         try {
           const move = await getStockfish18Move(START_FEN, engineLevel);
+          if (timeControl.minutes !== null && engineClockRef.current) {
+            const elapsed = Math.max(0, Date.now() - lastClockTickRef.current);
+            const whiteTime = Math.max(0, engineClockRef.current.w - elapsed);
+            if (whiteTime === 0) {
+              engineClockRef.current = { ...engineClockRef.current, w: 0 };
+              setEngineClock(engineClockRef.current);
+              setGameResult('player');
+              return;
+            }
+            engineClockRef.current = {
+              ...engineClockRef.current,
+              w: whiteTime + timeControl.incrementSeconds * 1000,
+            };
+            setEngineClock(engineClockRef.current);
+          }
+          activeClockColorRef.current = 'b';
+          lastClockTickRef.current = Date.now();
           chess.move({ from: move.from, to: move.to, promotion: move.promotion });
           setBoardFen(chess.fen());
           setEngineGameHistory([{ san: move.san, from: move.from, to: move.to }]);
@@ -1173,7 +1264,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         }
       }, 400);
     }
-  }, [engineLevel]);
+  }, [completeEngineClockMove, engineLevel]);
 
   const handleResignEngineGame = () => {
     if (isEngineThinking || gameResult) return;
@@ -1192,6 +1283,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       }
       setBoardFen(chess.fen());
       setEngineGameHistory(historyToKeep);
+      activeClockColorRef.current = chess.turn();
+      lastClockTickRef.current = Date.now();
       setLastEngineMove(null);
       setGameResult(null);
       setDidPlayerResign(false);
@@ -1237,8 +1330,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const handleReviewPlayAgain = () => {
     setIsCompletedGameReviewOpen(false);
     setActiveTab('play_engine');
-    setIsEngineBoardFullscreen(true);
-    startNewEngineGame(playerColor);
+    setIsEngineBoardFullscreen(false);
+    openEngineTimePicker(playerColor);
   };
 
   const handleExitCompletedGameReview = () => {
@@ -1300,6 +1393,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   if (!isOpen) return null;
 
   return (
+    <>
     <div
       id="practice-mode-modal-backdrop"
       className={`fixed inset-0 z-50 flex items-center justify-center animate-fadeIn ${
@@ -1545,6 +1639,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
               )}
 
               {/* The Fully Playable Chessboard */}
+              {activeTab === 'play_engine' && engineGameStarted && engineClock && (
+                <div className={`mb-2 flex items-center justify-between rounded-xl border px-4 py-2.5 ${
+                  activeClockColorRef.current !== playerColor && !gameResult
+                    ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-100'
+                    : 'border-zinc-800 bg-[#111319] text-zinc-300'
+                }`}>
+                  <span className="text-xs font-semibold">Stockfish ({playerColor === 'w' ? 'Black' : 'White'})</span>
+                  <span className="font-mono text-xl font-extrabold tabular-nums">{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
+                </div>
+              )}
               <div
                 className="relative aspect-square w-full select-none overflow-hidden rounded-xl border-4 border-zinc-800/90 shadow-2xl"
                 style={isEngineBoardFullscreen ? { width: 'min(100%, calc(100dvh - 12rem))' } : undefined}
@@ -1771,6 +1875,17 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
             </div>
 
+            {activeTab === 'play_engine' && engineGameStarted && engineClock && (
+              <div className={`mt-2 flex items-center justify-between rounded-xl border px-4 py-2.5 ${
+                activeClockColorRef.current === playerColor && !gameResult
+                  ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
+                  : 'border-zinc-800 bg-[#111319] text-zinc-300'
+              }`}>
+                <span className="text-xs font-semibold">You ({playerColor === 'w' ? 'White' : 'Black'})</span>
+                <span className="font-mono text-xl font-extrabold tabular-nums">{formatClock(engineClock[playerColor])}</span>
+              </div>
+            )}
+
             {activeTab === 'play_engine' && gameResult && (
               <section
                 aria-labelledby="engine-game-result-title"
@@ -1811,7 +1926,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   <button
                     id="btn-play-again"
                     type="button"
-                    onClick={() => startNewEngineGame(playerColor)}
+                    onClick={() => openEngineTimePicker(playerColor)}
                     className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300"
                   >
                     <RotateCcw className="h-4 w-4" />
@@ -3121,8 +3236,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       id="btn-play-as-white"
                       type="button"
                       onClick={() => {
-                        setPlayerColor('w');
-                        startNewEngineGame('w');
+                        openEngineTimePicker('w');
                       }}
                       className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
                         playerColor === 'w'
@@ -3136,8 +3250,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       id="btn-play-as-black"
                       type="button"
                       onClick={() => {
-                        setPlayerColor('b');
-                        startNewEngineGame('b');
+                        openEngineTimePicker('b');
                       }}
                       className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
                         playerColor === 'b'
@@ -3178,7 +3291,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       id="btn-play-new-game"
                       type="button"
                       onClick={() => {
-                        startNewEngineGame(playerColor);
+                        openEngineTimePicker(playerColor);
                         setIsEngineBoardFullscreen(true);
                       }}
                       className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -3266,5 +3379,13 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         </div>
       </div>
     </div>
+    <TimeControlPicker
+      isOpen={isTimeControlPickerOpen}
+      selectedTimeControlId={selectedEngineTimeControlId}
+      onSelect={(timeControl) => setSelectedEngineTimeControlId(timeControl.id)}
+      onContinue={(timeControl) => startNewEngineGame(playerColor, timeControl)}
+      onClose={() => setIsTimeControlPickerOpen(false)}
+    />
+    </>
   );
 };

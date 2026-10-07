@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { randomBytes } from 'crypto';
 import { Chess } from 'chess.js';
+import { getTimeControl } from './src/types/timeControl';
 import dotenv from 'dotenv';
 import { supportedLanguageCodes } from './src/data/languages';
 import { buildChessLanguageInstruction, getLanguageName } from './src/utils/aiLanguage';
@@ -36,7 +37,7 @@ function getAI(): GoogleGenAI | null {
   return aiClient;
 }
 
-const CHESS_SYSTEM_INSTRUCTION = `You are an elite Grandmaster Chess AI Assistant for the "Chess Openings Master" web application.
+const CHESS_SYSTEM_INSTRUCTION = `You are an elite Grandmaster Chess AI Assistant for the "Prof.Chess" web application.
 Your single and exclusive purpose is answering questions directly and strictly about CHESS.
 
 Topics you are permitted to discuss:
@@ -178,6 +179,9 @@ interface OnlineChessRoom {
   drawOfferBy: 'w' | 'b' | null;
   result: '1-0' | '0-1' | '1/2-1/2' | null;
   termination: string | null;
+  timeControlId: string;
+  remainingMs: { w: number; b: number } | null;
+  turnStartedAt: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -191,6 +195,24 @@ function cleanOnlineChessRooms(): void {
     const lifetime = room.status === 'finished' ? 60 * 60_000 : 6 * 60 * 60_000;
     if (now - room.updatedAt > lifetime) onlineChessRooms.delete(code);
   }
+}
+
+function updateOnlineGameClock(room: OnlineChessRoom): void {
+  if (room.status !== 'playing' || !room.remainingMs || room.turnStartedAt === null) return;
+  const chess = new Chess();
+  for (const san of room.moves) chess.move(san);
+  const activeColor = chess.turn();
+  const elapsed = Math.max(0, Date.now() - room.turnStartedAt);
+  room.remainingMs[activeColor] = Math.max(0, room.remainingMs[activeColor] - elapsed);
+  room.turnStartedAt = Date.now();
+  if (room.remainingMs[activeColor] === 0) {
+    const winnerColor = activeColor === 'w' ? 'b' : 'w';
+    room.status = 'finished';
+    room.result = chess.isInsufficientMaterial() ? '1/2-1/2' : winnerColor === 'w' ? '1-0' : '0-1';
+    room.termination = room.result === '1/2-1/2' ? 'Timeout with insufficient mating material' : 'Timeout';
+    room.turnStartedAt = null;
+  }
+  room.updatedAt = Date.now();
 }
 
 function getOnlineChessState(room: OnlineChessRoom, token: string) {
@@ -213,6 +235,9 @@ function getOnlineChessState(room: OnlineChessRoom, token: string) {
     drawOfferBy: room.drawOfferBy,
     result: room.result,
     termination: room.termination,
+    timeControlId: room.timeControlId,
+    remainingMs: room.remainingMs,
+    serverNow: Date.now(),
     pgn: chess.pgn(),
   };
 }
@@ -238,6 +263,7 @@ app.post('/api/online-games', (req, res) => {
     res.status(400).json({ error: 'Save a username in your profile before creating an online game.' });
     return;
   }
+  const timeControl = getTimeControl(typeof req.body?.timeControlId === 'string' ? req.body.timeControlId : undefined);
 
   let code = '';
   do {
@@ -257,6 +283,11 @@ app.post('/api/online-games', (req, res) => {
     drawOfferBy: null,
     result: null,
     termination: null,
+    timeControlId: timeControl.id,
+    remainingMs: timeControl.minutes === null
+      ? null
+      : { w: timeControl.minutes * 60_000, b: timeControl.minutes * 60_000 },
+    turnStartedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -289,6 +320,7 @@ app.post('/api/online-games/:code/join', (req, res) => {
   room.guestToken = token;
   room.guestName = username;
   room.status = 'playing';
+  room.turnStartedAt = Date.now();
   room.updatedAt = Date.now();
   res.status(200).json({ ...getOnlineChessState(room, token), token });
 });
@@ -296,6 +328,7 @@ app.post('/api/online-games/:code/join', (req, res) => {
 app.get('/api/online-games/:code', (req, res) => {
   const player = findOnlineChessPlayer(req, res);
   if (!player) return;
+  updateOnlineGameClock(player.room);
   res.setHeader('Cache-Control', 'no-store');
   res.json(getOnlineChessState(player.room, req.header('x-game-token')!));
 });
@@ -304,8 +337,9 @@ app.post('/api/online-games/:code/move', (req, res) => {
   const player = findOnlineChessPlayer(req, res);
   if (!player) return;
   const { room, color } = player;
+  updateOnlineGameClock(room);
   if (room.status !== 'playing') {
-    res.status(409).json({ error: 'This game is not accepting moves.' });
+    res.status(409).json({ error: room.termination || 'This game has finished.' });
     return;
   }
   const chess = new Chess();
@@ -332,11 +366,16 @@ app.post('/api/online-games/:code/move', (req, res) => {
     room.fen = chess.fen();
     room.updatedAt = Date.now();
     room.drawOfferBy = null;
+    if (room.remainingMs) {
+      const control = getTimeControl(room.timeControlId);
+      room.remainingMs[move.color] += control.incrementSeconds * 1000;
+    }
     if (chess.isGameOver()) {
       room.status = 'finished';
       room.result = chess.isDraw() ? '1/2-1/2' : move.color === 'w' ? '1-0' : '0-1';
       room.termination = chess.isCheckmate() ? 'Checkmate' : 'Draw by chess rules';
     }
+    room.turnStartedAt = room.status === 'playing' && room.remainingMs ? Date.now() : null;
     res.json(getOnlineChessState(room, req.header('x-game-token')!));
   } catch {
     res.status(400).json({ error: 'That move is not legal in this position.' });
@@ -347,6 +386,7 @@ app.post('/api/online-games/:code/action', (req, res) => {
   const player = findOnlineChessPlayer(req, res);
   if (!player) return;
   const { room, color } = player;
+  updateOnlineGameClock(room);
   const action = req.body?.action;
   if (room.status !== 'playing') {
     res.status(409).json({ error: 'This game has already finished.' });
@@ -356,6 +396,7 @@ app.post('/api/online-games/:code/action', (req, res) => {
     room.status = 'finished';
     room.result = color === 'w' ? '0-1' : '1-0';
     room.termination = 'Resignation';
+    room.turnStartedAt = null;
   } else if (action === 'draw-offer') {
     room.drawOfferBy = color;
   } else if (action === 'draw-accept') {
@@ -367,6 +408,7 @@ app.post('/api/online-games/:code/action', (req, res) => {
     room.result = '1/2-1/2';
     room.termination = 'Draw agreed';
     room.drawOfferBy = null;
+    room.turnStartedAt = null;
   } else if (action === 'draw-decline') {
     if (room.drawOfferBy !== color) {
       res.status(409).json({ error: 'There is no draw offer from you to withdraw.' });
@@ -587,7 +629,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Chess Openings Master server running on http://0.0.0.0:${PORT}`);
+    console.log(`Prof.Chess server running on http://0.0.0.0:${PORT}`);
   });
 }
 

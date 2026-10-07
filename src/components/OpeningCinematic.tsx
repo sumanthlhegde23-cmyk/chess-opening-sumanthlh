@@ -85,12 +85,12 @@ export function OpeningCinematic({ onEnter }: { onEnter: () => void }) {
   };
 
   return (
-    <main className="opening-cinematic" aria-label="Chess Openings Master introduction">
+    <main className="opening-cinematic" aria-label="Prof.Chess introduction">
       <div className="opening-cinematic__grain" aria-hidden="true" />
       <header className="opening-cinematic__topline">
         <div className="opening-cinematic__brand">
           <span className="opening-cinematic__brand-mark" aria-hidden="true">C</span>
-          <span>Chess Openings Master</span>
+          <span>Prof.Chess</span>
         </div>
         <span className="opening-cinematic__edition">A STUDY IN THE OPENING</span>
       </header>

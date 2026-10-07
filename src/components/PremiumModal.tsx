@@ -160,7 +160,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
 
   // Standard UPI URI
   const upiLink = useMemo(() => {
-    const note = encodeURIComponent(`Chess Openings Master - ${planLabel}`);
+    const note = encodeURIComponent(`Prof.Chess - ${planLabel}`);
     const name = encodeURIComponent(accountHolder);
     return `upi://pay?pa=${accountNumber}@upi&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
   }, [accountNumber, accountHolder, amount, planLabel]);

@@ -32,13 +32,13 @@ export function LanguageSetup({ currentLanguage, onContinue }: LanguageSetupProp
       )
       .slice(0, 12);
   }, [languageSearch]);
-  const selectedLanguage = languages.find((option) => option.code === language);
   const preferredLanguage = languageChoices.length === 1
     ? languageChoices[0].code
     : languageChoices.some(({ code }) => code === currentLanguage) && storedCountryCode === countryCode
       ? currentLanguage
       : '';
   const [language, setLanguage] = useState(preferredLanguage);
+  const selectedLanguage = languages.find((option) => option.code === language);
 
   const updatePhone = (value: string) => {
     setPhone(value);
@@ -69,7 +69,7 @@ export function LanguageSetup({ currentLanguage, onContinue }: LanguageSetupProp
           <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-300">
             <Languages className="h-6 w-6" />
           </div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Chess Openings Master</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Prof.Chess</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Choose your language</h1>
           <p className="mt-2 max-w-lg text-sm leading-relaxed text-zinc-400">
             We’ll suggest languages based on your country. You can change your choice at any time in Settings.
@@ -188,7 +188,7 @@ export function LanguageSetup({ currentLanguage, onContinue }: LanguageSetupProp
             onClick={() => onContinue(countryCode, isSupportedLanguage(language) ? language : 'en')}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3.5 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-950/30 transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-[#171a22] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
           >
-            Continue to Chess Openings Master <ChevronRight className="h-4 w-4" />
+            Continue to Prof.Chess <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </section>

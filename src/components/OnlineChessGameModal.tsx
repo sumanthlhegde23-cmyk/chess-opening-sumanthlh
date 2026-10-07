@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { Copy, Flag, Handshake, LoaderCircle, RotateCcw, Swords, X } from 'lucide-react';
 import { Chessboard } from './Chessboard';
+import { TimeControlPicker } from './TimeControlPicker';
 import { analyzePositionStockfish18, explainPlayedMove, EngineAnalysisResult, MoveExplanationItem } from '../utils/stockfishService';
+import { formatClock, getTimeControl } from '../types/timeControl';
 
 interface OnlineChessGame {
   code: string;
@@ -19,6 +21,9 @@ interface OnlineChessGame {
   result: '1-0' | '0-1' | '1/2-1/2' | null;
   termination: string | null;
   pgn: string;
+  timeControlId: string;
+  remainingMs: { w: number; b: number } | null;
+  serverNow: number;
 }
 
 interface OnlineChessGameModalProps {
@@ -84,6 +89,10 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
   const [game, setGame] = useState<OnlineChessGame | null>(null);
   const [savedSession, setSavedSession] = useState<SavedSession | null>(() => loadSavedSession());
   const [gameCode, setGameCode] = useState('');
+  const [isTimeControlPickerOpen, setIsTimeControlPickerOpen] = useState(false);
+  const [selectedTimeControlId, setSelectedTimeControlId] = useState('blitz-5-0');
+  const [displayClock, setDisplayClock] = useState<{ w: number; b: number } | null>(null);
+  const [clockReceivedAt, setClockReceivedAt] = useState(Date.now());
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -132,6 +141,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
         const nextGame = await requestWithToken<OnlineChessGame>(`/api/online-games/${savedSession.code}`);
         if (!cancelled) {
           setGame(nextGame);
+          setDisplayClock(nextGame.remainingMs);
+          setClockReceivedAt(Date.now());
           setError(null);
         }
       } catch (requestError) {
@@ -145,6 +156,17 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
       window.clearInterval(timer);
     };
   }, [isOpen, savedSession, requestWithToken]);
+
+  useEffect(() => {
+    if (!game || game.status !== 'playing' || game.remainingMs === null) return;
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - clockReceivedAt;
+      const next = { ...game.remainingMs! };
+      next[game.currentTurn] = Math.max(0, game.remainingMs![game.currentTurn] - elapsed);
+      setDisplayClock(next);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [game, clockReceivedAt]);
 
   useEffect(() => {
     if (!game || game.status !== 'finished' || !game.result) return;
@@ -165,22 +187,30 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     }
   }, [game, onGameCompleted]);
 
-  const createGame = async () => {
+  const openTimeControlPicker = () => {
     if (!username.trim()) {
       setError('Set a username in your profile before creating a game.');
       return;
     }
+    setError(null);
+    setIsTimeControlPickerOpen(true);
+  };
+
+  const createGame = async (timeControlId: string) => {
     setIsBusy(true);
     setError(null);
+    setIsTimeControlPickerOpen(false);
     try {
       const response = await fetch('/api/online-games', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username, timeControlId }),
       });
       const created = await readApiResponse<OnlineChessGame>(response);
       if (!created.token) throw new Error('The game server did not issue a player session token.');
       applyGame(created);
+      setDisplayClock(created.remainingMs);
+      setClockReceivedAt(Date.now());
       setNotice('Share this code with your opponent. The game begins when they join.');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Could not create the game.');
@@ -207,6 +237,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
       const joined = await readApiResponse<OnlineChessGame>(response);
       if (!joined.token) throw new Error('The game server did not issue a player session token.');
       applyGame(joined);
+      setDisplayClock(joined.remainingMs);
+      setClockReceivedAt(Date.now());
       setNotice('Game joined. You are playing Black.');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Could not join the game.');
@@ -222,6 +254,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     try {
       const updated = await requestWithToken<OnlineChessGame>(`/api/online-games/${game.code}/move`, 'POST', { san });
       setGame(updated);
+      setDisplayClock(updated.remainingMs);
+      setClockReceivedAt(Date.now());
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'The move could not be sent.');
     } finally {
@@ -237,6 +271,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     try {
       const updated = await requestWithToken<OnlineChessGame>(`/api/online-games/${game.code}/action`, 'POST', { action });
       setGame(updated);
+      setDisplayClock(updated.remainingMs);
+      setClockReceivedAt(Date.now());
       if (action === 'draw-offer') setNotice('Draw offer sent.');
       if (action === 'draw-decline') setNotice('Draw offer withdrawn.');
     } catch (requestError) {
@@ -274,6 +310,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     setAnalysis(null);
     setMoveExplanations([]);
     setAnalysisError(null);
+    setDisplayClock(null);
     completionRef.current = null;
     promptGameRef.current = null;
   };
@@ -314,6 +351,13 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
         ? 'You won!'
         : 'Your opponent won'
       : '';
+  const gameTimeControl = game ? getTimeControl(game.timeControlId) : null;
+  const shownClock = game?.remainingMs && displayClock
+    ? {
+        ...displayClock,
+        [game.currentTurn]: Math.max(0, displayClock[game.currentTurn]),
+      }
+    : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
@@ -332,7 +376,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4">
               <h3 className="font-bold text-zinc-100">Create a game</h3>
               <p className="mt-1 text-xs leading-relaxed text-zinc-400">You play White. Share the generated six-character code with your opponent.</p>
-              <button type="button" onClick={createGame} disabled={isBusy} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50">
+              <button type="button" onClick={openTimeControlPicker} disabled={isBusy} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50">
                 {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />} Create game
               </button>
             </div>
@@ -351,6 +395,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{game.status === 'waiting' ? 'Waiting for opponent' : game.status === 'finished' ? 'Game finished' : isYourTurn ? 'Your turn' : 'Opponent’s turn'}</p>
                 <p className="mt-1 text-sm font-bold text-zinc-100">{game.hostName} (White) <span className="font-normal text-zinc-500">vs</span> {game.guestName || 'Waiting…'} (Black)</p>
+                {gameTimeControl && <p className="mt-1 text-[11px] text-zinc-500">{gameTimeControl.label === 'Unlimited' ? 'No Time Control' : `${gameTimeControl.label} · ${gameTimeControl.minutes} min${gameTimeControl.incrementSeconds ? ` + ${gameTimeControl.incrementSeconds}s` : ''}`}</p>}
               </div>
               {game.status === 'waiting' && (
                 <button type="button" onClick={copyGameCode} className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 font-mono text-lg font-bold tracking-widest text-amber-200">
@@ -360,6 +405,21 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
               )}
               {game.status !== 'waiting' && <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-semibold text-zinc-300">You are {game.yourColor === 'w' ? 'White' : 'Black'}</span>}
             </div>
+
+            {shownClock && (
+              <div className="mx-auto grid w-full max-w-[min(78vh,620px)] grid-cols-2 gap-2">
+                {(['b', 'w'] as const).map((color) => (
+                  <div key={color} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
+                    game.currentTurn === color && game.status === 'playing'
+                      ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
+                      : 'border-zinc-800 bg-black/20 text-zinc-300'
+                  }`}>
+                    <span className="text-xs font-semibold">{color === game.yourColor ? 'You' : game.status === 'waiting' ? (color === 'w' ? game.hostName : 'Opponent') : game.opponentName} ({color === 'w' ? 'White' : 'Black'})</span>
+                    <span className="font-mono text-xl font-extrabold tabular-nums">{formatClock(shownClock[color])}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="mx-auto w-full max-w-[min(78vh,620px)]">
               <Chessboard
@@ -443,6 +503,13 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
           Game codes and match data are held temporarily by this app server. Both devices must be online and connected to the same app server.
         </p>
       </section>
+      <TimeControlPicker
+        isOpen={isTimeControlPickerOpen}
+        selectedTimeControlId={selectedTimeControlId}
+        onSelect={(control) => setSelectedTimeControlId(control.id)}
+        onContinue={(control) => void createGame(control.id)}
+        onClose={() => setIsTimeControlPickerOpen(false)}
+      />
     </div>
   );
 };
