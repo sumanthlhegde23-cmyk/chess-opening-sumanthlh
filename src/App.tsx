@@ -23,6 +23,8 @@ import { getGamesForVariation } from './data/grandmasterGames';
 import { getGrandmasterGameExplanations } from './utils/gameExplainer';
 import { GrandmasterShowcaseHeader } from './components/GrandmasterShowcaseHeader';
 import { OpeningCinematic } from './components/OpeningCinematic';
+import { UserProfileModal } from './components/UserProfileModal';
+import { loadUserProfile, saveUserProfile, UserProfile } from './utils/userProfile';
 import {
   PaidPlanTier,
   UserRole,
@@ -110,6 +112,10 @@ export default function App() {
   const [isLockedVariationModalOpen, setIsLockedVariationModalOpen] = useState<boolean>(false);
   const [lockedVariationTarget, setLockedVariationTarget] = useState<Variation | null>(null);
   const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699'>('999');
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => loadUserProfile());
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(!userProfile.username);
+  const hasRecordedLoginRef = useRef(false);
+  const sessionTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     window.history.replaceState({ chessAppScreen: 'intro' }, '', window.location.href);
@@ -124,6 +130,57 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chess-openings-color-mode', colorMode);
   }, [colorMode]);
+
+  useEffect(() => {
+    try {
+      saveUserProfile(userProfile);
+    } catch (error) {
+      console.error('Could not save the player profile to this browser.', error);
+    }
+  }, [userProfile]);
+
+  useEffect(() => {
+    if (hasRecordedLoginRef.current) return;
+    hasRecordedLoginRef.current = true;
+    const loginAt = new Date().toISOString();
+    setUserProfile((profile) => ({
+      ...profile,
+      lastLoginAt: loginAt,
+      loginHistory: [...profile.loginHistory, loginAt].slice(-25),
+    }));
+  }, []);
+
+  useEffect(() => {
+    const recordVisibleTime = () => {
+      if (sessionTickRef.current === null) return;
+      const now = Date.now();
+      const elapsedSeconds = Math.min(60, Math.floor((now - sessionTickRef.current) / 1000));
+      sessionTickRef.current = now;
+      if (elapsedSeconds > 0) {
+        setUserProfile((profile) => ({ ...profile, totalSeconds: profile.totalSeconds + elapsedSeconds }));
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        recordVisibleTime();
+        sessionTickRef.current = null;
+      } else {
+        sessionTickRef.current = Date.now();
+      }
+    };
+
+    sessionTickRef.current = document.visibilityState === 'visible' ? Date.now() : null;
+    const timer = window.setInterval(recordVisibleTime, 15000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', recordVisibleTime);
+    return () => {
+      recordVisibleTime();
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', recordVisibleTime);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('chess-openings-language', language);
@@ -235,6 +292,9 @@ export default function App() {
   // When opening changes, default to its first variation and reset move index
   const handleSelectOpening = useCallback((openingId: string) => {
     setSelectedOpeningId(openingId);
+    setUserProfile((profile) => profile.learnedOpeningIds.includes(openingId)
+      ? profile
+      : { ...profile, learnedOpeningIds: [...profile.learnedOpeningIds, openingId] });
     setActiveRefutation(null);
     setUserDeviation(null);
     setActiveGmGameId(null);
@@ -252,12 +312,27 @@ export default function App() {
   // When variation changes, reset move index
   const handleSelectVariation = useCallback((variationId: string) => {
     setSelectedVariationId(variationId);
+    setUserProfile((profile) => profile.learnedVariationIds.includes(variationId)
+      ? profile
+      : { ...profile, learnedVariationIds: [...profile.learnedVariationIds, variationId] });
     setActiveRefutation(null);
     setUserDeviation(null);
     setActiveGmGameId(null);
     setGmMoveIndex(-1);
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
+  }, []);
+
+  const handleEngineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
+    setUserProfile((profile) => ({
+      ...profile,
+      engineGames: {
+        ...profile.engineGames,
+        wins: profile.engineGames.wins + (result === 'win' ? 1 : 0),
+        losses: profile.engineGames.losses + (result === 'loss' ? 1 : 0),
+        draws: profile.engineGames.draws + (result === 'draw' ? 1 : 0),
+      },
+    }));
   }, []);
 
   // Deviation controls (step, auto-play, reset to book)
@@ -713,6 +788,9 @@ export default function App() {
         onOpenChatAi={() => setIsChatAiOpen(true)}
         isPremium={isPremiumUser}
         userTier={paidPlanTier}
+        username={userProfile.username}
+        avatarDataUrl={userProfile.avatarDataUrl}
+        onOpenProfile={() => setIsUserProfileOpen(true)}
       />
       {translationStatus && (
         <div
@@ -1082,10 +1160,18 @@ export default function App() {
         boardTheme={boardTheme}
         initialOpeningId={currentOpening?.id}
         initialVariationId={currentVariation?.id}
+        onEngineGameCompleted={handleEngineGameCompleted}
         onOpenChatAiWithFen={(fen) => {
           setChatAiInitialFen(fen);
           setIsChatAiOpen(true);
         }}
+      />
+
+      <UserProfileModal
+        isOpen={isUserProfileOpen}
+        profile={userProfile}
+        onClose={() => setIsUserProfileOpen(false)}
+        onSave={setUserProfile}
       />
 
       {/* Floating Chat with AI Window */}

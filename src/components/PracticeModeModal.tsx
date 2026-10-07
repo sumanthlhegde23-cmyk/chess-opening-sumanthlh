@@ -64,6 +64,7 @@ import { OpeningPuzzlesSection } from './OpeningPuzzlesSection';
 interface PracticeModeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onEngineGameCompleted?: (result: 'win' | 'loss' | 'draw') => void;
   boardTheme?: string;
   onOpenChatAiWithFen?: (fen: string) => void;
   initialOpeningId?: string;
@@ -147,6 +148,7 @@ function matrixToFen(
 export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   isOpen,
   onClose,
+  onEngineGameCompleted,
   boardTheme = 'maple',
   onOpenChatAiWithFen,
   initialOpeningId,
@@ -208,6 +210,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const [gameResult, setGameResult] = useState<'player' | 'engine' | 'draw' | null>(null);
   const [didPlayerResign, setDidPlayerResign] = useState<boolean>(false);
   const [engineEvalBar, setEngineEvalBar] = useState<string>('0.00');
+
+  useEffect(() => {
+    if (!gameResult) return;
+    onEngineGameCompleted?.(gameResult === 'player' ? 'win' : gameResult === 'engine' ? 'loss' : 'draw');
+  }, [gameResult, onEngineGameCompleted]);
 
   const currentTheme: BoardTheme = boardThemes[boardTheme] || boardThemes.maple;
 

@@ -15,7 +15,8 @@ import {
   Check,
   Search,
   GraduationCap,
-  BookOpen
+  BookOpen,
+  UserRound,
 } from 'lucide-react';
 import { boardThemes } from '../utils/boardThemes';
 import { PaidPlanTier } from '../utils/pricingLocks';
@@ -43,6 +44,9 @@ interface NavbarProps {
   isPremium?: boolean;
   userTier?: PaidPlanTier;
   translationStatus?: string | null;
+  username: string;
+  avatarDataUrl: string | null;
+  onOpenProfile: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -65,6 +69,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   isPremium = false,
   userTier = 'none',
   translationStatus,
+  username,
+  avatarDataUrl,
+  onOpenProfile,
 }) => {
   const languageMenuRef = React.useRef<HTMLDetailsElement>(null);
   const [languageSearch, setLanguageSearch] = React.useState('');
@@ -288,6 +295,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
           </details>
+
+          <button
+            id="navbar-player-profile-btn"
+            type="button"
+            onClick={onOpenProfile}
+            title="Open your player profile"
+            aria-label={`Open profile for ${username || 'Chess Player'}`}
+            className="flex min-w-0 items-center gap-2 rounded-lg border border-amber-500/30 bg-[#181a20] p-1.5 text-left transition-colors hover:border-amber-400/70 hover:bg-[#20242e]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-700 bg-zinc-800">
+              {avatarDataUrl ? (
+                <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <UserRound className="h-5 w-5 text-amber-300" />
+              )}
+            </span>
+            <span className="max-w-28 truncate text-xs font-semibold text-zinc-100 sm:max-w-36">
+              {username || 'Set username'}
+            </span>
+          </button>
         </div>
       </div>
     </header>
