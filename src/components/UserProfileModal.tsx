@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpen, CalendarDays, Clock3, Cpu, ImagePlus, Trophy, UserRound, X } from 'lucide-react';
+import { BookOpen, CalendarDays, Clock3, Cpu, ImagePlus, Trophy, UserRound, X, Swords } from 'lucide-react';
 import { chessAvatars, formatStudyTime, getChessAvatarDataUrl, UserProfile } from '../utils/userProfile';
 
 interface UserProfileModalProps {
@@ -7,6 +7,7 @@ interface UserProfileModalProps {
   profile: UserProfile;
   onClose: () => void;
   onSave: (profile: UserProfile) => void;
+  onStartOnlineGame: () => void;
 }
 
 function formatDate(value: string): string {
@@ -16,7 +17,7 @@ function formatDate(value: string): string {
     : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, profile, onClose, onSave }) => {
+export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, profile, onClose, onSave, onStartOnlineGame }) => {
   const [username, setUsername] = useState(profile.username);
   const [avatarDataUrl, setAvatarDataUrl] = useState(profile.avatarDataUrl);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -94,6 +95,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
   };
 
   const totalEngineGames = profile.engineGames.wins + profile.engineGames.losses + profile.engineGames.draws;
+  const totalOnlineGames = profile.onlineGames.wins + profile.onlineGames.losses + profile.onlineGames.draws;
   const stats = [
     { label: 'Time spent', value: formatStudyTime(profile.totalSeconds), icon: Clock3 },
     { label: 'Openings explored', value: profile.learnedOpeningIds.length, icon: BookOpen },
@@ -102,7 +104,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
     { label: 'Wins', value: profile.engineGames.wins, icon: Trophy },
     { label: 'Losses', value: profile.engineGames.losses, icon: UserRound },
     { label: 'Draws', value: profile.engineGames.draws, icon: CalendarDays },
-    { label: 'Bluetooth matches', value: '0', icon: Cpu },
+    { label: 'Online matches', value: totalOnlineGames, icon: Swords },
+    { label: 'Online wins', value: profile.onlineGames.wins, icon: Trophy },
+    { label: 'Online losses', value: profile.onlineGames.losses, icon: UserRound },
+    { label: 'Online draws', value: profile.onlineGames.draws, icon: CalendarDays },
   ];
 
   return (
@@ -206,8 +211,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
           </div>
         </div>
         <p className="mt-4 text-[11px] leading-relaxed text-zinc-500">
-          Opening and variation counts record the unique lines you select. Bluetooth play is not available in this app yet, so no Bluetooth matches can be recorded.
+          Opening and variation counts record the unique lines you select. Online game codes connect players through this app’s server; they do not use Bluetooth.
         </p>
+        <button
+          type="button"
+          onClick={onStartOnlineGame}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3.5 text-sm font-extrabold text-zinc-950 shadow-lg shadow-emerald-950/25 transition-colors hover:from-emerald-400 hover:to-teal-400"
+        >
+          <Swords className="h-4 w-4" />
+          Play Online Game
+        </button>
       </section>
       {isAvatarPickerOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">

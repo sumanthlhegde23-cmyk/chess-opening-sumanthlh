@@ -24,6 +24,7 @@ import { getGrandmasterGameExplanations } from './utils/gameExplainer';
 import { GrandmasterShowcaseHeader } from './components/GrandmasterShowcaseHeader';
 import { OpeningCinematic } from './components/OpeningCinematic';
 import { UserProfileModal } from './components/UserProfileModal';
+import { OnlineChessGameModal } from './components/OnlineChessGameModal';
 import { loadUserProfile, saveUserProfile, UserProfile } from './utils/userProfile';
 import {
   PaidPlanTier,
@@ -114,6 +115,7 @@ export default function App() {
   const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699'>('999');
   const [userProfile, setUserProfile] = useState<UserProfile>(() => loadUserProfile());
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(!userProfile.username);
+  const [isOnlineChessGameOpen, setIsOnlineChessGameOpen] = useState(false);
   const hasRecordedLoginRef = useRef(false);
   const sessionTickRef = useRef<number | null>(null);
 
@@ -331,6 +333,18 @@ export default function App() {
         wins: profile.engineGames.wins + (result === 'win' ? 1 : 0),
         losses: profile.engineGames.losses + (result === 'loss' ? 1 : 0),
         draws: profile.engineGames.draws + (result === 'draw' ? 1 : 0),
+      },
+    }));
+  }, []);
+
+  const handleOnlineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
+    setUserProfile((profile) => ({
+      ...profile,
+      onlineGames: {
+        ...profile.onlineGames,
+        wins: profile.onlineGames.wins + (result === 'win' ? 1 : 0),
+        losses: profile.onlineGames.losses + (result === 'loss' ? 1 : 0),
+        draws: profile.onlineGames.draws + (result === 'draw' ? 1 : 0),
       },
     }));
   }, []);
@@ -1172,6 +1186,18 @@ export default function App() {
         profile={userProfile}
         onClose={() => setIsUserProfileOpen(false)}
         onSave={setUserProfile}
+        onStartOnlineGame={() => {
+          setIsUserProfileOpen(false);
+          setIsOnlineChessGameOpen(true);
+        }}
+      />
+
+      <OnlineChessGameModal
+        isOpen={isOnlineChessGameOpen}
+        username={userProfile.username}
+        boardTheme={boardTheme}
+        onClose={() => setIsOnlineChessGameOpen(false)}
+        onGameCompleted={handleOnlineGameCompleted}
       />
 
       {/* Floating Chat with AI Window */}

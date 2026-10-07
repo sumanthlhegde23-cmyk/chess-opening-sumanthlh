@@ -12,6 +12,11 @@ export interface UserProfile {
     losses: number;
     draws: number;
   };
+  onlineGames: {
+    wins: number;
+    losses: number;
+    draws: number;
+  };
 }
 
 const PROFILE_STORAGE_KEY = 'chess-openings-user-profile';
@@ -50,6 +55,7 @@ export function createDefaultUserProfile(): UserProfile {
     learnedOpeningIds: [],
     learnedVariationIds: [],
     engineGames: { wins: 0, losses: 0, draws: 0 },
+    onlineGames: { wins: 0, losses: 0, draws: 0 },
   };
 }
 
@@ -67,6 +73,7 @@ export function loadUserProfile(): UserProfile {
     const parsed = JSON.parse(storedProfile) as Partial<UserProfile>;
     const defaults = createDefaultUserProfile();
     const engineGames = parsed.engineGames;
+    const onlineGames = parsed.onlineGames;
     return {
       ...defaults,
       ...parsed,
@@ -82,6 +89,11 @@ export function loadUserProfile(): UserProfile {
         wins: typeof engineGames?.wins === 'number' && Number.isFinite(engineGames.wins) ? engineGames.wins : 0,
         losses: typeof engineGames?.losses === 'number' && Number.isFinite(engineGames.losses) ? engineGames.losses : 0,
         draws: typeof engineGames?.draws === 'number' && Number.isFinite(engineGames.draws) ? engineGames.draws : 0,
+      },
+      onlineGames: {
+        wins: typeof onlineGames?.wins === 'number' && Number.isFinite(onlineGames.wins) ? onlineGames.wins : 0,
+        losses: typeof onlineGames?.losses === 'number' && Number.isFinite(onlineGames.losses) ? onlineGames.losses : 0,
+        draws: typeof onlineGames?.draws === 'number' && Number.isFinite(onlineGames.draws) ? onlineGames.draws : 0,
       },
     };
   } catch (error) {

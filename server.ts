@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { randomBytes } from 'crypto';
+import { Chess } from 'chess.js';
 import dotenv from 'dotenv';
 import { supportedLanguageCodes } from './src/data/languages';
 import { buildChessLanguageInstruction, getLanguageName } from './src/utils/aiLanguage';
@@ -162,6 +164,227 @@ Feel free to ask about specific openings, move orders (like **1.e4** or **1.d4**
 // API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'chess-ai-assistant' });
+});
+
+interface OnlineChessRoom {
+  code: string;
+  hostToken: string;
+  guestToken: string | null;
+  hostName: string;
+  guestName: string | null;
+  moves: string[];
+  fen: string;
+  status: 'waiting' | 'playing' | 'finished';
+  drawOfferBy: 'w' | 'b' | null;
+  result: '1-0' | '0-1' | '1/2-1/2' | null;
+  termination: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+const onlineChessRooms = new Map<string, OnlineChessRoom>();
+const ONLINE_GAME_START_FEN = new Chess().fen();
+
+function cleanOnlineChessRooms(): void {
+  const now = Date.now();
+  for (const [code, room] of onlineChessRooms) {
+    const lifetime = room.status === 'finished' ? 60 * 60_000 : 6 * 60 * 60_000;
+    if (now - room.updatedAt > lifetime) onlineChessRooms.delete(code);
+  }
+}
+
+function getOnlineChessState(room: OnlineChessRoom, token: string) {
+  const playerColor = token === room.hostToken ? 'w' : 'b';
+  const chess = new Chess();
+  for (const san of room.moves) chess.move(san);
+  chess.header('White', room.hostName);
+  chess.header('Black', room.guestName || '?');
+  chess.header('Result', room.result || '*');
+  return {
+    code: room.code,
+    yourColor: playerColor,
+    opponentName: playerColor === 'w' ? room.guestName : room.hostName,
+    hostName: room.hostName,
+    guestName: room.guestName,
+    moves: room.moves,
+    fen: room.fen,
+    status: room.status,
+    currentTurn: chess.turn(),
+    drawOfferBy: room.drawOfferBy,
+    result: room.result,
+    termination: room.termination,
+    pgn: chess.pgn(),
+  };
+}
+
+function findOnlineChessPlayer(req: express.Request, res: express.Response): { room: OnlineChessRoom; color: 'w' | 'b' } | null {
+  const room = onlineChessRooms.get(String(req.params.code || '').toUpperCase());
+  const token = req.header('x-game-token');
+  if (!room) {
+    res.status(404).json({ error: 'Game not found. Check the game code or create a new game.' });
+    return null;
+  }
+  if (!token || (token !== room.hostToken && token !== room.guestToken)) {
+    res.status(401).json({ error: 'This game session is not authorized.' });
+    return null;
+  }
+  return { room, color: token === room.hostToken ? 'w' : 'b' };
+}
+
+app.post('/api/online-games', (req, res) => {
+  cleanOnlineChessRooms();
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim().slice(0, 32) : '';
+  if (!username) {
+    res.status(400).json({ error: 'Save a username in your profile before creating an online game.' });
+    return;
+  }
+
+  let code = '';
+  do {
+    code = randomBytes(4).toString('hex').slice(0, 6).toUpperCase();
+  } while (onlineChessRooms.has(code));
+  const token = randomBytes(32).toString('hex');
+  const now = Date.now();
+  const room: OnlineChessRoom = {
+    code,
+    hostToken: token,
+    guestToken: null,
+    hostName: username,
+    guestName: null,
+    moves: [],
+    fen: ONLINE_GAME_START_FEN,
+    status: 'waiting',
+    drawOfferBy: null,
+    result: null,
+    termination: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  onlineChessRooms.set(code, room);
+  res.status(201).json({ ...getOnlineChessState(room, token), token });
+});
+
+app.post('/api/online-games/:code/join', (req, res) => {
+  cleanOnlineChessRooms();
+  const code = String(req.params.code || '').toUpperCase();
+  const room = onlineChessRooms.get(code);
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim().slice(0, 32) : '';
+  if (!/^[A-F0-9]{6}$/.test(code)) {
+    res.status(400).json({ error: 'Enter the six-character game code.' });
+    return;
+  }
+  if (!username) {
+    res.status(400).json({ error: 'Save a username in your profile before joining an online game.' });
+    return;
+  }
+  if (!room) {
+    res.status(404).json({ error: 'Game not found. Check the code and try again.' });
+    return;
+  }
+  if (room.status !== 'waiting' || room.guestToken) {
+    res.status(409).json({ error: 'This game has already started or is full.' });
+    return;
+  }
+  const token = randomBytes(32).toString('hex');
+  room.guestToken = token;
+  room.guestName = username;
+  room.status = 'playing';
+  room.updatedAt = Date.now();
+  res.status(200).json({ ...getOnlineChessState(room, token), token });
+});
+
+app.get('/api/online-games/:code', (req, res) => {
+  const player = findOnlineChessPlayer(req, res);
+  if (!player) return;
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(getOnlineChessState(player.room, req.header('x-game-token')!));
+});
+
+app.post('/api/online-games/:code/move', (req, res) => {
+  const player = findOnlineChessPlayer(req, res);
+  if (!player) return;
+  const { room, color } = player;
+  if (room.status !== 'playing') {
+    res.status(409).json({ error: 'This game is not accepting moves.' });
+    return;
+  }
+  const chess = new Chess();
+  for (const san of room.moves) chess.move(san);
+  if (chess.turn() !== color) {
+    res.status(409).json({ error: 'Wait for your turn before moving.' });
+    return;
+  }
+  if (room.moves.length >= 500) {
+    res.status(409).json({ error: 'This game reached the maximum supported length.' });
+    return;
+  }
+  if (typeof req.body?.san !== 'string' || req.body.san.length > 16) {
+    res.status(400).json({ error: 'Send a valid chess move.' });
+    return;
+  }
+  try {
+    const move = chess.move(req.body.san);
+    if (!move) {
+      res.status(400).json({ error: 'That move is not legal in this position.' });
+      return;
+    }
+    room.moves.push(move.san);
+    room.fen = chess.fen();
+    room.updatedAt = Date.now();
+    room.drawOfferBy = null;
+    if (chess.isGameOver()) {
+      room.status = 'finished';
+      room.result = chess.isDraw() ? '1/2-1/2' : move.color === 'w' ? '1-0' : '0-1';
+      room.termination = chess.isCheckmate() ? 'Checkmate' : 'Draw by chess rules';
+    }
+    res.json(getOnlineChessState(room, req.header('x-game-token')!));
+  } catch {
+    res.status(400).json({ error: 'That move is not legal in this position.' });
+  }
+});
+
+app.post('/api/online-games/:code/action', (req, res) => {
+  const player = findOnlineChessPlayer(req, res);
+  if (!player) return;
+  const { room, color } = player;
+  const action = req.body?.action;
+  if (room.status !== 'playing') {
+    res.status(409).json({ error: 'This game has already finished.' });
+    return;
+  }
+  if (action === 'resign') {
+    room.status = 'finished';
+    room.result = color === 'w' ? '0-1' : '1-0';
+    room.termination = 'Resignation';
+  } else if (action === 'draw-offer') {
+    room.drawOfferBy = color;
+  } else if (action === 'draw-accept') {
+    if (!room.drawOfferBy || room.drawOfferBy === color) {
+      res.status(409).json({ error: 'There is no opponent draw offer to accept.' });
+      return;
+    }
+    room.status = 'finished';
+    room.result = '1/2-1/2';
+    room.termination = 'Draw agreed';
+    room.drawOfferBy = null;
+  } else if (action === 'draw-decline') {
+    if (room.drawOfferBy !== color) {
+      res.status(409).json({ error: 'There is no draw offer from you to withdraw.' });
+      return;
+    }
+    room.drawOfferBy = null;
+  } else if (action === 'draw-reject') {
+    if (!room.drawOfferBy || room.drawOfferBy === color) {
+      res.status(409).json({ error: 'There is no opponent draw offer to decline.' });
+      return;
+    }
+    room.drawOfferBy = null;
+  } else {
+    res.status(400).json({ error: 'Choose a valid game action.' });
+    return;
+  }
+  room.updatedAt = Date.now();
+  res.json(getOnlineChessState(room, req.header('x-game-token')!));
 });
 
 const translationRequestCounts = new Map<string, { startedAt: number; count: number }>();
