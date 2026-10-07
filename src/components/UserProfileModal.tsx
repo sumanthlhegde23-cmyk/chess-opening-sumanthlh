@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, CalendarDays, Clock3, Cpu, ImagePlus, Trophy, UserRound, X } from 'lucide-react';
-import { formatStudyTime, UserProfile } from '../utils/userProfile';
+import { chessAvatars, formatStudyTime, getChessAvatarDataUrl, UserProfile } from '../utils/userProfile';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -20,6 +20,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
   const [username, setUsername] = useState(profile.username);
   const [avatarDataUrl, setAvatarDataUrl] = useState(profile.avatarDataUrl);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [pendingAvatarId, setPendingAvatarId] = useState<(typeof chessAvatars)[number]['id'] | null>(null);
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+  const [isAvatarConfirmationOpen, setIsAvatarConfirmationOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,6 +30,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
     setUsername(profile.username);
     setAvatarDataUrl(profile.avatarDataUrl);
     setAvatarError(null);
+    setPendingAvatarId(null);
+    setIsAvatarPickerOpen(false);
+    setIsAvatarConfirmationOpen(false);
   }, [isOpen, profile.username, profile.avatarDataUrl]);
 
   if (!isOpen) return null;
@@ -79,6 +85,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
     onClose();
   };
 
+  const confirmAvatarChoice = () => {
+    if (!pendingAvatarId) return;
+    setAvatarDataUrl(getChessAvatarDataUrl(pendingAvatarId));
+    setPendingAvatarId(null);
+    setIsAvatarPickerOpen(false);
+    setIsAvatarConfirmationOpen(false);
+  };
+
   const totalEngineGames = profile.engineGames.wins + profile.engineGames.losses + profile.engineGames.draws;
   const stats = [
     { label: 'Time spent', value: formatStudyTime(profile.totalSeconds), icon: Clock3 },
@@ -115,21 +129,34 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
         </div>
 
         <form onSubmit={saveProfile} className="mb-6 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-black/20 p-4 sm:flex-row sm:items-center">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Choose profile photo"
-            className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-amber-500/40 bg-zinc-800"
-          >
-            {avatarDataUrl ? (
-              <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <UserRound className="mx-auto h-9 w-9 text-zinc-400" />
-            )}
-            <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
-              <ImagePlus className="h-5 w-5" />
-            </span>
-          </button>
+          <div className="flex shrink-0 flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Choose profile photo"
+              className="group relative h-20 w-20 overflow-hidden rounded-xl border border-amber-500/40 bg-zinc-800"
+            >
+              {avatarDataUrl ? (
+                <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <UserRound className="mx-auto h-9 w-9 text-zinc-400" />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <ImagePlus className="h-5 w-5" />
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPendingAvatarId(null);
+                setIsAvatarConfirmationOpen(false);
+                setIsAvatarPickerOpen(true);
+              }}
+              className="rounded-md border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-amber-200 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10"
+            >
+              Choose avatar
+            </button>
+          </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
           <div className="min-w-0 flex-1">
             <label htmlFor="player-username" className="mb-1.5 block text-xs font-semibold text-zinc-300">Username</label>
@@ -182,6 +209,98 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
           Opening and variation counts record the unique lines you select. Bluetooth play is not available in this app yet, so no Bluetooth matches can be recorded.
         </p>
       </section>
+      {isAvatarPickerOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="choose-chess-avatar-title"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-6"
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 id="choose-chess-avatar-title" className="text-lg font-bold text-zinc-100">Choose a chess avatar</h3>
+                <p className="mt-1 text-xs text-zinc-400">Pick one of these 10 chess-themed profile pictures.</p>
+              </div>
+              <button type="button" onClick={() => {
+                setPendingAvatarId(null);
+                setIsAvatarPickerOpen(false);
+              }} aria-label="Close avatar choices" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {chessAvatars.map((avatar) => (
+                <button
+                  key={avatar.id}
+                  type="button"
+                  onClick={() => {
+                    setPendingAvatarId(avatar.id);
+                    setIsAvatarConfirmationOpen(false);
+                  }}
+                  aria-pressed={pendingAvatarId === avatar.id}
+                  className={`flex flex-col items-center gap-2 rounded-xl border p-2.5 transition-colors ${
+                    pendingAvatarId === avatar.id
+                      ? 'border-amber-400 bg-amber-500/15'
+                      : 'border-zinc-700 bg-black/20 hover:border-zinc-500'
+                  }`}
+                >
+                  <img src={getChessAvatarDataUrl(avatar.id)} alt="" className="h-16 w-16 rounded-lg" />
+                  <span className="text-center text-[11px] font-medium text-zinc-200">{avatar.name}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-col-reverse justify-end gap-2 border-t border-zinc-800 pt-4 sm:flex-row">
+              <button type="button" onClick={() => {
+                setPendingAvatarId(null);
+                setIsAvatarPickerOpen(false);
+              }} className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAvatarConfirmationOpen(true)}
+                disabled={!pendingAvatarId}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Continue
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {isAvatarConfirmationOpen && pendingAvatarId && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-chess-avatar-title"
+            className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#15191a] p-5 text-center shadow-2xl"
+          >
+            <img src={getChessAvatarDataUrl(pendingAvatarId)} alt="" className="mx-auto mb-3 h-20 w-20 rounded-xl" />
+            <h3 id="confirm-chess-avatar-title" className="text-lg font-bold text-zinc-100">Use this avatar?</h3>
+            <p className="mt-2 text-sm text-zinc-300">
+              Would you like to use the {chessAvatars.find((avatar) => avatar.id === pendingAvatarId)?.name} as your profile picture?
+            </p>
+            <div className="mt-5 flex flex-col-reverse justify-center gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setIsAvatarConfirmationOpen(false)}
+                className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
+              >
+                No, go back
+              </button>
+              <button
+                type="button"
+                onClick={confirmAvatarChoice}
+                className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-amber-400"
+              >
+                Yes, use it
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
