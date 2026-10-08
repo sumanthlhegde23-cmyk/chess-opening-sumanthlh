@@ -5,7 +5,7 @@ import { BadMoveRefutation, Variation } from './types/chess';
 import { Chessboard } from './components/Chessboard';
 import { MoveExplanationPanel } from './components/MoveExplanationPanel';
 import { OpeningExplorer } from './components/OpeningExplorer';
-import { VariationSelector } from './components/VariationSelector';
+import { AllOpeningsScreen, OpeningVariationsScreen } from './components/OpeningNavigationScreens';
 import { DeviationRefutationCard } from './components/DeviationRefutationCard';
 import { analyzeDeviation, DeviationAnalysis } from './utils/deviationAnalyzer';
 import { Navbar, type LanguageCode } from './components/Navbar';
@@ -37,7 +37,6 @@ import {
   saveStoredUserRole,
   isVariationLocked,
   isOpeningLocked,
-  isOpeningAccessRestricted,
 } from './utils/pricingLocks';
 import {
   BookOpen,
@@ -47,6 +46,7 @@ import {
   Swords,
   ChevronRight,
   ChevronLeft,
+  ArrowLeft,
   RotateCcw,
   AlertTriangle,
   X,
@@ -83,6 +83,7 @@ export default function App() {
   const [onboardingMode, setOnboardingMode] = useState<'tour' | 'basics' | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>('ruy-lopez');
   const [selectedVariationId, setSelectedVariationId] = useState<string>('ruy-lopez-berlin');
+  const [navigationScreen, setNavigationScreen] = useState<'home' | 'openings' | 'variations' | 'study'>('home');
   const [currentMoveIndex, setCurrentMoveIndex] = useState<number>(-1); // -1 = start position
   const [viewMode, setViewMode] = useState<'repertoire' | 'grandmaster'>('repertoire');
   const [activeGmGameId, setActiveGmGameId] = useState<string | null>(null);
@@ -259,19 +260,30 @@ export default function App() {
   }, []);
 
   const handleUnlockVariation = useCallback((variationId: string): boolean => {
-    if (userProfile.unlockedVariationIds.includes(variationId) || userProfile.totalPoints < 100) return false;
+    const variationTarget = openings
+      .flatMap((opening) => opening.variations.map((variation, index) => ({ openingId: opening.id, variation, index })))
+      .find(({ variation }) => variation.id === variationId);
+    const pointCost = variationTarget?.variation.pointUnlockCost || 100;
+    if (
+      isPremiumUser ||
+      !variationTarget ||
+      !variationTarget.variation.isPointUnlockable ||
+      !isVariationLocked(variationTarget.index, paidPlanTier, isOwner, variationTarget.openingId) ||
+      userProfile.unlockedVariationIds.includes(variationId) ||
+      userProfile.totalPoints < pointCost
+    ) return false;
     setUserProfile((profile) => {
-      if (profile.unlockedVariationIds.includes(variationId) || profile.totalPoints < 100) return profile;
+      if (profile.unlockedVariationIds.includes(variationId) || profile.totalPoints < pointCost) return profile;
       const unlockedVariationIds = [...profile.unlockedVariationIds, variationId];
       return {
         ...profile,
-        totalPoints: profile.totalPoints - 100,
+        totalPoints: profile.totalPoints - pointCost,
         unlockedVariationIds,
         totalVariationsUnlocked: unlockedVariationIds.length,
       };
     });
     return true;
-  }, [userProfile.totalPoints, userProfile.unlockedVariationIds]);
+  }, [isOwner, isPremiumUser, paidPlanTier, userProfile.totalPoints, userProfile.unlockedVariationIds]);
 
   const handleProceedToPay999FromVariation = useCallback(() => {
     setIsLockedVariationModalOpen(false);
@@ -307,11 +319,12 @@ export default function App() {
     return currentOpening.variations.findIndex((v) => v.id === currentVariation.id);
   }, [currentOpening, currentVariation]);
 
-  const isCurrentOpeningLocked = isOpeningLocked(currentOpening.id, paidPlanTier, isOwner)
-    && !userProfile.unlockedVariationIds.includes(currentVariation.id);
-  const isCurrentOpeningRestricted = isOpeningAccessRestricted(currentOpening.id, paidPlanTier, isOwner);
+  const isCurrentOpeningLocked = isOpeningLocked(currentOpening.id, paidPlanTier, isOwner);
   const isCurrentVariationLocked = isVariationLocked(currentVariationIndex, paidPlanTier, isOwner, currentOpening.id)
     && !userProfile.unlockedVariationIds.includes(currentVariation.id);
+  const canStudyCurrentVariation =
+    (!isCurrentOpeningLocked && !isCurrentVariationLocked) ||
+    userProfile.unlockedVariationIds.includes(currentVariation.id);
 
   // Grandmaster games for current variation
   const variationGmGames = useMemo(() => {
@@ -347,6 +360,7 @@ export default function App() {
     }
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
+    setNavigationScreen('variations');
   }, []);
 
   // When variation changes, reset move index
@@ -363,12 +377,17 @@ export default function App() {
     setIsPlaying(false);
   }, []);
 
+  const handleOpenVariation = useCallback((variationId: string) => {
+    handleSelectVariation(variationId);
+    setNavigationScreen('study');
+  }, [handleSelectVariation]);
+
   const handleLockedVariationClick = useCallback((variation: Variation, _index: number) => {
     if (userProfile.unlockedVariationIds.includes(variation.id)) {
-      handleSelectVariation(variation.id);
+      handleOpenVariation(variation.id);
       return;
     }
-    if (userProfile.totalPoints >= 100) {
+    if (!isPremiumUser && userProfile.totalPoints >= (variation.pointUnlockCost || 100)) {
       setIsVariationUnlocksOpen(true);
       return;
     }
@@ -378,7 +397,7 @@ export default function App() {
     }
     setLockedVariationTarget(variation);
     setIsLockedVariationModalOpen(true);
-  }, [handleSelectVariation, isOwner, userProfile.totalPoints, userProfile.unlockedVariationIds]);
+  }, [handleOpenVariation, isOwner, isPremiumUser, userProfile.totalPoints, userProfile.unlockedVariationIds]);
 
   const handleEngineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
     setUserProfile((profile) => ({
@@ -876,6 +895,9 @@ export default function App() {
         isOpen={isVariationUnlocksOpen}
         points={userProfile.totalPoints}
         unlockedVariationIds={userProfile.unlockedVariationIds}
+        userPlan={paidPlanTier}
+        isOwner={isOwner}
+        isPremiumUser={isPremiumUser}
         onClose={() => setIsVariationUnlocksOpen(false)}
         onUnlock={handleUnlockVariation}
       />
@@ -891,119 +913,92 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
-        {/* Top Opening Browser Bar */}
-        <section aria-label="Openings Explorer">
-          <OpeningExplorer
+        {navigationScreen === 'home' && (
+          <>
+            <section aria-label="Featured opening explorer">
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400">Build your repertoire</p>
+                  <h1 className="mt-1 text-2xl font-black text-white">Explore Chess Openings</h1>
+                  <p className="mt-1 text-sm text-zinc-400">Choose an opening to browse its variations, or view the full library.</p>
+                </div>
+                <button type="button" onClick={() => setNavigationScreen('openings')} className="inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/20 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
+                  <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <OpeningExplorer
+                openings={openings}
+                selectedOpeningId={selectedOpeningId}
+                onSelectOpening={handleSelectOpening}
+                sideFilter={sideFilter}
+                onSideFilterChange={setSideFilter}
+                userPlan={paidPlanTier}
+                isOwner={isOwner}
+                onOpenPremium={handleOpenPremiumModal}
+              />
+            </section>
+          </>
+        )}
+
+        {navigationScreen === 'openings' && (
+          <AllOpeningsScreen
             openings={openings}
-            selectedOpeningId={selectedOpeningId}
+            userPlan={paidPlanTier}
+            isOwner={isOwner}
+            onBack={() => setNavigationScreen('home')}
             onSelectOpening={handleSelectOpening}
-            sideFilter={sideFilter}
-            onSideFilterChange={setSideFilter}
-            userPlan={paidPlanTier}
-            isOwner={isOwner}
-            onOpenPremium={handleOpenPremiumModal}
           />
-        </section>
+        )}
 
-        {/* Selected Opening Overview Header & 12 Variations Selector */}
-        <section
-          aria-label="Variation Selector"
-          className="bg-[#15171e] p-3.5 sm:p-4 rounded-xl border border-zinc-800/80 shadow-md space-y-3"
-        >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2.5 border-b border-zinc-800/80">
-            <div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    currentOpening.side === 'white'
-                      ? 'bg-zinc-100 text-zinc-950'
-                      : 'bg-zinc-800 text-amber-300 border border-zinc-700'
-                  }`}
-                >
-                  {currentOpening.side === 'white' ? 'White Opening' : 'Black Defense'}
-                </span>
-                <h2 className="text-lg font-bold text-zinc-100">{currentOpening.name}</h2>
-                <span className="text-xs font-mono text-amber-400 font-semibold">
-                  ({currentOpening.ecoCode})
-                </span>
-                {isCurrentOpeningRestricted && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> {isCurrentOpeningLocked ? 'Reserved Opening' : 'Preview Opening'}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
-                {currentOpening.description}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-              {currentOpening.keyThemes.slice(0, 2).map((theme, i) => (
-                <span
-                  key={i}
-                  className="text-[11px] px-2 py-0.5 rounded-md bg-[#1f232c] text-zinc-300 border border-zinc-700/60"
-                >
-                  {theme}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Polite Locked Opening Banner */}
-          {isCurrentOpeningRestricted && (
-            <div className="flex flex-col gap-3 rounded-lg border border-amber-500/35 bg-gradient-to-r from-[#241e17] via-[#1a1c24] to-[#151720] p-3 text-xs shadow-md sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2.5 text-amber-100">
-                <div className="shrink-0 rounded-md bg-amber-500/15 p-1.5 text-amber-300"><Lock className="h-4 w-4" /></div>
-                <p>
-                  <strong className="text-amber-200">{paidPlanTier === 'none' ? 'Preview mode' : 'Reserved on Expanded Repertoire'}.</strong>{' '}
-                  {paidPlanTier === 'none'
-                    ? 'Explore 8 variations here. Four additional lines are reserved for the Complete Library.'
-                    : 'This semi-major opening is reserved for the ₹999 Complete Library. Your other 24 openings and every variation remain open.'}
-                </p>
-              </div>
-              <button type="button" onClick={() => handleOpenPremiumModal('999')} className="shrink-0 rounded-md bg-amber-500 px-3 py-1.5 font-bold text-zinc-950 transition-colors hover:bg-amber-400">
-                Complete Library · ₹999
-              </button>
-            </div>
-          )}
-
-          {/* 12 Variations Grid */}
-          <VariationSelector
-            variations={currentOpening.variations}
-            openingId={currentOpening.id}
-            openingLocked={isCurrentOpeningRestricted}
+        {navigationScreen === 'variations' && (
+          <OpeningVariationsScreen
+            opening={currentOpening}
             selectedVariationId={selectedVariationId}
-            onSelectVariation={handleSelectVariation}
             userPlan={paidPlanTier}
             isOwner={isOwner}
+            totalPoints={userProfile.totalPoints}
             unlockedVariationIds={userProfile.unlockedVariationIds}
+            onBack={() => setNavigationScreen('openings')}
+            onOpenVariation={handleOpenVariation}
             onLockedVariationClick={handleLockedVariationClick}
           />
+        )}
 
-          {/* Current Variation Locked Notice */}
-          {isCurrentVariationLocked && !isCurrentOpeningLocked && (
-            <div className="p-3 rounded-xl bg-gradient-to-r from-[#291f16] via-[#1f1d26] to-[#161822] border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
-              <div className="flex items-center gap-2.5 text-amber-200">
-                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="font-bold text-amber-300">{currentVariation.name} is reserved:</span> this preview line is included in the ₹999 Complete Library.
-                </div>
+        {navigationScreen === 'study' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-[#15171e] p-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-400">{currentOpening.name} · {currentOpening.ecoCode}</p>
+                <h1 className="truncate text-lg font-bold text-white">{currentVariation.name}</h1>
               </div>
-              <button
-                type="button"
-                onClick={() => handleOpenPremiumModal('999')}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow transition-all cursor-pointer shrink-0"
-              >
-                Unlock Complete Library · ₹999
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setNavigationScreen('variations')} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200"><ArrowLeft className="h-3.5 w-3.5" /> Variations</button>
+                <button type="button" onClick={() => setNavigationScreen('openings')} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200"><BookOpen className="h-3.5 w-3.5" /> All Openings</button>
+                <button type="button" onClick={() => setNavigationScreen('home')} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200">Main</button>
+              </div>
             </div>
-          )}
-        </section>
+            {isCurrentOpeningLocked && userProfile.unlockedVariationIds.includes(currentVariation.id) && (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-100">
+                Individual variation unlocked with points. The complete opening and its other variations remain locked.
+              </div>
+            )}
+            {!canStudyCurrentVariation && (
+              <div className="flex flex-col gap-3 rounded-xl border border-amber-500/35 bg-gradient-to-r from-[#241e17] via-[#1a1c24] to-[#151720] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-amber-100"><Lock className="mr-2 inline h-4 w-4" />This variation is locked. Unlock only this line with points, or access it with your subscription.</p>
+                <button type="button" onClick={() => {
+                  if (userProfile.totalPoints >= (currentVariation.pointUnlockCost || 100)) setIsVariationUnlocksOpen(true);
+                  else handleLockedVariationClick(currentVariation, currentVariationIndex);
+                }} className="shrink-0 rounded-lg bg-amber-400 px-4 py-2.5 text-xs font-extrabold text-zinc-950 transition hover:bg-amber-300">
+                  {userProfile.totalPoints >= (currentVariation.pointUnlockCost || 100) ? `Unlock with ${currentVariation.pointUnlockCost || 100} points` : 'View unlock options'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
+        {navigationScreen === 'study' && <>
         {/* Grandmaster Showcase & Repertoire Mode Selector */}
-        {!isCurrentOpeningLocked && <GrandmasterShowcaseHeader
+        {canStudyCurrentVariation && <GrandmasterShowcaseHeader
           viewMode={viewMode}
           onSelectViewMode={(mode) => {
             setViewMode(mode);
@@ -1028,19 +1023,29 @@ export default function App() {
         />}
 
         {/* Central Workspace: Interactive Board & Move Explanations Panel */}
-        {isCurrentOpeningLocked ? (
-          <section aria-label="Reserved opening preview" className="flex min-h-[420px] items-center justify-center rounded-xl border border-amber-500/30 bg-gradient-to-br from-[#1b1c19] via-[#141820] to-[#111713] p-6 text-center shadow-lg">
+        {!canStudyCurrentVariation ? (
+          <section aria-label="Locked variation" className="flex min-h-[320px] items-center justify-center rounded-xl border border-amber-500/30 bg-gradient-to-br from-[#1b1c19] via-[#141820] to-[#111713] p-6 text-center shadow-lg">
             <div className="max-w-lg space-y-4">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-amber-500/35 bg-amber-500/10 text-amber-300">
-                <Crown className="h-7 w-7" />
+                <Lock className="h-7 w-7" />
               </div>
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase text-amber-300">Complete Library · ₹999</p>
-                <h3 className="text-xl font-bold text-zinc-100">{currentOpening.name}</h3>
-                <p className="text-sm leading-relaxed text-zinc-400">This semi-major system is reserved in the ₹699 Expanded Repertoire. Upgrade to explore all 12 variations, move explanations, and board analysis for this opening.</p>
+                <p className="text-[10px] font-bold uppercase text-amber-300">{currentOpening.accessType === 'PREMIUM' ? 'Premium variation' : 'Variation access'}</p>
+                <h3 className="text-xl font-bold text-zinc-100">{currentVariation.name}</h3>
+                <p className="text-sm leading-relaxed text-zinc-400">
+                  {isCurrentOpeningLocked
+                    ? 'This opening remains reserved. You can unlock only this variation with points; other variations stay locked.'
+                    : 'This variation is reserved on your current plan. Unlock this variation with points or choose a plan with access.'}
+                </p>
               </div>
-              <button type="button" onClick={() => handleOpenPremiumModal('999')} className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-400">
-                <Crown className="h-4 w-4" /> Complete Library · ₹999
+              <button type="button" onClick={() => {
+                if (userProfile.totalPoints >= (currentVariation.pointUnlockCost || 100)) setIsVariationUnlocksOpen(true);
+                else if (currentOpening.accessType === 'PREMIUM') handleOpenPremiumModal('999');
+                else handleLockedVariationClick(currentVariation, currentVariationIndex);
+              }} className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-400">
+                {userProfile.totalPoints >= (currentVariation.pointUnlockCost || 100)
+                  ? `Unlock this variation · ${currentVariation.pointUnlockCost || 100} points`
+                  : currentOpening.accessType === 'PREMIUM' ? 'Explore Premium Access' : 'View unlock options'}
               </button>
             </div>
           </section>
@@ -1215,6 +1220,7 @@ export default function App() {
           </div>
         </section>
         )}
+        </>}
       </main>
 
       {/* Help Modal */}

@@ -1,7 +1,16 @@
 import openingsJson from './openingsData.json';
 import { Opening } from '../types/chess';
+import { getOpeningAccessType } from '../utils/pricingLocks';
 
-export const openings: Opening[] = openingsJson as unknown as Opening[];
+export const openings: Opening[] = (openingsJson as unknown as Omit<Opening, 'accessType'>[]).map((opening) => ({
+  ...opening,
+  accessType: getOpeningAccessType(opening.id),
+  variations: opening.variations.map((variation) => ({
+    ...variation,
+    pointUnlockCost: 100,
+    isPointUnlockable: true,
+  })),
+}));
 
 export const whiteOpenings = openings.filter(o => o.side === 'white');
 export const blackOpenings = openings.filter(o => o.side === 'black');

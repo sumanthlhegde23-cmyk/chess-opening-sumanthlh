@@ -7,6 +7,17 @@ export type PaidPlanTier =
   | '399_plus_179'
   | '599';
 export type UserRole = 'owner' | 'visitor';
+export type OpeningAccessType = 'FREE' | 'PREMIUM';
+
+export const PREMIUM_OPENING_IDS: string[] = [];
+
+export function getOpeningAccessType(openingId: string): OpeningAccessType {
+  return PREMIUM_OPENING_IDS.includes(openingId) ? 'PREMIUM' : 'FREE';
+}
+
+export function isPremiumUser(tier: PaidPlanTier, isOwner = false): boolean {
+  return isOwner || tier !== 'none';
+}
 
 export type OpeningClassification = 'Major' | 'Semi-Major' | 'Minor';
 
@@ -248,6 +259,9 @@ export function isVariationLocked(
   openingId?: string
 ): boolean {
   if (isOwner) return false;
+  if (openingId && getOpeningAccessType(openingId) === 'PREMIUM') {
+    return !isPremiumUser(tier);
+  }
   if (tier === '999' || tier === '599' || tier === '699_plus_399' || tier === '399_plus_179') return false;
   if (tier === '699' || tier === '399') return openingId ? THREE_YEAR_LOCKED_OPENING_IDS.includes(openingId) : false;
   return Boolean(
@@ -267,6 +281,9 @@ export function isOpeningLocked(
   isOwner: boolean = false
 ): boolean {
   if (isOwner) return false;
+  if (getOpeningAccessType(openingId) === 'PREMIUM') {
+    return !isPremiumUser(tier);
+  }
   if (
     tier === '999' ||
     tier === '599' ||
@@ -286,6 +303,9 @@ export function isOpeningAccessRestricted(
   tier: PaidPlanTier,
   isOwner: boolean = false
 ): boolean {
+  if (getOpeningAccessType(openingId) === 'PREMIUM') {
+    return !isPremiumUser(tier, isOwner);
+  }
   if (isOwner || tier === '999' || tier === '599' || tier === '699_plus_399' || tier === '399_plus_179') {
     return false;
   }

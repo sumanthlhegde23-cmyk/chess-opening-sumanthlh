@@ -1,7 +1,7 @@
 import React from 'react';
 import { Variation } from '../types/chess';
-import { Layers, Lock, Sparkles, Crown } from 'lucide-react';
-import { PaidPlanTier, isOpeningLocked, isVariationLocked } from '../utils/pricingLocks';
+import { Layers, Lock, Sparkles } from 'lucide-react';
+import { PaidPlanTier, isVariationLocked } from '../utils/pricingLocks';
 
 interface VariationSelectorProps {
   variations: Variation[];
@@ -10,6 +10,7 @@ interface VariationSelectorProps {
   selectedVariationId: string;
   onSelectVariation: (variationId: string) => void;
   userPlan: PaidPlanTier;
+  totalPoints?: number;
   unlockedVariationIds?: string[];
   isOwner?: boolean;
   onLockedVariationClick: (variation: Variation, index: number) => void;
@@ -22,11 +23,11 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
   selectedVariationId,
   onSelectVariation,
   userPlan,
+  totalPoints = 0,
   unlockedVariationIds = [],
   isOwner = false,
   onLockedVariationClick,
 }) => {
-  const reservedAt699 = isOpeningLocked(openingId, '699', false);
   const lockedCount = variations.filter((variation, index) =>
     isVariationLocked(index, userPlan, isOwner, openingId) && !unlockedVariationIds.includes(variation.id)
   ).length;
@@ -36,15 +37,10 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
           <Layers className="w-3.5 h-3.5 text-amber-400" />
-          <span>12 Variations</span>
-          {openingLocked && userPlan === 'none' && (
+          <span>{variations.length} Variations</span>
+          {openingLocked && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5" /> 8 preview lines · 4 reserved
-            </span>
-          )}
-          {openingLocked && userPlan !== 'none' && !isOwner && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5" /> 12 reserved · Complete tier
+              <Lock className="w-2.5 h-2.5" /> Opening access is reserved
             </span>
           )}
           {!openingLocked && lockedCount > 0 && (
@@ -62,7 +58,8 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
         {variations.map((v, idx) => {
           const isSelected = v.id === selectedVariationId;
           const locked = isVariationLocked(idx, userPlan, isOwner, openingId) && !unlockedVariationIds.includes(v.id);
-          const requiresCompleteTier = isOpeningLocked(openingId, '699', false);
+          const pointCost = v.pointUnlockCost || 100;
+          const canUnlockWithPoints = locked && v.isPointUnlockable !== false && totalPoints >= pointCost;
 
           return (
             <button
@@ -92,7 +89,7 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
                     {locked ? (
                       <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-0.5">
                         <Lock className="w-2.5 h-2.5 text-amber-400" />
-                        <span>{requiresCompleteTier ? '₹999' : '₹699'}</span>
+                        <span>{canUnlockWithPoints ? `${pointCost} pts` : 'Locked'}</span>
                       </span>
                     ) : (
                       <span className="text-[10px] text-zinc-500">#{idx + 1}</span>
@@ -114,7 +111,8 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
                 <span>{v.moves.length} ply</span>
                 {locked ? (
                   <span className="text-amber-400/90 text-[10px] font-medium flex items-center gap-0.5">
-                    <Lock className="w-2.5 h-2.5" /> Locked
+                    {canUnlockWithPoints ? <Sparkles className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                    {canUnlockWithPoints ? `Unlock · ${pointCost} pts` : 'Locked'}
                   </span>
                 ) : (
                   <span className="font-mono text-zinc-400 truncate max-w-[60px]">

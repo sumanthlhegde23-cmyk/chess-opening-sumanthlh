@@ -50,6 +50,8 @@ export interface Variation {
   id: string;
   name: string;
   eco: string;
+  pointUnlockCost?: number;
+  isPointUnlockable?: boolean;
   moves: string[]; // SAN array e.g. ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]
   overview: string;
   evalRecommendation?: string;
@@ -64,6 +66,7 @@ export interface Variation {
 export interface Opening {
   id: string;
   name: string;
+  accessType: 'FREE' | 'PREMIUM';
   side: Side;
   ecoCode: string;
   category: string; // e.g. "Open Game (1.e4 e5)", "Semi-Open", "Closed Game (1.d4)", "Flank"

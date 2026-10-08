@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Check, Lock, Search, Sparkles, X } from 'lucide-react';
 import { openings } from '../data/openings';
+import { PaidPlanTier, isVariationLocked } from '../utils/pricingLocks';
 
 interface VariationUnlockModalProps {
   isOpen: boolean;
   points: number;
   unlockedVariationIds: string[];
+  userPlan: PaidPlanTier;
+  isOwner: boolean;
+  isPremiumUser: boolean;
   onClose: () => void;
   onUnlock: (variationId: string) => boolean;
 }
@@ -14,6 +18,9 @@ export const VariationUnlockModal: React.FC<VariationUnlockModalProps> = ({
   isOpen,
   points,
   unlockedVariationIds,
+  userPlan,
+  isOwner,
+  isPremiumUser,
   onClose,
   onUnlock,
 }) => {
@@ -54,7 +61,10 @@ export const VariationUnlockModal: React.FC<VariationUnlockModalProps> = ({
           <div className="grid gap-2 sm:grid-cols-2">
             {filtered.map((variation) => {
               const isUnlocked = unlocked.has(variation.id);
-              const canUnlock = credits > 0;
+              const variationIndex = openings.find((opening) => opening.id === variation.openingId)
+                ?.variations.findIndex((item) => item.id === variation.id) ?? -1;
+              const isLocked = variationIndex >= 0 && isVariationLocked(variationIndex, userPlan, isOwner, variation.openingId);
+              const canUnlock = credits > 0 && isLocked && !isPremiumUser && variation.isPointUnlockable !== false;
               return (
                 <article key={variation.id} className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${isUnlocked ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-zinc-800 bg-black/20'}`}>
                   <div className="min-w-0">
@@ -62,7 +72,9 @@ export const VariationUnlockModal: React.FC<VariationUnlockModalProps> = ({
                     <p className="mt-1 truncate text-sm font-semibold text-zinc-100" title={variation.name}>{variation.name}</p>
                   </div>
                   {isUnlocked ? (
-                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-2 text-xs font-bold text-emerald-300"><Check className="h-4 w-4" /> Unlocked</span>
+                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-2 text-xs font-bold text-emerald-300"><Check className="h-4 w-4" /> Point unlocked</span>
+                  ) : !isLocked ? (
+                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-2 text-xs font-bold text-emerald-300"><Check className="h-4 w-4" /> Available</span>
                   ) : (
                     <button
                       type="button"
@@ -74,7 +86,8 @@ export const VariationUnlockModal: React.FC<VariationUnlockModalProps> = ({
                       className="flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-400 px-2.5 py-2 text-xs font-bold text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
                       aria-label={`Unlock ${variation.name} for 100 points`}
                     >
-                      <Lock className="h-3.5 w-3.5" /> 100 pts
+                      <Lock className="h-3.5 w-3.5" />
+                      {isPremiumUser ? 'Premium access' : variation.pointUnlockCost || 100} {isPremiumUser ? '' : 'pts'}
                     </button>
                   )}
                 </article>
