@@ -4,7 +4,6 @@ import { openings, getOpeningById } from './data/openings';
 import { BadMoveRefutation, Variation } from './types/chess';
 import { Chessboard } from './components/Chessboard';
 import { MoveExplanationPanel } from './components/MoveExplanationPanel';
-import { OpeningExplorer } from './components/OpeningExplorer';
 import { AllOpeningsScreen, OpeningVariationsScreen } from './components/OpeningNavigationScreens';
 import { DeviationRefutationCard } from './components/DeviationRefutationCard';
 import { analyzeDeviation, DeviationAnalysis } from './utils/deviationAnalyzer';
@@ -105,7 +104,6 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeed] = useState<number>(2200); // 2.2s interval
   const [trainingMode, setTrainingMode] = useState<boolean>(false);
-  const [sideFilter, setSideFilter] = useState<'all' | 'white' | 'black'>('all');
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState<boolean>(false);
   const [isPracticeOpen, setIsPracticeOpen] = useState<boolean>(false);
@@ -914,30 +912,17 @@ export default function App() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
         {navigationScreen === 'home' && (
-          <>
-            <section aria-label="Featured opening explorer">
-              <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400">Build your repertoire</p>
-                  <h1 className="mt-1 text-2xl font-black text-white">Explore Chess Openings</h1>
-                  <p className="mt-1 text-sm text-zinc-400">Choose an opening to browse its variations, or view the full library.</p>
-                </div>
-                <button type="button" onClick={() => setNavigationScreen('openings')} className="inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/20 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
-                  <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-              <OpeningExplorer
-                openings={openings}
-                selectedOpeningId={selectedOpeningId}
-                onSelectOpening={handleSelectOpening}
-                sideFilter={sideFilter}
-                onSideFilterChange={setSideFilter}
-                userPlan={paidPlanTier}
-                isOwner={isOwner}
-                onOpenPremium={handleOpenPremiumModal}
-              />
-            </section>
-          </>
+          <section aria-label="Opening library" className="flex min-h-[55vh] flex-col items-center justify-center rounded-3xl border border-zinc-800 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.10),_transparent_62%)] px-5 py-12 text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/25 bg-amber-400/10 text-amber-300 shadow-lg shadow-amber-950/20">
+              <BookOpen className="h-8 w-8" />
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-400">Build your repertoire</p>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Explore Chess Openings</h1>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">Browse the complete library, choose an opening, and study its variations move by move.</p>
+            <button type="button" onClick={() => setNavigationScreen('openings')} className="mt-7 inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-6 py-3.5 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
+              <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
+            </button>
+          </section>
         )}
 
         {navigationScreen === 'openings' && (

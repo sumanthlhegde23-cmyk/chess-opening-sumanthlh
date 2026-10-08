@@ -19,7 +19,7 @@ export const boardThemes: Record<string, BoardTheme> = {
     darkSquare: 'bg-[#b58863]',
     highlightSquare: 'bg-[#f59e0b]/50',
     selectSquare: 'bg-[#fbbf24]/65 ring-2 ring-amber-300 ring-inset',
-    boardImage: '/boards/maple2.jpg',
+    boardImage: '/boards/maple.jpg',
     frameClass: 'border-[#422a14] shadow-[0_12px_35px_rgba(20,10,2,0.6)] ring-1 ring-[#613f1e]/40',
     coordinateLight: 'text-[#613c19]',
     coordinateDark: 'text-[#faebd7]',
