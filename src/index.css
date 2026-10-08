@@ -714,6 +714,16 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes streak-milestone-arrive {
+  0% { opacity: 0; transform: scale(0.55) translateY(10px); filter: drop-shadow(0 0 0 rgba(245, 158, 11, 0)); }
+  65% { opacity: 1; transform: scale(1.12) translateY(-2px); filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.8)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.45)); }
+}
+@keyframes streak-legendary-flame {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 22px rgba(244, 63, 94, 0.55)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 36px rgba(244, 63, 94, 0.95)); }
+}
+
 @keyframes onboarding-arrow-dash { to { stroke-dashoffset: -18; } }
 @keyframes onboarding-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes onboarding-copy-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -761,6 +771,8 @@
 @media (prefers-reduced-motion: reduce) {
   .onboarding-tour *,
   .chess-lesson *,
+  .streak-milestone-arrive,
+  .streak-legendary-flame,
   .onboarding-board__square.is-highlighted::after,
   .onboarding-board__arrows g path {
     animation-duration: 0.01ms !important;

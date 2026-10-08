@@ -10,6 +10,7 @@ interface VariationSelectorProps {
   selectedVariationId: string;
   onSelectVariation: (variationId: string) => void;
   userPlan: PaidPlanTier;
+  unlockedVariationIds?: string[];
   isOwner?: boolean;
   onLockedVariationClick: (variation: Variation, index: number) => void;
 }
@@ -21,11 +22,14 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
   selectedVariationId,
   onSelectVariation,
   userPlan,
+  unlockedVariationIds = [],
   isOwner = false,
   onLockedVariationClick,
 }) => {
   const reservedAt699 = isOpeningLocked(openingId, '699', false);
-  const lockedCount = variations.filter((_, index) => isVariationLocked(index, userPlan, isOwner, openingId)).length;
+  const lockedCount = variations.filter((variation, index) =>
+    isVariationLocked(index, userPlan, isOwner, openingId) && !unlockedVariationIds.includes(variation.id)
+  ).length;
 
   return (
     <div id="variation-selector" className="space-y-2">
@@ -57,7 +61,7 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
         {variations.map((v, idx) => {
           const isSelected = v.id === selectedVariationId;
-          const locked = isVariationLocked(idx, userPlan, isOwner, openingId);
+          const locked = isVariationLocked(idx, userPlan, isOwner, openingId) && !unlockedVariationIds.includes(v.id);
           const requiresCompleteTier = isOpeningLocked(openingId, '699', false);
 
           return (
@@ -125,4 +129,3 @@ export const VariationSelector: React.FC<VariationSelectorProps> = ({
     </div>
   );
 };
-

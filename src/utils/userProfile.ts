@@ -7,6 +7,12 @@ export interface UserProfile {
   totalSeconds: number;
   learnedOpeningIds: string[];
   learnedVariationIds: string[];
+  currentStreak: number;
+  longestStreak: number;
+  totalPoints: number;
+  lastActiveDate: string | null;
+  unlockedVariationIds: string[];
+  totalVariationsUnlocked: number;
   engineGames: {
     wins: number;
     losses: number;
@@ -54,6 +60,12 @@ export function createDefaultUserProfile(): UserProfile {
     totalSeconds: 0,
     learnedOpeningIds: [],
     learnedVariationIds: [],
+    currentStreak: 0,
+    longestStreak: 0,
+    totalPoints: 0,
+    lastActiveDate: null,
+    unlockedVariationIds: [],
+    totalVariationsUnlocked: 0,
     engineGames: { wins: 0, losses: 0, draws: 0 },
     onlineGames: { wins: 0, losses: 0, draws: 0 },
   };
@@ -85,6 +97,14 @@ export function loadUserProfile(): UserProfile {
       totalSeconds: typeof parsed.totalSeconds === 'number' && Number.isFinite(parsed.totalSeconds) ? parsed.totalSeconds : 0,
       learnedOpeningIds: Array.isArray(parsed.learnedOpeningIds) ? parsed.learnedOpeningIds.filter((value): value is string => typeof value === 'string') : [],
       learnedVariationIds: Array.isArray(parsed.learnedVariationIds) ? parsed.learnedVariationIds.filter((value): value is string => typeof value === 'string') : [],
+      currentStreak: typeof parsed.currentStreak === 'number' && Number.isFinite(parsed.currentStreak) && parsed.currentStreak >= 0 ? Math.floor(parsed.currentStreak) : 0,
+      longestStreak: typeof parsed.longestStreak === 'number' && Number.isFinite(parsed.longestStreak) && parsed.longestStreak >= 0 ? Math.floor(parsed.longestStreak) : 0,
+      totalPoints: typeof parsed.totalPoints === 'number' && Number.isFinite(parsed.totalPoints) && parsed.totalPoints >= 0 ? Math.floor(parsed.totalPoints) : 0,
+      lastActiveDate: typeof parsed.lastActiveDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.lastActiveDate) ? parsed.lastActiveDate : null,
+      unlockedVariationIds: Array.isArray(parsed.unlockedVariationIds) ? [...new Set(parsed.unlockedVariationIds.filter((value): value is string => typeof value === 'string'))] : [],
+      totalVariationsUnlocked: typeof parsed.totalVariationsUnlocked === 'number' && Number.isFinite(parsed.totalVariationsUnlocked) && parsed.totalVariationsUnlocked >= 0
+        ? Math.floor(parsed.totalVariationsUnlocked)
+        : Array.isArray(parsed.unlockedVariationIds) ? new Set(parsed.unlockedVariationIds).size : 0,
       engineGames: {
         wins: typeof engineGames?.wins === 'number' && Number.isFinite(engineGames.wins) ? engineGames.wins : 0,
         losses: typeof engineGames?.losses === 'number' && Number.isFinite(engineGames.losses) ? engineGames.losses : 0,

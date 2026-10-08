@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpen, CalendarDays, Clock3, Cpu, ImagePlus, Trophy, UserRound, X, Swords } from 'lucide-react';
+import { BookOpen, CalendarDays, Clock3, Cpu, Flame, ImagePlus, Trophy, UserRound, X, Swords, Sparkles, LockKeyhole } from 'lucide-react';
 import { chessAvatars, formatStudyTime, getChessAvatarDataUrl, UserProfile } from '../utils/userProfile';
 
 interface UserProfileModalProps {
@@ -8,6 +8,7 @@ interface UserProfileModalProps {
   onClose: () => void;
   onSave: (profile: UserProfile) => void;
   onStartOnlineGame: () => void;
+  onOpenVariationUnlocks: () => void;
 }
 
 function formatDate(value: string): string {
@@ -17,7 +18,7 @@ function formatDate(value: string): string {
     : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, profile, onClose, onSave, onStartOnlineGame }) => {
+export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, profile, onClose, onSave, onStartOnlineGame, onOpenVariationUnlocks }) => {
   const [username, setUsername] = useState(profile.username);
   const [avatarDataUrl, setAvatarDataUrl] = useState(profile.avatarDataUrl);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -96,6 +97,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
 
   const totalEngineGames = profile.engineGames.wins + profile.engineGames.losses + profile.engineGames.draws;
   const totalOnlineGames = profile.onlineGames.wins + profile.onlineGames.losses + profile.onlineGames.draws;
+  const unlockCredits = Math.floor(profile.totalPoints / 100);
+  const flameTone = profile.currentStreak >= 101
+    ? 'from-rose-950/80 via-red-950/35 to-transparent border-rose-500/35 text-rose-400'
+    : profile.currentStreak >= 11
+      ? 'from-amber-950/80 via-yellow-950/35 to-transparent border-amber-500/35 text-amber-300'
+      : 'from-yellow-950/80 via-amber-950/35 to-transparent border-yellow-500/35 text-yellow-300';
   const stats = [
     { label: 'Time spent', value: formatStudyTime(profile.totalSeconds), icon: Clock3 },
     { label: 'Openings explored', value: profile.learnedOpeningIds.length, icon: BookOpen },
@@ -180,6 +187,55 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
           </button>
           {avatarError && <p role="alert" className="basis-full text-xs text-rose-300">{avatarError}</p>}
         </form>
+
+        <section aria-labelledby="streak-manager-title" className={`relative mb-5 overflow-hidden rounded-2xl border bg-gradient-to-br ${flameTone} p-4 sm:p-5`}>
+          <div className="absolute -right-5 -top-7 opacity-[0.12]"><Flame className="h-40 w-40" /></div>
+          <div className="relative">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-zinc-300">Profile · Streak Manager</p>
+                <h3 id="streak-manager-title" className="mt-1 text-lg font-black text-white">Daily dedication, rewarded</h3>
+              </div>
+              {profile.currentStreak >= 101 && <span className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-200">♔ LEGENDARY</span>}
+            </div>
+            <div className="mt-4 flex items-center gap-4 rounded-xl border border-white/10 bg-black/25 p-3 sm:p-4">
+              <div className="relative shrink-0">
+                <Flame className={`h-14 w-14 drop-shadow-[0_0_18px_currentColor] ${profile.currentStreak >= 101 ? 'text-rose-400' : profile.currentStreak >= 11 ? 'text-amber-300' : 'text-yellow-300'}`} />
+                {profile.currentStreak >= 101 && <span className="absolute inset-0 flex items-center justify-center pt-1 text-xl text-white">♔</span>}
+              </div>
+              <div className="min-w-0">
+                <p className="text-3xl font-black leading-none text-white">{profile.currentStreak}</p>
+                <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.17em] text-zinc-300">Day Streak</p>
+                <p className="mt-1 text-xs font-bold text-emerald-300">+4 daily points for every active day</p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {[
+                { label: 'Longest streak', value: `${profile.longestStreak} days`, icon: Trophy },
+                { label: 'Total points', value: profile.totalPoints, icon: Sparkles },
+                { label: 'Variations unlocked', value: profile.totalVariationsUnlocked, icon: BookOpen },
+                { label: 'Available credits', value: unlockCredits, icon: LockKeyhole },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="rounded-xl border border-white/10 bg-black/25 p-3">
+                  <Icon className="mb-1.5 h-4 w-4 text-amber-300" />
+                  <p className="text-lg font-extrabold text-white">{value}</p>
+                  <p className="text-[10px] text-zinc-400">{label}</p>
+                </div>
+              ))}
+              <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-3 sm:col-span-1">
+                <CalendarDays className="mb-1.5 h-4 w-4 text-amber-300" />
+                <p className="text-sm font-bold text-white">{profile.lastActiveDate ? new Date(`${profile.lastActiveDate}T00:00:00`).toLocaleDateString([], { dateStyle: 'medium' }) : 'Not recorded'}</p>
+                <p className="text-[10px] text-zinc-400">Last active date</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-zinc-300">⭐ {profile.totalPoints} points <span className="mx-1 text-zinc-600">·</span> 🔓 {unlockCredits} variation {unlockCredits === 1 ? 'credit' : 'credits'}</p>
+              <button type="button" onClick={onOpenVariationUnlocks} className="rounded-lg bg-amber-400 px-4 py-2.5 text-xs font-black text-zinc-950 transition hover:bg-amber-300">
+                Unlock Variation
+              </button>
+            </div>
+          </div>
+        </section>
 
         <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {stats.map(({ label, value, icon: Icon }) => (

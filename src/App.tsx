@@ -24,6 +24,8 @@ import { getGrandmasterGameExplanations } from './utils/gameExplainer';
 import { GrandmasterShowcaseHeader } from './components/GrandmasterShowcaseHeader';
 import { OpeningCinematic } from './components/OpeningCinematic';
 import { UserProfileModal } from './components/UserProfileModal';
+import { StreakRewardModal, DailyReward } from './components/StreakRewardModal';
+import { VariationUnlockModal } from './components/VariationUnlockModal';
 import { OnlineChessGameModal } from './components/OnlineChessGameModal';
 import { loadUserProfile, saveUserProfile, UserProfile } from './utils/userProfile';
 import {
@@ -115,6 +117,8 @@ export default function App() {
   const [premiumInitialPlan, setPremiumInitialPlan] = useState<'999' | '699'>('999');
   const [userProfile, setUserProfile] = useState<UserProfile>(() => loadUserProfile());
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(!userProfile.username);
+  const [dailyReward, setDailyReward] = useState<DailyReward | null>(null);
+  const [isVariationUnlocksOpen, setIsVariationUnlocksOpen] = useState(false);
   const [isOnlineChessGameOpen, setIsOnlineChessGameOpen] = useState(false);
   const hasRecordedLoginRef = useRef(false);
   const sessionTickRef = useRef<number | null>(null);
@@ -144,12 +148,38 @@ export default function App() {
   useEffect(() => {
     if (hasRecordedLoginRef.current) return;
     hasRecordedLoginRef.current = true;
-    const loginAt = new Date().toISOString();
+    const now = new Date();
+    const loginAt = now.toISOString();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const previousDate = userProfile.lastActiveDate;
+    const previousMidnight = previousDate ? new Date(`${previousDate}T00:00:00`) : null;
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayGap = previousMidnight && !Number.isNaN(previousMidnight.getTime())
+      ? Math.round((todayMidnight.getTime() - previousMidnight.getTime()) / 86400000)
+      : null;
+    const alreadyRewardedToday = previousDate === localDate;
+    const nextStreak = alreadyRewardedToday
+      ? userProfile.currentStreak
+      : dayGap === 1
+        ? userProfile.currentStreak + 1
+        : 1;
+    const nextPoints = userProfile.totalPoints + (alreadyRewardedToday ? 0 : 4);
     setUserProfile((profile) => ({
       ...profile,
+      currentStreak: nextStreak,
+      longestStreak: Math.max(profile.longestStreak, nextStreak),
+      totalPoints: nextPoints,
+      lastActiveDate: alreadyRewardedToday ? profile.lastActiveDate : localDate,
       lastLoginAt: loginAt,
       loginHistory: [...profile.loginHistory, loginAt].slice(-25),
     }));
+    if (!alreadyRewardedToday) {
+      setDailyReward({
+        streak: nextStreak,
+        totalPoints: nextPoints,
+        milestone: [10, 50, 100, 101].includes(nextStreak),
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -228,14 +258,20 @@ export default function App() {
     setPaidPlanTier(tier);
   }, []);
 
-  const handleLockedVariationClick = useCallback((variation: Variation, _index: number) => {
-    if (isOwner) {
-      setSelectedVariationId(variation.id);
-      return;
-    }
-    setLockedVariationTarget(variation);
-    setIsLockedVariationModalOpen(true);
-  }, [isOwner]);
+  const handleUnlockVariation = useCallback((variationId: string): boolean => {
+    if (userProfile.unlockedVariationIds.includes(variationId) || userProfile.totalPoints < 100) return false;
+    setUserProfile((profile) => {
+      if (profile.unlockedVariationIds.includes(variationId) || profile.totalPoints < 100) return profile;
+      const unlockedVariationIds = [...profile.unlockedVariationIds, variationId];
+      return {
+        ...profile,
+        totalPoints: profile.totalPoints - 100,
+        unlockedVariationIds,
+        totalVariationsUnlocked: unlockedVariationIds.length,
+      };
+    });
+    return true;
+  }, [userProfile.totalPoints, userProfile.unlockedVariationIds]);
 
   const handleProceedToPay999FromVariation = useCallback(() => {
     setIsLockedVariationModalOpen(false);
@@ -271,9 +307,11 @@ export default function App() {
     return currentOpening.variations.findIndex((v) => v.id === currentVariation.id);
   }, [currentOpening, currentVariation]);
 
-  const isCurrentOpeningLocked = isOpeningLocked(currentOpening.id, paidPlanTier, isOwner);
+  const isCurrentOpeningLocked = isOpeningLocked(currentOpening.id, paidPlanTier, isOwner)
+    && !userProfile.unlockedVariationIds.includes(currentVariation.id);
   const isCurrentOpeningRestricted = isOpeningAccessRestricted(currentOpening.id, paidPlanTier, isOwner);
-  const isCurrentVariationLocked = isVariationLocked(currentVariationIndex, paidPlanTier, isOwner, currentOpening.id);
+  const isCurrentVariationLocked = isVariationLocked(currentVariationIndex, paidPlanTier, isOwner, currentOpening.id)
+    && !userProfile.unlockedVariationIds.includes(currentVariation.id);
 
   // Grandmaster games for current variation
   const variationGmGames = useMemo(() => {
@@ -324,6 +362,23 @@ export default function App() {
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
   }, []);
+
+  const handleLockedVariationClick = useCallback((variation: Variation, _index: number) => {
+    if (userProfile.unlockedVariationIds.includes(variation.id)) {
+      handleSelectVariation(variation.id);
+      return;
+    }
+    if (userProfile.totalPoints >= 100) {
+      setIsVariationUnlocksOpen(true);
+      return;
+    }
+    if (isOwner) {
+      setSelectedVariationId(variation.id);
+      return;
+    }
+    setLockedVariationTarget(variation);
+    setIsLockedVariationModalOpen(true);
+  }, [handleSelectVariation, isOwner, userProfile.totalPoints, userProfile.unlockedVariationIds]);
 
   const handleEngineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
     setUserProfile((profile) => ({
@@ -806,6 +861,24 @@ export default function App() {
         avatarDataUrl={userProfile.avatarDataUrl}
         onOpenProfile={() => setIsUserProfileOpen(true)}
       />
+
+      <StreakRewardModal
+        reward={dailyReward}
+        unlockCredits={Math.floor(userProfile.totalPoints / 100)}
+        onClose={() => setDailyReward(null)}
+        onUnlockVariations={() => {
+          setDailyReward(null);
+          setIsVariationUnlocksOpen(true);
+        }}
+      />
+
+      <VariationUnlockModal
+        isOpen={isVariationUnlocksOpen}
+        points={userProfile.totalPoints}
+        unlockedVariationIds={userProfile.unlockedVariationIds}
+        onClose={() => setIsVariationUnlocksOpen(false)}
+        onUnlock={handleUnlockVariation}
+      />
       {translationStatus && (
         <div
           role="status"
@@ -903,6 +976,7 @@ export default function App() {
             onSelectVariation={handleSelectVariation}
             userPlan={paidPlanTier}
             isOwner={isOwner}
+            unlockedVariationIds={userProfile.unlockedVariationIds}
             onLockedVariationClick={handleLockedVariationClick}
           />
 
@@ -1186,6 +1260,7 @@ export default function App() {
         profile={userProfile}
         onClose={() => setIsUserProfileOpen(false)}
         onSave={setUserProfile}
+        onOpenVariationUnlocks={() => setIsVariationUnlocksOpen(true)}
         onStartOnlineGame={() => {
           setIsUserProfileOpen(false);
           setIsOnlineChessGameOpen(true);
