@@ -868,7 +868,6 @@ export default function App() {
         onToggleSound={handleToggleSound}
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenPremium={() => handleOpenPremiumModal(paidPlanTier === '999' ? '999' : '699')}
-        onOpenPractice={() => setIsPracticeOpen(true)}
         onReplayAppTour={() => startOnboarding('tour')}
         onReplayChessBasics={() => startOnboarding('basics')}
         onOpenChatAi={() => setIsChatAiOpen(true)}
@@ -912,17 +911,28 @@ export default function App() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
         {navigationScreen === 'home' && (
-          <section aria-label="Opening library" className="flex min-h-[55vh] flex-col items-center justify-center rounded-3xl border border-zinc-800 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.10),_transparent_62%)] px-5 py-12 text-center">
-            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/25 bg-amber-400/10 text-amber-300 shadow-lg shadow-amber-950/20">
-              <BookOpen className="h-8 w-8" />
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-400">Build your repertoire</p>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Explore Chess Openings</h1>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">Browse the complete library, choose an opening, and study its variations move by move.</p>
-            <button type="button" onClick={() => setNavigationScreen('openings')} className="mt-7 inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-6 py-3.5 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
-              <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
+          <>
+            <section aria-label="Opening library" className="flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08),_transparent_72%)] px-5 py-5 text-center sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6 sm:text-left">
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10 text-amber-300 shadow-lg shadow-amber-950/20">
+                  <BookOpen className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400">Build your repertoire</p>
+                  <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Explore Chess Openings</h1>
+                  <p className="mt-1 max-w-md text-xs leading-relaxed text-zinc-400">Browse the complete library, choose an opening, and study its variations move by move.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setNavigationScreen('openings')} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
+                <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
+              </button>
+            </section>
+            <button type="button" onClick={() => setIsPracticeOpen(true)} className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg">
+              <Cpu className="h-5 w-5 transition-transform group-hover:scale-110" />
+              Practice Mode
+              <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
             </button>
-          </section>
+          </>
         )}
 
         {navigationScreen === 'openings' && (

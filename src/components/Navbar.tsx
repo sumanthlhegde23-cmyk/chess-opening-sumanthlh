@@ -8,7 +8,6 @@ import {
   Sparkles,
   Shield,
   Crown,
-  Cpu,
   Moon,
   Sun,
   MoreVertical,
@@ -37,7 +36,6 @@ interface NavbarProps {
   onToggleSound: () => void;
   onOpenHelp: () => void;
   onOpenPremium: () => void;
-  onOpenPractice: () => void;
   onReplayAppTour: () => void;
   onReplayChessBasics: () => void;
   onOpenChatAi?: () => void;
@@ -62,7 +60,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleSound,
   onOpenHelp,
   onOpenPremium,
-  onOpenPractice,
   onReplayAppTour,
   onReplayChessBasics,
   onOpenChatAi,
@@ -184,20 +181,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="p-1.5 rounded-lg bg-[#181a20] border border-zinc-800 hover:bg-[#20242e] text-zinc-300 transition-colors"
           >
             <HelpCircle className="w-4 h-4 text-zinc-400 hover:text-amber-400" />
-          </button>
-
-          {/* Practice Mode Icon Button (at last with Stockfish Engine Level 18) */}
-          <button
-            id="navbar-practice-mode-btn"
-            onClick={onOpenPractice}
-            title="Practice Mode - Stockfish Engine Level 18 (Board Editor, Opening Explorer, Play Engine)"
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-indigo-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-500/60 hover:border-cyan-400 text-cyan-300 hover:text-cyan-200 text-xs font-bold transition-all shadow-sm shadow-cyan-950/20 group cursor-pointer"
-          >
-            <Cpu className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-            <span className="hidden tracking-tight lg:inline">Practice Mode</span>
-            <span className="hidden px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-cyan-400 text-zinc-950 uppercase tracking-wider xl:inline-flex">
-              Level 18
-            </span>
           </button>
 
           {/* Chat with AI Floating Window Trigger */}
