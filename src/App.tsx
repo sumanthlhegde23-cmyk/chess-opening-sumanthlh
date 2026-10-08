@@ -125,7 +125,15 @@ export default function App() {
   useEffect(() => {
     window.history.replaceState({ chessAppScreen: 'intro' }, '', window.location.href);
     const handlePopState = (event: PopStateEvent) => {
-      setShowOpeningCinematic(event.state?.chessAppScreen !== 'main-menu');
+      if (event.state?.chessAppScreen === 'main-menu') {
+        const screen = event.state.navigationScreen;
+        setNavigationScreen(
+          screen === 'openings' || screen === 'variations' || screen === 'study' ? screen : 'home'
+        );
+        setShowOpeningCinematic(false);
+      } else {
+        setShowOpeningCinematic(true);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -340,6 +348,15 @@ export default function App() {
     return getGrandmasterGameExplanations(activeGmGame, currentVariation);
   }, [activeGmGame, currentVariation]);
 
+  const navigateToScreen = useCallback((screen: 'home' | 'openings' | 'variations' | 'study') => {
+    window.history.pushState(
+      { chessAppScreen: 'main-menu', navigationScreen: screen },
+      '',
+      window.location.href
+    );
+    setNavigationScreen(screen);
+  }, []);
+
   // When opening changes, default to its first variation and reset move index
   const handleSelectOpening = useCallback((openingId: string) => {
     setSelectedOpeningId(openingId);
@@ -358,8 +375,8 @@ export default function App() {
     }
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
-    setNavigationScreen('variations');
-  }, []);
+    navigateToScreen('variations');
+  }, [navigateToScreen]);
 
   // When variation changes, reset move index
   const handleSelectVariation = useCallback((variationId: string) => {
@@ -377,8 +394,8 @@ export default function App() {
 
   const handleOpenVariation = useCallback((variationId: string) => {
     handleSelectVariation(variationId);
-    setNavigationScreen('study');
-  }, [handleSelectVariation]);
+    navigateToScreen('study');
+  }, [handleSelectVariation, navigateToScreen]);
 
   const handleLockedVariationClick = useCallback((variation: Variation, _index: number) => {
     if (userProfile.unlockedVariationIds.includes(variation.id)) {
@@ -836,7 +853,12 @@ export default function App() {
   }, [activeGmGame]);
 
   const handleEnterMainMenu = useCallback(() => {
-    window.history.pushState({ chessAppScreen: 'main-menu' }, '', window.location.href);
+    window.history.pushState(
+      { chessAppScreen: 'main-menu', navigationScreen: 'home' },
+      '',
+      window.location.href
+    );
+    setNavigationScreen('home');
     setShowOpeningCinematic(false);
     if (!localStorage.getItem('chess-openings-onboarding-status')) {
       setOnboardingMode('tour');
@@ -923,7 +945,7 @@ export default function App() {
                   <p className="mt-1 max-w-md text-xs leading-relaxed text-zinc-400">Browse the complete library, choose an opening, and study its variations move by move.</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setNavigationScreen('openings')} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
+              <button type="button" onClick={() => navigateToScreen('openings')} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
                 <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
               </button>
             </section>
@@ -940,7 +962,7 @@ export default function App() {
             openings={openings}
             userPlan={paidPlanTier}
             isOwner={isOwner}
-            onBack={() => setNavigationScreen('home')}
+            onBack={() => navigateToScreen('home')}
             onSelectOpening={handleSelectOpening}
           />
         )}
@@ -953,7 +975,7 @@ export default function App() {
             isOwner={isOwner}
             totalPoints={userProfile.totalPoints}
             unlockedVariationIds={userProfile.unlockedVariationIds}
-            onBack={() => setNavigationScreen('openings')}
+            onBack={() => navigateToScreen('openings')}
             onOpenVariation={handleOpenVariation}
             onLockedVariationClick={handleLockedVariationClick}
           />
@@ -967,9 +989,9 @@ export default function App() {
                 <h1 className="truncate text-lg font-bold text-white">{currentVariation.name}</h1>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setNavigationScreen('variations')} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200"><ArrowLeft className="h-3.5 w-3.5" /> Variations</button>
-                <button type="button" onClick={() => setNavigationScreen('openings')} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200"><BookOpen className="h-3.5 w-3.5" /> All Openings</button>
-                <button type="button" onClick={() => setNavigationScreen('home')} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200">Main</button>
+                <button type="button" onClick={() => navigateToScreen('variations')} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200"><ArrowLeft className="h-3.5 w-3.5" /> Variations</button>
+                <button type="button" onClick={() => navigateToScreen('openings')} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200"><BookOpen className="h-3.5 w-3.5" /> All Openings</button>
+                <button type="button" onClick={() => navigateToScreen('home')} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200 transition hover:border-amber-500/50 hover:text-amber-200">Main</button>
               </div>
             </div>
             {isCurrentOpeningLocked && userProfile.unlockedVariationIds.includes(currentVariation.id) && (
