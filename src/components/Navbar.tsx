@@ -196,15 +196,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          <details ref={languageMenuRef} id="navbar-language-menu" className="relative">
+          <details
+            ref={languageMenuRef}
+            id="navbar-language-menu"
+            className="relative"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && languageMenuRef.current?.open) {
+                languageMenuRef.current.open = false;
+                languageMenuRef.current.querySelector('summary')?.focus();
+                event.preventDefault();
+              }
+            }}
+          >
             <summary
-              aria-label="Settings and language"
+              aria-label="Open settings, language, and learning menu"
+              aria-controls="navbar-language-menu-panel"
               title="Settings and language"
               className="flex list-none cursor-pointer items-center justify-center rounded-lg border border-zinc-800 bg-[#181a20] p-1.5 text-zinc-300 transition-colors hover:bg-[#20242e] [&::-webkit-details-marker]:hidden"
             >
               <MoreVertical className="h-4 w-4" />
             </summary>
-            <div className="absolute left-0 right-auto top-full z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-lg border border-zinc-700 bg-[#181a20] p-1.5 shadow-xl sm:left-auto sm:right-0">
+            <div id="navbar-language-menu-panel" className="absolute left-auto right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-lg border border-zinc-700 bg-[#181a20] p-1.5 shadow-xl">
               <div className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Take Demo</div>
               <div className="grid grid-cols-2 gap-1 px-1 pb-2">
                 <button

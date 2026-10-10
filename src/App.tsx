@@ -119,6 +119,7 @@ export default function App() {
   const [dailyReward, setDailyReward] = useState<DailyReward | null>(null);
   const [isVariationUnlocksOpen, setIsVariationUnlocksOpen] = useState(false);
   const [isOnlineChessGameOpen, setIsOnlineChessGameOpen] = useState(false);
+  const onboardingReturnScreenRef = useRef<'home' | 'openings' | 'variations' | 'study'>('home');
   const hasRecordedLoginRef = useRef(false);
   const sessionTickRef = useRef<number | null>(null);
 
@@ -249,15 +250,17 @@ export default function App() {
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
 
   const startOnboarding = useCallback((mode: 'tour' | 'basics') => {
+    onboardingReturnScreenRef.current = navigationScreen;
     setShowOpeningCinematic(false);
     setIsPracticeOpen(false);
     setOnboardingMode(mode);
-  }, []);
+  }, [navigationScreen]);
 
   const finishOnboarding = useCallback((skipped: boolean) => {
     localStorage.setItem('chess-openings-onboarding-status', skipped ? 'skipped' : 'completed');
     setOnboardingMode(null);
     setIsPracticeOpen(false);
+    setNavigationScreen(onboardingReturnScreenRef.current);
   }, []);
 
   const handleActivateTier = useCallback((tier: PaidPlanTier) => {
@@ -861,6 +864,7 @@ export default function App() {
     setNavigationScreen('home');
     setShowOpeningCinematic(false);
     if (!localStorage.getItem('chess-openings-onboarding-status')) {
+      onboardingReturnScreenRef.current = 'home';
       setOnboardingMode('tour');
     }
   }, []);
@@ -934,7 +938,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
         {navigationScreen === 'home' && (
           <>
-            <section aria-label="Opening library" className="flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08),_transparent_72%)] px-5 py-5 text-center sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6 sm:text-left">
+            <section id="home-opening-library" aria-label="Opening library" className="flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08),_transparent_72%)] px-5 py-5 text-center sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6 sm:text-left">
               <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10 text-amber-300 shadow-lg shadow-amber-950/20">
                   <BookOpen className="h-6 w-6" />
@@ -945,7 +949,7 @@ export default function App() {
                   <p className="mt-1 max-w-md text-xs leading-relaxed text-zinc-400">Browse the complete library, choose an opening, and study its variations move by move.</p>
                 </div>
               </div>
-              <button type="button" onClick={() => navigateToScreen('openings')} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
+              <button id="home-see-all-openings-btn" type="button" onClick={() => navigateToScreen('openings')} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-lg shadow-amber-950/25 transition hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400">
                 <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
               </button>
             </section>
@@ -1225,15 +1229,6 @@ export default function App() {
               }
             />
 
-            {onboardingMode && (
-              <OnboardingExperience
-                initialMode={onboardingMode}
-                language={language}
-                onFinish={finishOnboarding}
-                onOpenPractice={() => setIsPracticeOpen(true)}
-                onClosePractice={() => setIsPracticeOpen(false)}
-              />
-            )}
           </div>
         </section>
         )}
@@ -1307,6 +1302,17 @@ export default function App() {
         initialFen={chatAiInitialFen}
         language={language}
       />
+
+      {onboardingMode && (
+        <OnboardingExperience
+          initialMode={onboardingMode}
+          language={language}
+          onFinish={finishOnboarding}
+          onOpenPractice={() => setIsPracticeOpen(true)}
+          onClosePractice={() => setIsPracticeOpen(false)}
+          onNavigateToScreen={setNavigationScreen}
+        />
+      )}
 
       {/* Floating Trigger Button for "chat with ai" when window is closed */}
       {!isChatAiOpen && (

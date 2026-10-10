@@ -45,7 +45,7 @@ export const AllOpeningsScreen: React.FC<AllOpeningsScreenProps> = ({
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-[#15171e] p-3 sm:flex-row sm:items-center">
         <label className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search openings or ECO codes" className="w-full rounded-xl border border-zinc-700 bg-[#101312] py-2.5 pl-9 pr-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-amber-500" />
+          <input id="all-openings-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search openings or ECO codes" className="w-full rounded-xl border border-zinc-700 bg-[#101312] py-2.5 pl-9 pr-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-amber-500" />
         </label>
         <div className="flex rounded-xl border border-zinc-800 bg-black/20 p-1">
           {(['all', 'white', 'black'] as const).map((filter) => (

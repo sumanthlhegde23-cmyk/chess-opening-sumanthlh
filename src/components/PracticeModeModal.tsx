@@ -1418,7 +1418,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         )}
 
         {/* Modal Top Header */}
-        <div className={`flex shrink-0 items-center justify-between border-b border-zinc-800/80 bg-gradient-to-r from-[#181a24] via-[#141620] to-[#10121a] ${isEngineBoardFullscreen ? 'px-3 py-2' : 'px-5 py-3'}`}>
+        <div id="practice-mode-header" className={`flex shrink-0 items-center justify-between border-b border-zinc-800/80 bg-gradient-to-r from-[#181a24] via-[#141620] to-[#10121a] ${isEngineBoardFullscreen ? 'px-3 py-2' : 'px-5 py-3'}`}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-zinc-950 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-bold">
               <Cpu className="w-5 h-5 text-white" />

@@ -38,12 +38,14 @@ interface OnboardingExperienceProps {
   onFinish: (skipped: boolean) => void;
   onOpenPractice: () => void;
   onClosePractice: () => void;
+  onNavigateToScreen: (screen: 'home' | 'openings' | 'variations' | 'study') => void;
 }
 
 type TourStep = {
   target: string;
   title: string;
   text: string;
+  screen?: 'home' | 'openings' | 'variations' | 'study';
   activate?: string;
   openPractice?: boolean;
   closePractice?: boolean;
@@ -51,54 +53,76 @@ type TourStep = {
 
 const tourSteps: TourStep[] = [
   {
-    target: '#opening-explorer',
+    target: '#home-opening-library',
     title: 'Your chess home',
-    text: 'This is your opening library. Browse both sides, choose a system, then study its plans, variations, and master explanations.',
+    text: 'Start from the opening library to browse both sides, choose a system, and study its plans, variations, and master explanations.',
+    screen: 'home',
   },
   {
-    target: '#tab-all-openings',
-    title: 'Choose a side',
-    text: 'Switch between all openings, White systems, and Black defenses. Search by name or ECO code, or filter by playing style.',
+    target: '#home-see-all-openings-btn',
+    title: 'Browse the repertoire',
+    text: 'Open the library to browse all 32 openings, then narrow the list by side or search for a name or ECO code.',
+    screen: 'home',
   },
   {
-    target: '#opening-card-ruy-lopez',
-    title: 'Explore an opening',
-    text: 'Each card shows its color, classification, ECO range, and available lines. Major systems stay open; premium previews are clearly marked.',
+    target: '#all-openings-title',
+    title: 'Choose an opening',
+    text: 'The opening library shows each system’s side, classification, ECO code, and variation access.',
+    screen: 'openings',
+  },
+  {
+    target: '#all-openings-search',
+    title: 'Find a system',
+    text: 'Search by opening name or ECO code, or filter the library to show White openings or Black defenses.',
+    screen: 'openings',
+  },
+  {
+    target: '#opening-variations-title',
+    title: 'Compare variations',
+    text: 'Each opening branches into different move orders. Choose a line to load its board and move-by-move explanations.',
+    screen: 'variations',
   },
   {
     target: '#variation-selector',
-    title: 'Compare variations',
-    text: 'An opening can branch into many move orders. Pick a variation to load its board, plans, and move-by-move explanations.',
+    title: 'Select a line',
+    text: 'Pick a variation here to open its study board. Locked lines clearly show their access options.',
+    screen: 'variations',
   },
   {
     target: '#chessboard-container',
     title: 'Follow the board',
     text: 'The board updates as you select moves. Use the move controls or arrow keys to step through the line; highlighted squares show the latest move.',
+    screen: 'study',
   },
   {
     target: '#move-explanation-panel',
     title: 'Understand the ideas',
     text: 'Read why each move works, what it threatens, and which mistakes to avoid. You can jump to any move from the explanation panel.',
+    screen: 'study',
   },
   {
     target: '#navbar-board-theme-select',
     title: 'Make the board yours',
     text: 'Choose a board theme here. The board menu also lets you flip orientation; sound and light mode are nearby. Piece styles are not separately configurable yet.',
+    screen: 'study',
   },
   {
     target: '#navbar-flip-board-btn',
     title: 'Change perspective',
     text: 'Flip between White and Black perspective. Choosing a Black opening also turns the board automatically.',
+    screen: 'study',
   },
   {
     target: '#navbar-sound-toggle-btn',
     title: 'Sound and settings',
     text: 'Toggle move sounds here. Language, board appearance, orientation, and color mode are all available from the top bar.',
+    screen: 'study',
   },
   {
-    target: '#navbar-practice-mode-btn',
+    target: '#practice-mode-header',
     title: 'Open Practice Mode',
     text: 'Practice Mode brings together the board editor, opening explorer, Stockfish analysis, engine games, and tactical puzzles.',
+    openPractice: true,
   },
   {
     target: '#tab-btn-board-editor',
@@ -147,6 +171,11 @@ const tourSteps: TourStep[] = [
     target: '#navbar-language-menu summary',
     title: 'Language and replay',
     text: 'Use the three-dot menu to change languages or replay this tour and the Chess Basics lesson whenever you want.',
+  },
+  {
+    target: '#navbar-player-profile-btn',
+    title: 'Your player profile',
+    text: 'Open your profile to update your name and avatar, review your study progress, and access your player features.',
   },
 ];
 
@@ -279,6 +308,7 @@ export function OnboardingExperience({
   onFinish,
   onOpenPractice,
   onClosePractice,
+  onNavigateToScreen,
 }: OnboardingExperienceProps) {
   const [mode, setMode] = useState<OnboardingMode>(initialMode);
   const [tourIndex, setTourIndex] = useState(0);
@@ -337,6 +367,7 @@ export function OnboardingExperience({
   useEffect(() => {
     if (mode !== 'tour') return;
     const step = tourSteps[tourIndex];
+    if (step.screen) onNavigateToScreen(step.screen);
     if (step.closePractice) onClosePractice();
     if (step.openPractice) onOpenPractice();
 
@@ -349,7 +380,7 @@ export function OnboardingExperience({
         const nextTarget = document.querySelector<HTMLElement>(step.target);
         setSpotlight(nextTarget?.getBoundingClientRect() || null);
       });
-    }, step.openPractice || step.activate || step.closePractice ? 240 : 30);
+    }, step.openPractice || step.activate || step.closePractice || step.screen ? 240 : 30);
 
     const update = () => {
       const target = document.querySelector<HTMLElement>(step.target);
@@ -363,7 +394,7 @@ export function OnboardingExperience({
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [mode, onClosePractice, onOpenPractice, tourIndex]);
+  }, [mode, onClosePractice, onNavigateToScreen, onOpenPractice, tourIndex]);
 
   const finish = (skipped: boolean) => {
     stopSpeech();
@@ -377,10 +408,7 @@ export function OnboardingExperience({
       setTourProgress((progress) => progress + 1);
       return;
     }
-    onClosePractice();
-    setSpotlight(null);
-    setMode('basics');
-    setVoiceEnabled(true);
+    finish(false);
   };
 
   const previousTourStep = () => {
@@ -444,7 +472,7 @@ export function OnboardingExperience({
             <div className="onboarding-tour__action-group">
               <button type="button" className="onboarding-icon-button" onClick={() => void speak(tourStep.text, true)} aria-label="Read this step aloud" title="Read this step aloud"><Volume2 size={16} /></button>
               <button type="button" className="onboarding-tour__back" onClick={previousTourStep} disabled={tourIndex === 0}><ChevronLeft size={15} /> Back</button>
-              <button type="button" className="onboarding-tour__next" onClick={nextTourStep}>{tourIndex === tourSteps.length - 1 ? 'Start Chess Basics' : 'Next'} <ChevronRight size={15} /></button>
+              <button type="button" className="onboarding-tour__next" onClick={nextTourStep}>{tourIndex === tourSteps.length - 1 ? 'Finish Tour' : 'Next'} <ChevronRight size={15} /></button>
             </div>
           </div>
         </section>
