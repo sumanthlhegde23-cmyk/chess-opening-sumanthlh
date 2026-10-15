@@ -120,12 +120,22 @@ export default function App() {
   const [isVariationUnlocksOpen, setIsVariationUnlocksOpen] = useState(false);
   const [isOnlineChessGameOpen, setIsOnlineChessGameOpen] = useState(false);
   const onboardingReturnScreenRef = useRef<'home' | 'openings' | 'variations' | 'study'>('home');
+  const practiceExitedProgrammaticallyRef = useRef(false);
   const hasRecordedLoginRef = useRef(false);
   const sessionTickRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Overwrites any history state left over from a previous session (e.g. a practice entry),
+    // so reloading or reopening the app always starts fresh on the default landing screen.
     window.history.replaceState({ chessAppScreen: 'intro' }, '', window.location.href);
     const handlePopState = (event: PopStateEvent) => {
+      // Practice Mode is never restored from history: any history traversal lands on the main window.
+      setIsPracticeOpen(false);
+      if (practiceExitedProgrammaticallyRef.current) {
+        // closePractice() only popped its own practice entry; the screen did not change.
+        practiceExitedProgrammaticallyRef.current = false;
+        return;
+      }
       if (event.state?.chessAppScreen === 'main-menu') {
         const screen = event.state.navigationScreen;
         setNavigationScreen(
@@ -249,17 +259,37 @@ export default function App() {
   const isOwner = userRole === 'owner';
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
 
+  const openPractice = useCallback(() => {
+    if (!window.history.state?.chessAppPractice) {
+      window.history.pushState(
+        { chessAppScreen: 'main-menu', navigationScreen, chessAppPractice: true },
+        '',
+        window.location.href
+      );
+    }
+    setIsPracticeOpen(true);
+  }, [navigationScreen]);
+
+  const closePractice = useCallback(() => {
+    setIsPracticeOpen(false);
+    // Drop the practice history entry so back/forward stay on the main window's stack.
+    if (window.history.state?.chessAppPractice) {
+      practiceExitedProgrammaticallyRef.current = true;
+      window.history.back();
+    }
+  }, []);
+
   const startOnboarding = useCallback((mode: 'tour' | 'basics') => {
     onboardingReturnScreenRef.current = navigationScreen;
     setShowOpeningCinematic(false);
-    setIsPracticeOpen(false);
+    closePractice();
     setOnboardingMode(mode);
-  }, [navigationScreen]);
+  }, [navigationScreen, closePractice]);
 
   const finishOnboarding = useCallback((skipped: boolean) => {
     localStorage.setItem('chess-openings-onboarding-status', skipped ? 'skipped' : 'completed');
     setOnboardingMode(null);
-    setIsPracticeOpen(false);
+    closePractice();
     setNavigationScreen(onboardingReturnScreenRef.current);
   }, []);
 
@@ -953,7 +983,7 @@ export default function App() {
                 <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
               </button>
             </section>
-            <button type="button" onClick={() => setIsPracticeOpen(true)} className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg">
+            <button type="button" onClick={openPractice} className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg">
               <Cpu className="h-5 w-5 transition-transform group-hover:scale-110" />
               Practice Mode
               <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
@@ -1262,7 +1292,7 @@ export default function App() {
       {/* Practice Mode Modal (Stockfish Level 1 to 18 Engine & 200 Puzzles per Variation) */}
       <PracticeModeModal
         isOpen={isPracticeOpen}
-        onClose={() => setIsPracticeOpen(false)}
+        onClose={closePractice}
         boardTheme={boardTheme}
         initialOpeningId={currentOpening?.id}
         initialVariationId={currentVariation?.id}
@@ -1308,8 +1338,8 @@ export default function App() {
           initialMode={onboardingMode}
           language={language}
           onFinish={finishOnboarding}
-          onOpenPractice={() => setIsPracticeOpen(true)}
-          onClosePractice={() => setIsPracticeOpen(false)}
+          onOpenPractice={openPractice}
+          onClosePractice={closePractice}
           onNavigateToScreen={setNavigationScreen}
         />
       )}

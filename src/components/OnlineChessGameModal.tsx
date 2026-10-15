@@ -1,30 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Chess } from 'chess.js';
-import { Copy, Flag, Handshake, LoaderCircle, RotateCcw, Swords, X } from 'lucide-react';
-import { Chessboard } from './Chessboard';
+import { ArrowLeft, Check, Copy, Dices, Eye, EyeOff, LoaderCircle, Swords, TriangleAlert, X } from 'lucide-react';
 import { TimeControlPicker } from './TimeControlPicker';
-import { analyzePositionStockfish18, explainPlayedMove, EngineAnalysisResult, MoveExplanationItem } from '../utils/stockfishService';
-import { formatClock, getTimeControl } from '../types/timeControl';
-
-interface OnlineChessGame {
-  code: string;
-  token?: string;
-  yourColor: 'w' | 'b';
-  opponentName: string | null;
-  hostName: string;
-  guestName: string | null;
-  moves: string[];
-  fen: string;
-  status: 'waiting' | 'playing' | 'finished';
-  currentTurn: 'w' | 'b';
-  drawOfferBy: 'w' | 'b' | null;
-  result: '1-0' | '0-1' | '1/2-1/2' | null;
-  termination: string | null;
-  pgn: string;
-  timeControlId: string;
-  remainingMs: { w: number; b: number } | null;
-  serverNow: number;
-}
+import { OnlineGameBoard } from './OnlineGameBoard';
+import { OnlineGameReview } from './OnlineGameReview';
+import { OnlinePostGameDialog } from './OnlinePostGameDialog';
+import { getTimeControl } from '../types/timeControl';
+import { getOnlineGameOutcome, OnlineChessGame, OnlineGameAction } from '../types/onlineGame';
 
 interface OnlineChessGameModalProps {
   isOpen: boolean;
@@ -39,7 +20,17 @@ interface SavedSession {
   token: string;
 }
 
+type SetupStep = 'time' | 'codes' | 'waiting' | 'playing';
+
+type MatchResponse =
+  | { matchToken?: string; status: 'waiting' }
+  | { matchToken?: string; status: 'mismatch'; opponentTimeControlId: string }
+  | { matchToken?: string; status: 'matched'; game: OnlineChessGame };
+
 const SESSION_KEY = 'chess-openings-online-game';
+const PLAYER_CODE_KEY = 'chess-openings-online-player-code';
+const CODE_PATTERN = /^[A-Z0-9]{4,12}$/;
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 async function readApiResponse<T>(response: Response): Promise<T> {
   const payload = await response.json() as T & { error?: string };
@@ -79,6 +70,52 @@ function loadCompletedGameId(): string | null {
   }
 }
 
+function generateSecretCode(): string {
+  const values = new Uint32Array(6);
+  crypto.getRandomValues(values);
+  return Array.from(values, (value) => CODE_ALPHABET[value % CODE_ALPHABET.length]).join('');
+}
+
+function loadPlayerCode(): string {
+  try {
+    const stored = localStorage.getItem(PLAYER_CODE_KEY);
+    if (stored && CODE_PATTERN.test(stored)) return stored;
+  } catch (error) {
+    console.error('Could not restore the player code.', error);
+  }
+  return generateSecretCode();
+}
+
+function savePlayerCode(code: string): void {
+  try {
+    localStorage.setItem(PLAYER_CODE_KEY, code);
+  } catch (error) {
+    console.error('Could not store the player code.', error);
+  }
+}
+
+const cleanCodeInput = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+
+const STEPS = ['Time control', 'Secret codes', 'Connect'] as const;
+
+const StepHeader: React.FC<{ current: 1 | 2 | 3 }> = ({ current }) => (
+  <ol aria-label="Online game setup steps" className="on-scrim mx-auto mb-3 flex w-full max-w-3xl items-center justify-center gap-2 text-xs font-semibold">
+    {STEPS.map((label, index) => {
+      const number = index + 1;
+      const done = number < current;
+      const active = number === current;
+      return (
+        <li key={label} aria-current={active ? 'step' : undefined} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+          active ? 'border-emerald-400 bg-emerald-500/15 text-emerald-100' : done ? 'border-emerald-500/30 text-emerald-300' : 'border-zinc-700 text-zinc-500'
+        }`}>
+          {done ? <Check className="h-3 w-3" /> : <span>{number}</span>}
+          <span className="hidden sm:inline">{label}</span>
+        </li>
+      );
+    })}
+  </ol>
+);
+
 export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
   isOpen,
   username,
@@ -88,40 +125,49 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
 }) => {
   const [game, setGame] = useState<OnlineChessGame | null>(null);
   const [savedSession, setSavedSession] = useState<SavedSession | null>(() => loadSavedSession());
-  const [gameCode, setGameCode] = useState('');
-  const [isTimeControlPickerOpen, setIsTimeControlPickerOpen] = useState(false);
+  const [step, setStep] = useState<SetupStep>(() => (loadSavedSession() ? 'playing' : 'time'));
+  const [view, setView] = useState<'board' | 'review'>('board');
   const [selectedTimeControlId, setSelectedTimeControlId] = useState('blitz-5-0');
+  const [playerCode, setPlayerCode] = useState(() => loadPlayerCode());
+  const [opponentCode, setOpponentCode] = useState('');
+  const [showOpponentCode, setShowOpponentCode] = useState(false);
+  const [matchToken, setMatchToken] = useState<string | null>(null);
+  const [opponentTimeControlId, setOpponentTimeControlId] = useState<string | null>(null);
   const [displayClock, setDisplayClock] = useState<{ w: number; b: number } | null>(null);
   const [clockReceivedAt, setClockReceivedAt] = useState(Date.now());
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showAnalysisPrompt, setShowAnalysisPrompt] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<EngineAnalysisResult | null>(null);
-  const [moveExplanations, setMoveExplanations] = useState<MoveExplanationItem[]>([]);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const completionRef = useRef<string | null>(loadCompletedGameId());
-  const promptGameRef = useRef<string | null>(null);
+
+  const timeControlLabel = (id: string) => {
+    const control = getTimeControl(id);
+    return control.minutes === null ? 'No time control' : `${control.minutes} min${control.incrementSeconds ? ` + ${control.incrementSeconds}s` : ''}`;
+  };
 
   const applyGame = useCallback((nextGame: OnlineChessGame) => {
-    setGame(nextGame);
     if (!nextGame.token) throw new Error('The game server did not issue a player session token.');
     const session = { code: nextGame.code, token: nextGame.token };
+    setGame(nextGame);
+    setDisplayClock(nextGame.remainingMs);
+    setClockReceivedAt(Date.now());
     setSavedSession(session);
     saveSession(session);
     completionRef.current = null;
-    promptGameRef.current = null;
     try {
       sessionStorage.removeItem(`${SESSION_KEY}:completed`);
-    } catch (error) {
-      console.error('Could not reset online game completion state.', error);
+    } catch (storageError) {
+      console.error('Could not reset online game completion state.', storageError);
     }
+    setView('board');
+    setStep('playing');
+    setMatchToken(null);
+    setNotice(`Opponent verified. You are playing ${nextGame.yourColor === 'w' ? 'White' : 'Black'}.`);
   }, []);
 
   const requestWithToken = useCallback(async <T,>(url: string, method = 'GET', body?: object): Promise<T> => {
-    if (!savedSession) throw new Error('Create a new game or join with a game code.');
+    if (!savedSession) throw new Error('Start a new online game first.');
     const response = await fetch(url, {
       method,
       headers: {
@@ -133,8 +179,44 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     return readApiResponse<T>(response);
   }, [savedSession]);
 
+  const cancelPendingMatch = useCallback((token: string | null) => {
+    if (!token) return;
+    fetch('/api/online-games/match', { method: 'DELETE', headers: { 'x-match-token': token } })
+      .catch((cancelError) => console.error('Could not cancel the pending match.', cancelError));
+  }, []);
+
+  // Poll the server until the opponent enters the mirrored code pair with the same time control.
   useEffect(() => {
-    if (!isOpen || !savedSession) return;
+    if (!isOpen || step !== 'waiting' || !matchToken) return;
+    let cancelled = false;
+    const checkMatch = async () => {
+      try {
+        const response = await fetch('/api/online-games/match/status', { headers: { 'x-match-token': matchToken } });
+        const result = await readApiResponse<MatchResponse>(response);
+        if (cancelled) return;
+        if (result.status === 'matched') {
+          applyGame(result.game);
+        } else {
+          setOpponentTimeControlId(result.status === 'mismatch' ? result.opponentTimeControlId : null);
+        }
+      } catch (requestError) {
+        if (cancelled) return;
+        setMatchToken(null);
+        setStep('codes');
+        setError(requestError instanceof Error ? requestError.message : 'Lost connection while waiting for your opponent.');
+      }
+    };
+    const timer = window.setInterval(() => void checkMatch(), 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isOpen, step, matchToken, applyGame]);
+
+  const isFinished = game?.status === 'finished';
+
+  useEffect(() => {
+    if (!isOpen || !savedSession || isFinished) return;
     let cancelled = false;
     const refreshGame = async () => {
       try {
@@ -155,7 +237,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [isOpen, savedSession, requestWithToken]);
+  }, [isOpen, savedSession, isFinished, requestWithToken]);
 
   useEffect(() => {
     if (!game || game.status !== 'playing' || game.remainingMs === null) return;
@@ -171,80 +253,131 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
   useEffect(() => {
     if (!game || game.status !== 'finished' || !game.result) return;
     const gameId = `${game.code}:${game.moves.length}:${game.result}`;
-    if (promptGameRef.current !== gameId) {
-      promptGameRef.current = gameId;
-      setShowAnalysisPrompt(true);
+    if (completionRef.current === gameId) return;
+    completionRef.current = gameId;
+    try {
+      sessionStorage.setItem(`${SESSION_KEY}:completed`, gameId);
+    } catch (storageError) {
+      console.error('Could not save online game completion state.', storageError);
     }
-    if (completionRef.current !== gameId) {
-      completionRef.current = gameId;
-      try {
-        sessionStorage.setItem(`${SESSION_KEY}:completed`, gameId);
-      } catch (error) {
-        console.error('Could not save online game completion state.', error);
-      }
-      const didWin = (game.result === '1-0' && game.yourColor === 'w') || (game.result === '0-1' && game.yourColor === 'b');
-      onGameCompleted(game.result === '1/2-1/2' ? 'draw' : didWin ? 'win' : 'loss');
-    }
+    const outcome = getOnlineGameOutcome(game);
+    if (outcome) onGameCompleted(outcome);
   }, [game, onGameCompleted]);
 
-  const openTimeControlPicker = () => {
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  const endSession = useCallback(() => {
+    saveSession(null);
+    try {
+      sessionStorage.removeItem(`${SESSION_KEY}:completed`);
+    } catch (storageError) {
+      console.error('Could not clear online game completion state.', storageError);
+    }
+    completionRef.current = null;
+    setSavedSession(null);
+    setGame(null);
+    setDisplayClock(null);
+    setView('board');
+    setMatchToken(null);
+    setOpponentTimeControlId(null);
+    setError(null);
+    setNotice(null);
+  }, []);
+
+  const leaveToMainMenu = () => {
+    cancelPendingMatch(matchToken);
+    endSession();
+    setStep('time');
+    setOpponentCode('');
+    onClose();
+  };
+
+  // Rematch: the same codes and time control pair up automatically when both players choose this.
+  const playAgain = () => {
+    endSession();
+    setStep('time');
+  };
+
+  const startCodeEntry = () => {
     if (!username.trim()) {
-      setError('Set a username in your profile before creating a game.');
+      setError('Set a username in your profile before playing online.');
       return;
     }
     setError(null);
-    setIsTimeControlPickerOpen(true);
+    setStep('codes');
   };
 
-  const createGame = async (timeControlId: string) => {
-    setIsBusy(true);
-    setError(null);
-    setIsTimeControlPickerOpen(false);
+  const regeneratePlayerCode = () => {
+    const code = generateSecretCode();
+    setPlayerCode(code);
+    savePlayerCode(code);
+  };
+
+  const copyPlayerCode = async () => {
     try {
-      const response = await fetch('/api/online-games', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, timeControlId }),
-      });
-      const created = await readApiResponse<OnlineChessGame>(response);
-      if (!created.token) throw new Error('The game server did not issue a player session token.');
-      applyGame(created);
-      setDisplayClock(created.remainingMs);
-      setClockReceivedAt(Date.now());
-      setNotice('Share this code with your opponent. The game begins when they join.');
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not create the game.');
-    } finally {
-      setIsBusy(false);
+      await navigator.clipboard.writeText(playerCode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch (copyError) {
+      console.error('Could not copy the player code.', copyError);
+      setError('Could not copy the code. Select and copy it manually.');
     }
   };
 
-  const joinGame = async (event: React.FormEvent<HTMLFormElement>) => {
+  const verifyAndConnect = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!username.trim()) {
-      setError('Set a username in your profile before joining a game.');
+    if (!CODE_PATTERN.test(playerCode)) {
+      setError('Your code must be 4–12 letters or numbers.');
+      return;
+    }
+    if (!CODE_PATTERN.test(opponentCode)) {
+      setError('Enter your opponent’s secret code (4–12 letters or numbers).');
+      return;
+    }
+    if (playerCode === opponentCode) {
+      setError('Your code and your opponent’s code must be different.');
       return;
     }
     setIsBusy(true);
     setError(null);
+    savePlayerCode(playerCode);
     try {
-      const code = gameCode.trim().toUpperCase();
-      const response = await fetch(`/api/online-games/${encodeURIComponent(code)}/join`, {
+      const response = await fetch('/api/online-games/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username, timeControlId: selectedTimeControlId, playerCode, opponentCode }),
       });
-      const joined = await readApiResponse<OnlineChessGame>(response);
-      if (!joined.token) throw new Error('The game server did not issue a player session token.');
-      applyGame(joined);
-      setDisplayClock(joined.remainingMs);
-      setClockReceivedAt(Date.now());
-      setNotice('Game joined. You are playing Black.');
+      const result = await readApiResponse<MatchResponse>(response);
+      if (result.status === 'matched') {
+        applyGame(result.game);
+      } else {
+        setMatchToken(result.matchToken ?? null);
+        setOpponentTimeControlId(result.status === 'mismatch' ? result.opponentTimeControlId : null);
+        setStep('waiting');
+      }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not join the game.');
+      setError(requestError instanceof Error ? requestError.message : 'Could not connect to your opponent.');
     } finally {
       setIsBusy(false);
     }
+  };
+
+  const editCodes = () => {
+    cancelPendingMatch(matchToken);
+    setMatchToken(null);
+    setOpponentTimeControlId(null);
+    setStep('codes');
+  };
+
+  const changeTimeControl = () => {
+    cancelPendingMatch(matchToken);
+    setMatchToken(null);
+    setOpponentTimeControlId(null);
+    setStep('time');
   };
 
   const sendMove = async (_from: string, _to: string, san: string) => {
@@ -263,9 +396,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     }
   };
 
-  const sendAction = async (action: 'resign' | 'draw-offer' | 'draw-accept' | 'draw-decline' | 'draw-reject') => {
+  const sendAction = async (action: OnlineGameAction) => {
     if (!game || isBusy) return;
-    if (action === 'resign' && !window.confirm('Resign this game?')) return;
     setIsBusy(true);
     setError(null);
     try {
@@ -282,234 +414,141 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     }
   };
 
-  const copyGameCode = async () => {
-    if (!game) return;
-    try {
-      await navigator.clipboard.writeText(game.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch (copyError) {
-      console.error('Could not copy the online game code.', copyError);
-      setError('Could not copy the code. Select and copy it manually.');
-    }
-  };
-
-  const startNewGame = () => {
-    saveSession(null);
-    try {
-      sessionStorage.removeItem(`${SESSION_KEY}:completed`);
-    } catch (storageError) {
-      console.error('Could not clear online game completion state.', storageError);
-    }
-    setSavedSession(null);
-    setGame(null);
-    setGameCode('');
-    setError(null);
-    setNotice(null);
-    setShowAnalysisPrompt(false);
-    setAnalysis(null);
-    setMoveExplanations([]);
-    setAnalysisError(null);
-    setDisplayClock(null);
-    completionRef.current = null;
-    promptGameRef.current = null;
-  };
-
-  const analyzeGame = async () => {
-    if (!game) return;
-    setShowAnalysisPrompt(false);
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-    setAnalysis(null);
-    setMoveExplanations([]);
-    try {
-      const chess = new Chess();
-      const explanations: MoveExplanationItem[] = [];
-      for (const san of game.moves) {
-        const explanation = explainPlayedMove(chess.fen(), san);
-        if (explanation) explanations.push(explanation);
-        chess.move(san);
-      }
-      const result = await analyzePositionStockfish18(chess.fen());
-      setMoveExplanations(explanations);
-      setAnalysis(result);
-    } catch (analysisRequestError) {
-      setAnalysisError(analysisRequestError instanceof Error ? analysisRequestError.message : 'Could not analyze this game.');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   if (!isOpen) return null;
 
-  const isYourTurn = game?.status === 'playing' && game.currentTurn === game.yourColor;
-  const drawOfferedByOpponent = !!game?.drawOfferBy && game.drawOfferBy !== game.yourColor;
-  const resultText = game?.result === '1/2-1/2'
-    ? 'Draw agreed'
-    : game?.result
-      ? ((game.result === '1-0' && game.yourColor === 'w') || (game.result === '0-1' && game.yourColor === 'b'))
-        ? 'You won!'
-        : 'Your opponent won'
-      : '';
-  const gameTimeControl = game ? getTimeControl(game.timeControlId) : null;
-  const shownClock = game?.remainingMs && displayClock
-    ? {
-        ...displayClock,
-        [game.currentTurn]: Math.max(0, displayClock[game.currentTurn]),
-      }
-    : null;
+  if (step === 'playing') {
+    if (!game) {
+      return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" aria-label="Reconnecting to online game" className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#141916] p-6 text-center">
+            <p role="status" className="flex items-center justify-center gap-2 text-sm text-emerald-200"><LoaderCircle className="h-4 w-4 animate-spin" /> Reconnecting to your game…</p>
+            {error && <p role="alert" className="mt-3 text-sm text-rose-300">{error}</p>}
+            <button type="button" onClick={leaveToMainMenu} className="mt-4 rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">Back to main menu</button>
+          </section>
+        </div>
+      );
+    }
+    if (view === 'review' && game.status === 'finished') {
+      return <OnlineGameReview game={game} boardTheme={boardTheme} onMainMenu={leaveToMainMenu} onPlayAgain={playAgain} />;
+    }
+    return (
+      <>
+        <OnlineGameBoard
+          game={game}
+          boardTheme={boardTheme}
+          displayClock={game.remainingMs ? displayClock : null}
+          isBusy={isBusy}
+          notice={notice}
+          error={error}
+          onMove={sendMove}
+          onAction={(action) => void sendAction(action)}
+        />
+        {game.status === 'finished' && (
+          <OnlinePostGameDialog game={game} onReview={() => setView('review')} onMainMenu={leaveToMainMenu} onPlayAgain={playAgain} />
+        )}
+      </>
+    );
+  }
+
+  if (step === 'time') {
+    return (
+      <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 p-3 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-3">
+          <StepHeader current={1} />
+          <p className="on-scrim mx-auto mb-3 max-w-xl text-center text-xs text-zinc-300">Pick the time control for this match. The game only starts if your opponent picks the same one.</p>
+          <TimeControlPicker
+            isOpen
+            inline
+            continueLabel="Next: Secret Codes"
+            selectedTimeControlId={selectedTimeControlId}
+            onSelect={(control) => setSelectedTimeControlId(control.id)}
+            onContinue={startCodeEntry}
+            onClose={leaveToMainMenu}
+            onBack={leaveToMainMenu}
+          />
+          {error && <p role="alert" className="mt-3 text-center text-sm text-rose-300">{error}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  const isMismatch = step === 'waiting' && opponentTimeControlId !== null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" aria-labelledby="online-chess-title" className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-2xl sm:p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm">
+      <section role="dialog" aria-modal="true" aria-labelledby="online-chess-title" className="max-h-[94vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-2xl sm:p-6">
+        <StepHeader current={step === 'codes' ? 2 : 3} />
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-300"><Swords className="h-4 w-4" /> Online two-player chess</p>
-            <h2 id="online-chess-title" className="mt-1 text-xl font-bold text-zinc-100 sm:text-2xl">Play a friend</h2>
-            <p className="mt-1 text-xs text-zinc-400">Connect through a private game code on this app’s server. Bluetooth is not used.</p>
+            <h2 id="online-chess-title" className="mt-1 text-xl font-bold text-zinc-100 sm:text-2xl">{step === 'codes' ? 'Enter both secret codes' : 'Verifying your opponent'}</h2>
+            <p className="mt-1 text-xs text-zinc-400">Time control: <span className="font-semibold text-zinc-200">{timeControlLabel(selectedTimeControlId)}</span></p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close online game" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={leaveToMainMenu} aria-label="Close online game" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><X className="h-5 w-5" /></button>
         </div>
 
-        {!game && (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4">
-              <h3 className="font-bold text-zinc-100">Create a game</h3>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-400">You play White. Share the generated six-character code with your opponent.</p>
-              <button type="button" onClick={openTimeControlPicker} disabled={isBusy} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50">
-                {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />} Create game
+        {step === 'codes' && (
+          <form onSubmit={verifyAndConnect} className="space-y-4">
+            <div>
+              <label htmlFor="online-player-code" className="block text-xs font-semibold text-zinc-300">Your code <span className="font-normal text-zinc-500">— share this with your opponent</span></label>
+              <div className="mt-1.5 flex gap-2">
+                <input id="online-player-code" value={playerCode} onChange={(event) => setPlayerCode(cleanCodeInput(event.target.value))} autoComplete="off" spellCheck={false} maxLength={12} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-[#0e1210] px-3 py-3 font-mono text-lg tracking-[0.2em] text-zinc-100 outline-none focus:border-emerald-400" />
+                <button type="button" onClick={regeneratePlayerCode} aria-label="Generate a new code" title="Generate a new code" className="rounded-lg border border-zinc-700 px-3 text-zinc-300 hover:bg-zinc-800"><Dices className="h-5 w-5" /></button>
+                <button type="button" onClick={() => void copyPlayerCode()} aria-label="Copy your code" title="Copy your code" className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 text-amber-200 hover:bg-amber-500/20">{copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}</button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="online-opponent-code" className="block text-xs font-semibold text-zinc-300">Opponent’s secret code <span className="font-normal text-zinc-500">— the code they share with you</span></label>
+              <div className="mt-1.5 flex gap-2">
+                <input id="online-opponent-code" type={showOpponentCode ? 'text' : 'password'} value={opponentCode} onChange={(event) => setOpponentCode(cleanCodeInput(event.target.value))} autoComplete="off" spellCheck={false} maxLength={12} placeholder="e.g. K7M2QX" className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-[#0e1210] px-3 py-3 font-mono text-lg tracking-[0.2em] text-zinc-100 outline-none focus:border-emerald-400" />
+                <button type="button" onClick={() => setShowOpponentCode((value) => !value)} aria-label={showOpponentCode ? 'Hide opponent code' : 'Show opponent code'} className="rounded-lg border border-zinc-700 px-3 text-zinc-300 hover:bg-zinc-800">{showOpponentCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+              </div>
+            </div>
+
+            <p className="text-xs leading-relaxed text-zinc-500">Your opponent enters your code as their opponent’s code, and yours is what you type above. Want a rematch? Use the same codes and time control again.</p>
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+              <button type="button" onClick={() => setStep('time')} className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"><ArrowLeft className="h-4 w-4" /> Time control</button>
+              <button type="submit" disabled={isBusy || playerCode.length < 4 || opponentCode.length < 4} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 text-sm font-extrabold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50">
+                {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />} Verify &amp; start game
               </button>
             </div>
-            <form onSubmit={joinGame} className="rounded-xl border border-zinc-800 bg-black/20 p-4">
-              <h3 className="font-bold text-zinc-100">Join a game</h3>
-              <label htmlFor="online-game-code" className="mt-3 block text-xs font-semibold text-zinc-300">Opponent’s game code</label>
-              <input id="online-game-code" value={gameCode} onChange={(event) => setGameCode(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 6))} maxLength={6} placeholder="e.g. 7C2A91" className="mt-1.5 w-full rounded-lg border border-zinc-700 bg-[#0e1210] px-3 py-3 font-mono text-lg tracking-[0.2em] text-zinc-100 outline-none focus:border-emerald-400" />
-              <button type="submit" disabled={isBusy || gameCode.length !== 6} className="mt-3 w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">Join as Black</button>
-            </form>
-          </div>
+          </form>
         )}
 
-        {game && (
+        {step === 'waiting' && (
           <div className="space-y-4">
-            <div className="flex flex-col justify-between gap-3 rounded-xl border border-zinc-800 bg-black/20 p-3 sm:flex-row sm:items-center">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{game.status === 'waiting' ? 'Waiting for opponent' : game.status === 'finished' ? 'Game finished' : isYourTurn ? 'Your turn' : 'Opponent’s turn'}</p>
-                <p className="mt-1 text-sm font-bold text-zinc-100">{game.hostName} (White) <span className="font-normal text-zinc-500">vs</span> {game.guestName || 'Waiting…'} (Black)</p>
-                {gameTimeControl && <p className="mt-1 text-[11px] text-zinc-500">{gameTimeControl.label === 'Unlimited' ? 'No Time Control' : `${gameTimeControl.label} · ${gameTimeControl.minutes} min${gameTimeControl.incrementSeconds ? ` + ${gameTimeControl.incrementSeconds}s` : ''}`}</p>}
+            <dl className="grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-lg border border-zinc-800 bg-black/25 p-2.5">
+                <dt className="text-[11px] uppercase tracking-wider text-zinc-500">Your code</dt>
+                <dd className="mt-1 font-mono text-base font-bold tracking-widest text-zinc-100">{playerCode}</dd>
               </div>
-              {game.status === 'waiting' && (
-                <button type="button" onClick={copyGameCode} className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 font-mono text-lg font-bold tracking-widest text-amber-200">
-                  {game.code}<Copy className="h-4 w-4" />
-                  <span className="font-sans text-xs tracking-normal">{copied ? 'Copied' : 'Copy code'}</span>
-                </button>
-              )}
-              {game.status !== 'waiting' && <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-semibold text-zinc-300">You are {game.yourColor === 'w' ? 'White' : 'Black'}</span>}
-            </div>
-
-            {shownClock && (
-              <div className="mx-auto grid w-full max-w-[min(78vh,620px)] grid-cols-2 gap-2">
-                {(['b', 'w'] as const).map((color) => (
-                  <div key={color} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
-                    game.currentTurn === color && game.status === 'playing'
-                      ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
-                      : 'border-zinc-800 bg-black/20 text-zinc-300'
-                  }`}>
-                    <span className="text-xs font-semibold">{color === game.yourColor ? 'You' : game.status === 'waiting' ? (color === 'w' ? game.hostName : 'Opponent') : game.opponentName} ({color === 'w' ? 'White' : 'Black'})</span>
-                    <span className="font-mono text-xl font-extrabold tabular-nums">{formatClock(shownClock[color])}</span>
-                  </div>
-                ))}
+              <div className="rounded-lg border border-zinc-800 bg-black/25 p-2.5">
+                <dt className="text-[11px] uppercase tracking-wider text-zinc-500">Opponent’s code</dt>
+                <dd className="mt-1 font-mono text-base font-bold tracking-widest text-zinc-100">{opponentCode}</dd>
               </div>
+            </dl>
+
+            {isMismatch ? (
+              <div role="alert" className="rounded-xl border border-amber-400/40 bg-amber-950/30 p-4">
+                <p className="flex items-center gap-2 text-sm font-bold text-amber-100"><TriangleAlert className="h-4 w-4" /> Time controls don’t match</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-100/80">You chose <strong>{timeControlLabel(selectedTimeControlId)}</strong> but your opponent chose <strong>{timeControlLabel(opponentTimeControlId!)}</strong>. Both players must pick the same one before the game can start.</p>
+                <button type="button" onClick={changeTimeControl} className="mt-3 w-full rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-amber-400">Change my time control</button>
+              </div>
+            ) : (
+              <p role="status" className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4 text-sm text-emerald-100"><LoaderCircle className="h-4 w-4 animate-spin" /> Waiting for your opponent to enter your code…</p>
             )}
 
-            <div className="mx-auto w-full max-w-[min(78vh,620px)]">
-              <Chessboard
-                fen={game.fen}
-                flipped={game.yourColor === 'b'}
-                theme={boardTheme}
-                interactive={!!isYourTurn && !isBusy}
-                onMoveAttempt={sendMove}
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-2 border-t border-zinc-800 pt-4">
-              {game.status === 'playing' && (
-                <>
-                  {drawOfferedByOpponent ? (
-                    <>
-                      <span className="w-full text-center text-sm text-amber-200">Your opponent offers a draw.</span>
-                      <button type="button" disabled={isBusy} onClick={() => void sendAction('draw-accept')} className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 disabled:opacity-50"><Handshake className="h-4 w-4" /> Accept draw</button>
-                      <button type="button" disabled={isBusy} onClick={() => void sendAction('draw-reject')} className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-50">Decline draw</button>
-                    </>
-                  ) : game.drawOfferBy === game.yourColor ? (
-                    <button type="button" disabled={isBusy} onClick={() => void sendAction('draw-decline')} className="rounded-lg border border-amber-500/40 px-4 py-2.5 text-sm font-semibold text-amber-200 disabled:opacity-50">Draw offered · Cancel offer</button>
-                  ) : (
-                    <button type="button" disabled={isBusy} onClick={() => void sendAction('draw-offer')} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 px-4 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-500/10 disabled:opacity-50"><Handshake className="h-4 w-4" /> Offer draw</button>
-                  )}
-                  <button type="button" disabled={isBusy} onClick={() => void sendAction('resign')} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/35 px-4 py-2.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"><Flag className="h-4 w-4" /> Resign</button>
-                </>
-              )}
-              {game.status === 'finished' && (
-                <div className="w-full rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4 text-center">
-                  <h3 className="text-lg font-bold text-zinc-100">{resultText}</h3>
-                  <p className="mt-1 text-xs text-zinc-400">{game.termination} · {game.pgn || 'No moves played'}</p>
-                  {showAnalysisPrompt && (
-                    <div className="mt-4 flex flex-col items-center gap-2">
-                      <p className="text-sm text-zinc-200">Would you like to analyze the game?</p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        <button type="button" onClick={() => void analyzeGame()} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-950 hover:bg-emerald-400">Analyze game</button>
-                        <button type="button" onClick={() => setShowAnalysisPrompt(false)} className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">Not now</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {isAnalyzing && <p role="status" className="flex items-center justify-center gap-2 text-sm text-emerald-200"><LoaderCircle className="h-4 w-4 animate-spin" /> Analyzing the final position…</p>}
-            {analysisError && <p role="alert" className="text-center text-sm text-rose-300">{analysisError}</p>}
-            {analysis && (
-              <section className="space-y-3 rounded-xl border border-zinc-800 bg-black/20 p-4">
-                <div>
-                  <h3 className="font-bold text-zinc-100">Game analysis</h3>
-                  <p className="mt-1 text-sm text-emerald-200">Final evaluation: {analysis.evalScore}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-300">{analysis.thoroughAssessment.overallSummary}</p>
-                  <p className="mt-1 text-xs text-zinc-400">Suggested continuation: {analysis.pv.slice(0, 8).join(' ') || 'No moves available'}</p>
-                </div>
-                <details>
-                  <summary className="cursor-pointer text-sm font-semibold text-amber-200">Review move-by-move ideas ({moveExplanations.length} moves)</summary>
-                  <ol className="mt-2 max-h-64 space-y-2 overflow-y-auto">
-                    {moveExplanations.map((move) => (
-                      <li key={move.ply} className="rounded-lg border border-zinc-800 bg-[#111512] p-2.5 text-xs">
-                        <p className="font-mono font-bold text-amber-200">{move.moveNumber}{move.color === 'Black' ? '...' : '.'} {move.san} <span className="font-sans text-zinc-400">· {move.tacticalConcept}</span></p>
-                        <p className="mt-1 leading-relaxed text-zinc-300">{move.explanation}</p>
-                      </li>
-                    ))}
-                  </ol>
-                </details>
-              </section>
-            )}
-
-            {game.status === 'finished' && (
-              <button type="button" onClick={startNewGame} className="mx-auto flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">
-                <RotateCcw className="h-4 w-4" /> New online game
-              </button>
-            )}
+            <button type="button" onClick={editCodes} className="w-full rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">Edit codes</button>
           </div>
         )}
 
-        {notice && <p role="status" className="mt-4 text-center text-sm text-emerald-200">{notice}</p>}
         {error && <p role="alert" className="mt-4 text-center text-sm text-rose-300">{error}</p>}
         <p className="mt-5 border-t border-zinc-800 pt-3 text-center text-[11px] leading-relaxed text-zinc-500">
-          Game codes and match data are held temporarily by this app server. Both devices must be online and connected to the same app server.
+          Codes and match data are held temporarily by this app server. Both devices must be online and connected to the same app server.
         </p>
       </section>
-      <TimeControlPicker
-        isOpen={isTimeControlPickerOpen}
-        selectedTimeControlId={selectedTimeControlId}
-        onSelect={(control) => setSelectedTimeControlId(control.id)}
-        onContinue={(control) => void createGame(control.id)}
-        onClose={() => setIsTimeControlPickerOpen(false)}
-      />
     </div>
   );
 };

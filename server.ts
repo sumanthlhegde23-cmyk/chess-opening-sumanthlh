@@ -256,30 +256,65 @@ function findOnlineChessPlayer(req: express.Request, res: express.Response): { r
   return { room, color: token === room.hostToken ? 'w' : 'b' };
 }
 
-app.post('/api/online-games', (req, res) => {
-  cleanOnlineChessRooms();
-  const username = typeof req.body?.username === 'string' ? req.body.username.trim().slice(0, 32) : '';
-  if (!username) {
-    res.status(400).json({ error: 'Save a username in your profile before creating an online game.' });
-    return;
-  }
-  const timeControl = getTimeControl(typeof req.body?.timeControlId === 'string' ? req.body.timeControlId : undefined);
+interface OnlineMatchEntry {
+  token: string;
+  username: string;
+  timeControlId: string;
+  playerCode: string;
+  opponentCode: string;
+  gameCode: string | null;
+  updatedAt: number;
+}
 
+// Keyed by `${playerCode}>${opponentCode}`. Two players pair up when their entries mirror each other.
+const onlineMatchEntries = new Map<string, OnlineMatchEntry>();
+const ONLINE_MATCH_LIFETIME_MS = 15 * 60_000;
+const ONLINE_SECRET_CODE_PATTERN = /^[A-Z0-9]{4,12}$/;
+
+function cleanOnlineMatchEntries(): void {
+  const now = Date.now();
+  for (const [key, entry] of onlineMatchEntries) {
+    if (now - entry.updatedAt > ONLINE_MATCH_LIFETIME_MS) onlineMatchEntries.delete(key);
+  }
+}
+
+function findOnlineMatchEntry(token: string | undefined): [string, OnlineMatchEntry] | null {
+  if (!token) return null;
+  for (const item of onlineMatchEntries) {
+    if (item[1].token === token) return item;
+  }
+  return null;
+}
+
+function describeOnlineMatch(entry: OnlineMatchEntry) {
+  if (entry.gameCode) {
+    const room = onlineChessRooms.get(entry.gameCode);
+    if (room) return { status: 'matched' as const, game: { ...getOnlineChessState(room, entry.token), token: entry.token } };
+  }
+  const counterpart = onlineMatchEntries.get(`${entry.opponentCode}>${entry.playerCode}`);
+  if (counterpart && !counterpart.gameCode && counterpart.timeControlId !== entry.timeControlId) {
+    return { status: 'mismatch' as const, opponentTimeControlId: counterpart.timeControlId };
+  }
+  return { status: 'waiting' as const };
+}
+
+function startOnlineMatch(first: OnlineMatchEntry, second: OnlineMatchEntry): void {
   let code = '';
   do {
     code = randomBytes(4).toString('hex').slice(0, 6).toUpperCase();
   } while (onlineChessRooms.has(code));
-  const token = randomBytes(32).toString('hex');
+  const [white, black] = Math.random() < 0.5 ? [first, second] : [second, first];
+  const timeControl = getTimeControl(first.timeControlId);
   const now = Date.now();
-  const room: OnlineChessRoom = {
+  onlineChessRooms.set(code, {
     code,
-    hostToken: token,
-    guestToken: null,
-    hostName: username,
-    guestName: null,
+    hostToken: white.token,
+    guestToken: black.token,
+    hostName: white.username,
+    guestName: black.username,
     moves: [],
     fen: ONLINE_GAME_START_FEN,
-    status: 'waiting',
+    status: 'playing',
     drawOfferBy: null,
     result: null,
     termination: null,
@@ -287,42 +322,75 @@ app.post('/api/online-games', (req, res) => {
     remainingMs: timeControl.minutes === null
       ? null
       : { w: timeControl.minutes * 60_000, b: timeControl.minutes * 60_000 },
-    turnStartedAt: null,
+    turnStartedAt: timeControl.minutes === null ? null : now,
     createdAt: now,
     updatedAt: now,
+  });
+  first.gameCode = code;
+  second.gameCode = code;
+}
+
+// A player submits their own code plus their opponent's secret code. The match starts only when
+// the opponent has submitted the mirrored pair with the same time control.
+app.post('/api/online-games/match', (req, res) => {
+  cleanOnlineChessRooms();
+  cleanOnlineMatchEntries();
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim().slice(0, 32) : '';
+  const playerCode = typeof req.body?.playerCode === 'string' ? req.body.playerCode.trim().toUpperCase() : '';
+  const opponentCode = typeof req.body?.opponentCode === 'string' ? req.body.opponentCode.trim().toUpperCase() : '';
+  const requestedTimeControl = typeof req.body?.timeControlId === 'string' ? req.body.timeControlId : '';
+  if (!username) {
+    res.status(400).json({ error: 'Save a username in your profile before playing online.' });
+    return;
+  }
+  if (!ONLINE_SECRET_CODE_PATTERN.test(playerCode) || !ONLINE_SECRET_CODE_PATTERN.test(opponentCode)) {
+    res.status(400).json({ error: 'Codes must be 4–12 letters or numbers.' });
+    return;
+  }
+  if (playerCode === opponentCode) {
+    res.status(400).json({ error: 'Your code and your opponent’s code must be different.' });
+    return;
+  }
+  const timeControl = getTimeControl(requestedTimeControl);
+  if (timeControl.id !== requestedTimeControl) {
+    res.status(400).json({ error: 'Choose a valid time control.' });
+    return;
+  }
+
+  const entry: OnlineMatchEntry = {
+    token: randomBytes(32).toString('hex'),
+    username,
+    timeControlId: timeControl.id,
+    playerCode,
+    opponentCode,
+    gameCode: null,
+    updatedAt: Date.now(),
   };
-  onlineChessRooms.set(code, room);
-  res.status(201).json({ ...getOnlineChessState(room, token), token });
+  const slot = `${playerCode}>${opponentCode}`;
+  onlineMatchEntries.set(slot, entry);
+  const counterpart = onlineMatchEntries.get(`${opponentCode}>${playerCode}`);
+  if (counterpart && !counterpart.gameCode && counterpart.timeControlId === entry.timeControlId) {
+    startOnlineMatch(counterpart, entry);
+  }
+  res.status(201).json({ matchToken: entry.token, ...describeOnlineMatch(entry) });
 });
 
-app.post('/api/online-games/:code/join', (req, res) => {
-  cleanOnlineChessRooms();
-  const code = String(req.params.code || '').toUpperCase();
-  const room = onlineChessRooms.get(code);
-  const username = typeof req.body?.username === 'string' ? req.body.username.trim().slice(0, 32) : '';
-  if (!/^[A-F0-9]{6}$/.test(code)) {
-    res.status(400).json({ error: 'Enter the six-character game code.' });
+app.get('/api/online-games/match/status', (req, res) => {
+  cleanOnlineMatchEntries();
+  const found = findOnlineMatchEntry(req.header('x-match-token'));
+  if (!found) {
+    res.status(404).json({ error: 'This match request expired. Start again.' });
     return;
   }
-  if (!username) {
-    res.status(400).json({ error: 'Save a username in your profile before joining an online game.' });
-    return;
-  }
-  if (!room) {
-    res.status(404).json({ error: 'Game not found. Check the code and try again.' });
-    return;
-  }
-  if (room.status !== 'waiting' || room.guestToken) {
-    res.status(409).json({ error: 'This game has already started or is full.' });
-    return;
-  }
-  const token = randomBytes(32).toString('hex');
-  room.guestToken = token;
-  room.guestName = username;
-  room.status = 'playing';
-  room.turnStartedAt = Date.now();
-  room.updatedAt = Date.now();
-  res.status(200).json({ ...getOnlineChessState(room, token), token });
+  found[1].updatedAt = Date.now();
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(describeOnlineMatch(found[1]));
+});
+
+app.delete('/api/online-games/match', (req, res) => {
+  const found = findOnlineMatchEntry(req.header('x-match-token'));
+  if (found && !found[1].gameCode) onlineMatchEntries.delete(found[0]);
+  res.status(204).end();
 });
 
 app.get('/api/online-games/:code', (req, res) => {

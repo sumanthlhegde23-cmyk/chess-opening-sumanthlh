@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Clock3, Infinity, Swords, X } from 'lucide-react';
+import { ArrowLeft, Check, Clock3, Infinity, Swords, X } from 'lucide-react';
 import { TIME_CONTROLS, TimeControl } from '../types/timeControl';
 
 interface TimeControlPickerProps {
@@ -8,6 +8,12 @@ interface TimeControlPickerProps {
   onSelect: (timeControl: TimeControl) => void;
   onContinue: (timeControl: TimeControl) => void;
   onClose: () => void;
+  /** Render as an in-page wizard step instead of a modal overlay. */
+  inline?: boolean;
+  /** Inline mode only: go back to the previous wizard step. */
+  onBack?: () => void;
+  /** Overrides the continue button text (defaults to the mode's usual label). */
+  continueLabel?: string;
 }
 
 export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
@@ -16,19 +22,27 @@ export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
   onSelect,
   onContinue,
   onClose,
+  inline = false,
+  onBack,
+  continueLabel,
 }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" aria-labelledby="time-control-title" className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-2xl sm:p-6">
+  const panel = (
+      <section
+        {...(inline ? {} : { role: 'dialog', 'aria-modal': true })}
+        aria-labelledby="time-control-title"
+        className={inline
+          ? 'mx-auto w-full max-w-3xl animate-fadeIn rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-xl sm:p-6'
+          : 'max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-2xl sm:p-6'}
+      >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-300"><Swords className="h-4 w-4" /> Set the pace</p>
             <h2 id="time-control-title" className="mt-1 text-2xl font-bold text-zinc-100">Choose Time Control</h2>
             <p className="mt-1 text-sm text-zinc-400">Select the clocks for both players. You can change this for every new game.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close time control selection" className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"><X className="h-5 w-5" /></button>
+          {!inline && <button type="button" onClick={onClose} aria-label="Close time control selection" className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"><X className="h-5 w-5" /></button>}
         </div>
 
         <div className="space-y-4">
@@ -73,7 +87,14 @@ export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
         </div>
 
         <div className="mt-5 flex flex-col-reverse justify-between gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:items-center">
-          <p className="flex items-center gap-2 text-xs text-zinc-400"><Clock3 className="h-4 w-4 text-emerald-300" /> Increment is added to the mover’s clock after each legal move.</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            {inline && onBack && (
+              <button type="button" onClick={onBack} className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-zinc-800">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+            )}
+            <p className="flex items-center gap-2 text-xs text-zinc-400"><Clock3 className="h-4 w-4 shrink-0 text-emerald-300" /> Increment is added to the mover’s clock after each legal move.</p>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -82,10 +103,17 @@ export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
             }}
             className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-extrabold text-zinc-950 transition-colors hover:bg-emerald-400"
           >
-            Continue
+            {continueLabel ?? (inline ? 'Next: Engine Level' : 'Continue')}
           </button>
         </div>
       </section>
+  );
+
+  if (inline) return panel;
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
+      {panel}
     </div>
   );
 };
