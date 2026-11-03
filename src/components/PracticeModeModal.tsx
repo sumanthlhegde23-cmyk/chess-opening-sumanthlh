@@ -62,7 +62,7 @@ import {
 } from '../utils/openingIdentifier';
 import { OpeningPuzzlesSection } from './OpeningPuzzlesSection';
 import { TimeControlPicker } from './TimeControlPicker';
-import { formatClock, TimeControl } from '../types/timeControl';
+import { formatClock, TIME_CONTROLS, TimeControl } from '../types/timeControl';
 
 interface PracticeModeModalProps {
   isOpen: boolean;
@@ -75,6 +75,7 @@ interface PracticeModeModalProps {
 }
 
 type PracticeTab = 'editor' | 'explorer' | 'play_engine' | 'puzzles';
+type PracticeSetupStage = 'entry' | 'time-control' | 'engine-level' | 'playing';
 type EngineGameMove = { san: string; from: string; to: string };
 type PuzzleMoveFeedback = { from: Square; to: Square; result: 'correct' | 'wrong' };
 type CompletedGameReview = {
@@ -159,6 +160,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 }) => {
   // Current active sub-mode (starts in editor with playable board)
   const [activeTab, setActiveTab] = useState<PracticeTab>('editor');
+  const [practiceSetupStage, setPracticeSetupStage] = useState<PracticeSetupStage>('entry');
   const [isEngineBoardFullscreen, setIsEngineBoardFullscreen] = useState(false);
   const [puzzleMoveFeedback, setPuzzleMoveFeedback] = useState<PuzzleMoveFeedback | null>(null);
   const [isPuzzleInteractionLocked, setIsPuzzleInteractionLocked] = useState(false);
@@ -387,7 +389,15 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       setExplorerMoveHistory([]);
       setExplorerFenHistory([START_FEN]);
     } else if (tab === 'play_engine') {
-      openEngineTimePicker(playerColor);
+      setPracticeSetupStage('entry');
+      setEngineGameStarted(false);
+      setEngineClock(null);
+      engineClockRef.current = null;
+      setIsTimeControlPickerOpen(false);
+      setSelectedEngineTimeControlId('blitz-5-0');
+      setEngineTimeControl(null);
+      setBoardFen(START_FEN);
+      setCustomFenInput(START_FEN);
     } else if (tab === 'editor') {
       setSelectedTool('move'); // Board is playable by default!
     } else if (tab === 'puzzles') {
@@ -1195,15 +1205,29 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // ----------------------------------------------------
   const openEngineTimePicker = (color: Color) => {
     setPlayerColor(color);
+    setPracticeSetupStage('time-control');
     setEngineGameStarted(false);
     setEngineClock(null);
     engineClockRef.current = null;
     setIsTimeControlPickerOpen(true);
   };
 
+  const handlePracticeTimeControlSelect = useCallback((timeControl: TimeControl) => {
+    setSelectedEngineTimeControlId(timeControl.id);
+    setEngineTimeControl(timeControl);
+    setPracticeSetupStage('engine-level');
+    setIsTimeControlPickerOpen(false);
+  }, []);
+
+  const handlePracticeTimeControlBack = () => {
+    setPracticeSetupStage('time-control');
+    setIsTimeControlPickerOpen(true);
+  };
+
   const startNewEngineGame = useCallback((color: Color, timeControl: TimeControl) => {
     void prepareStockfish().catch(() => undefined);
     const chess = new Chess(START_FEN);
+    setPracticeSetupStage('playing');
     setEngineTimeControl(timeControl);
     setSelectedEngineTimeControlId(timeControl.id);
     setIsTimeControlPickerOpen(false);
