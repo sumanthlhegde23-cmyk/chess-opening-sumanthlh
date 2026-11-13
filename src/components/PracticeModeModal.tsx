@@ -1234,6 +1234,23 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     }
   }, [isOpen]);
 
+  // On unmount, clear any practice-related storage to guarantee a clean state on next load
+  useEffect(() => {
+    return () => {
+      const practiceKeys = [
+        'chess-openings-practice-state',
+        'chess-openings-practice-active',
+        'practice-mode-state',
+        'practice-mode-subview',
+        'practice-active-session',
+      ];
+      practiceKeys.forEach((key) => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+    };
+  }, []);
+
   const startNewEngineGame = useCallback((color: Color, timeControl: TimeControl) => {
     void prepareStockfish().catch(() => undefined);
     const chess = new Chess(START_FEN);
@@ -1520,6 +1537,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 <Repeat className="w-4 h-4 text-cyan-400" />
               </button>
             )}
+            {/* In-app explicit Back to Home button — always visible for clear UX */}
+            <button
+              id="btn-practice-back-to-home"
+              onClick={onClose}
+              title="Back to Home"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white bg-[#1a1d27] hover:bg-zinc-700 border border-zinc-700 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Home</span>
+            </button>
             <button
               id="btn-close-practice-modal"
               onClick={onClose}

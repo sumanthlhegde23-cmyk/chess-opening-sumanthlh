@@ -121,33 +121,65 @@ export default function App() {
   const [isOnlineChessGameOpen, setIsOnlineChessGameOpen] = useState(false);
   const onboardingReturnScreenRef = useRef<'home' | 'openings' | 'variations' | 'study'>('home');
   const practiceExitedProgrammaticallyRef = useRef(false);
+  const isPracticeOpenRef = useRef(false);
   const sessionTickRef = useRef<number | null>(null);
-  const practiceStateStorageKey = 'chess-openings-practice-state';
+
+  // Keys that may hold any practice-session state across reloads — always cleared on mount and exit
+  const PRACTICE_STORAGE_KEYS = [
+    'chess-openings-practice-state',
+    'chess-openings-practice-active',
+    'practice-mode-state',
+    'practice-mode-subview',
+    'practice-active-session',
+  ];
+
+  const clearPracticeStateStorage = () => {
+    PRACTICE_STORAGE_KEYS.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+  };
 
   useEffect(() => {
-    localStorage.removeItem(practiceStateStorageKey);
+    // On every cold mount/reload, wipe any stale practice state and ensure we land on home
+    clearPracticeStateStorage();
     setIsPracticeOpen(false);
-    window.history.replaceState({ chessAppScreen: 'home', navigationScreen: 'home' }, '', window.location.href);
-    const handlePopState = (event: PopStateEvent) => {
-      const state = event.state as { chessAppPractice?: boolean; chessAppScreen?: string; navigationScreen?: 'home' | 'openings' | 'variations' | 'study' } | null;
-      setIsPracticeOpen(false);
-      localStorage.removeItem(practiceStateStorageKey);
+    isPracticeOpenRef.current = false;
 
+    // Strip any leftover #practice hash and lock the initial history entry to home
+    const cleanUrl = window.location.href.replace(/#practice\b/g, '');
+    window.history.replaceState({ chessAppScreen: 'home', navigationScreen: 'home' }, '', cleanUrl);
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as {
+        chessAppPractice?: boolean;
+        chessAppScreen?: string;
+        navigationScreen?: 'home' | 'openings' | 'variations' | 'study';
+      } | null;
+
+      // If the user is currently inside Practice Mode and presses back, always close
+      // practice and land on home — never restore a mid-practice history entry.
+      if (isPracticeOpenRef.current) {
+        isPracticeOpenRef.current = false;
+        setIsPracticeOpen(false);
+        clearPracticeStateStorage();
+        // Strip #practice from whatever URL the history entry has
+        const url = (event.state as { url?: string } | null)?.url ?? window.location.href;
+        const cleanedUrl = url.replace(/#practice\b/g, '');
+        window.history.replaceState({ chessAppScreen: 'home', navigationScreen: 'home' }, '', cleanedUrl);
+        setNavigationScreen('home');
+        setShowOpeningCinematic(false);
+        return;
+      }
+
+      // Skip the synthetic popstate fired right after programmatic history.back() in closePractice
       if (practiceExitedProgrammaticallyRef.current) {
         practiceExitedProgrammaticallyRef.current = false;
         return;
       }
 
-      if (state?.chessAppPractice) {
-        const screen = state.navigationScreen;
-        setNavigationScreen(
-          screen === 'openings' || screen === 'variations' || screen === 'study' ? screen : 'home'
-        );
-        setShowOpeningCinematic(false);
-        return;
-      }
-
-      if (state?.chessAppScreen === 'main-menu') {
+      // For non-practice history entries restore their screen normally
+      if (state?.chessAppScreen === 'main-menu' || state?.chessAppScreen === 'home') {
         const screen = state.navigationScreen;
         setNavigationScreen(
           screen === 'openings' || screen === 'variations' || screen === 'study' ? screen : 'home'
@@ -290,23 +322,27 @@ export default function App() {
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
 
   const openPractice = useCallback(() => {
-    if (!window.history.state?.chessAppPractice) {
-      window.history.pushState(
-        { chessAppScreen: 'main-menu', navigationScreen, chessAppPractice: true },
-        '',
-        window.location.href
-      );
-    }
+    // Push a dedicated #practice URL so the browser back button maps cleanly to home
+    const practiceUrl = window.location.href.replace(/#.*$/, '') + '#practice';
+    window.history.pushState(
+      { chessAppScreen: 'practice', navigationScreen: 'home', chessAppPractice: true, url: practiceUrl },
+      '',
+      practiceUrl
+    );
+    isPracticeOpenRef.current = true;
     setIsPracticeOpen(true);
-  }, [navigationScreen]);
+  }, []);
 
   const closePractice = useCallback(() => {
+    isPracticeOpenRef.current = false;
     setIsPracticeOpen(false);
-    // Drop the practice history entry so back/forward stay on the main window's stack.
-    if (window.history.state?.chessAppPractice) {
+    clearPracticeStateStorage();
+    // If we're on the #practice URL, navigate back to home without leaving #practice in the stack
+    if (window.location.hash === '#practice') {
       practiceExitedProgrammaticallyRef.current = true;
       window.history.back();
     }
+    setNavigationScreen('home');
   }, []);
 
   const startOnboarding = useCallback((mode: 'tour' | 'basics') => {
