@@ -30,7 +30,6 @@ import {
   Gauge,
   Shield,
   ArrowRight,
-  Minimize2,
   Info,
   Lock,
   Unlock,
@@ -38,6 +37,7 @@ import {
   Puzzle,
   Flag,
   Clock3,
+  User,
 } from 'lucide-react';
 import { ChessPiece } from './ChessPiece';
 import { Chessboard } from './Chessboard';
@@ -62,7 +62,7 @@ import {
 } from '../utils/openingIdentifier';
 import { OpeningPuzzlesSection } from './OpeningPuzzlesSection';
 import { TimeControlPicker } from './TimeControlPicker';
-import { formatClock, TIME_CONTROLS, TimeControl } from '../types/timeControl';
+import { formatClock, getTimeControl, TIME_CONTROLS, TimeControl } from '../types/timeControl';
 
 interface PracticeModeModalProps {
   isOpen: boolean;
@@ -75,7 +75,7 @@ interface PracticeModeModalProps {
 }
 
 type PracticeTab = 'editor' | 'explorer' | 'play_engine' | 'puzzles';
-type PracticeSetupStage = 'entry' | 'time-control' | 'engine-level' | 'playing';
+type EngineSetupStep = 'entry' | 'time' | 'level';
 type EngineGameMove = { san: string; from: string; to: string };
 type PuzzleMoveFeedback = { from: Square; to: Square; result: 'correct' | 'wrong' };
 type CompletedGameReview = {
@@ -158,10 +158,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   initialOpeningId,
   initialVariationId,
 }) => {
-  // Current active sub-mode (starts in editor with playable board)
-  const [activeTab, setActiveTab] = useState<PracticeTab>('editor');
-  const [practiceSetupStage, setPracticeSetupStage] = useState<PracticeSetupStage>('entry');
-  const [isEngineBoardFullscreen, setIsEngineBoardFullscreen] = useState(false);
+  // Current active sub-mode (starts in engine wizard for dedicated practice matches)
+  const [activeTab, setActiveTab] = useState<PracticeTab>('play_engine');
   const [puzzleMoveFeedback, setPuzzleMoveFeedback] = useState<PuzzleMoveFeedback | null>(null);
   const [isPuzzleInteractionLocked, setIsPuzzleInteractionLocked] = useState(false);
   const [isPuzzleActive, setIsPuzzleActive] = useState(false);
@@ -211,8 +209,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const [playerColor, setPlayerColor] = useState<Color>('w');
   const [selectedEngineTimeControlId, setSelectedEngineTimeControlId] = useState('blitz-5-0');
   const [engineTimeControl, setEngineTimeControl] = useState<TimeControl | null>(null);
-  const [isTimeControlPickerOpen, setIsTimeControlPickerOpen] = useState(false);
+  // Play Engine wizard: entry -> time control -> engine level (+ colour) -> dedicated game board
+  const [engineSetupStep, setEngineSetupStep] = useState<EngineSetupStep>('entry');
   const [engineGameStarted, setEngineGameStarted] = useState(false);
+  const [drawNotice, setDrawNotice] = useState<string | null>(null);
+  const [isDrawPending, setIsDrawPending] = useState(false);
+  // The dedicated engine board replaces every other panel for as long as a game is on screen.
+  const isEngineBoardFullscreen = activeTab === 'play_engine' && engineGameStarted && !isCompletedGameReviewOpen;
+  const isEngineWizardActive = activeTab === 'play_engine' && !engineGameStarted && !isCompletedGameReviewOpen;
   const [engineClock, setEngineClock] = useState<{ w: number; b: number } | null>(null);
   const engineClockRef = useRef<{ w: number; b: number } | null>(null);
   const activeClockColorRef = useRef<Color>('w');
@@ -323,10 +327,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isEngineBoardFullscreen) {
-          setIsEngineBoardFullscreen(false);
-        } else {
-          onClose();
+          // Never abandon a live engine game by accident; use Resign or the close button.
+          return;
         }
+        if (isEngineWizardActive && engineSetupStep !== 'entry') {
+          setEngineSetupStep((step) => (step === 'level' ? 'time' : 'entry'));
+          return;
+        }
+        onClose();
       }
     };
     if (isOpen) {
@@ -338,11 +346,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose, isEngineBoardFullscreen]);
-
-  useEffect(() => {
-    if (!isOpen) setIsEngineBoardFullscreen(false);
-  }, [isOpen]);
+  }, [isOpen, onClose, isEngineBoardFullscreen, isEngineWizardActive, engineSetupStep]);
 
   useEffect(() => {
     if (!isCompletedGameReviewOpen || !completedGameReview) return;
@@ -372,7 +376,6 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setIsPuzzleActive(false);
     setIsCompletedGameReviewOpen(false);
     setActiveTab(tab);
-    setIsEngineBoardFullscreen(false);
     setAnalysisError(null);
     setSelectedSquare(null);
     setIsAnalysisMode(false);
@@ -389,11 +392,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       setExplorerMoveHistory([]);
       setExplorerFenHistory([START_FEN]);
     } else if (tab === 'play_engine') {
-      setPracticeSetupStage('entry');
-      setEngineGameStarted(false);
-      setEngineClock(null);
-      engineClockRef.current = null;
-      setIsTimeControlPickerOpen(false);
+      openEngineSetup('entry');
       setSelectedEngineTimeControlId('blitz-5-0');
       setEngineTimeControl(null);
       setBoardFen(START_FEN);
@@ -649,7 +648,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Play Engine Square Click (play against Stockfish)
   const handleSquareClickPlayEngine = async (square: Square) => {
-    if (!engineGameStarted || isEngineThinking || gameResult || !syncEngineClock()) return;
+    if (!engineGameStarted || isEngineThinking || isDrawPending || gameResult || !syncEngineClock()) return;
 
     const file = square.charCodeAt(0) - 97;
     const rank = 8 - parseInt(square[1], 10);
@@ -1203,34 +1202,46 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // ----------------------------------------------------
   // PLAY ENGINE START & UNDO
   // ----------------------------------------------------
-  const openEngineTimePicker = (color: Color) => {
-    setPlayerColor(color);
-    setPracticeSetupStage('time-control');
+  // Leaves any running game and shows the given wizard step.
+  const openEngineSetup = (step: EngineSetupStep) => {
     setEngineGameStarted(false);
     setEngineClock(null);
     engineClockRef.current = null;
-    setIsTimeControlPickerOpen(true);
+    setGameResult(null);
+    setDidPlayerResign(false);
+    setDrawNotice(null);
+    setIsDrawPending(false);
+    setEngineSetupStep(step);
   };
 
-  const handlePracticeTimeControlSelect = useCallback((timeControl: TimeControl) => {
-    setSelectedEngineTimeControlId(timeControl.id);
-    setEngineTimeControl(timeControl);
-    setPracticeSetupStage('engine-level');
-    setIsTimeControlPickerOpen(false);
-  }, []);
-
-  const handlePracticeTimeControlBack = () => {
-    setPracticeSetupStage('time-control');
-    setIsTimeControlPickerOpen(true);
-  };
+  // Closing Practice Mode abandons an unfinished engine game, so reopening starts fresh at step 1.
+  useEffect(() => {
+    if (!isOpen) {
+      setEngineGameStarted(false);
+      setEngineClock(null);
+      engineClockRef.current = null;
+      setEngineSetupStep('entry');
+    } else {
+      setActiveTab('play_engine');
+      setEngineSetupStep('entry');
+      setEngineGameStarted(false);
+      setEngineClock(null);
+      engineClockRef.current = null;
+      setGameResult(null);
+      setDidPlayerResign(false);
+      setDrawNotice(null);
+      setIsDrawPending(false);
+    }
+  }, [isOpen]);
 
   const startNewEngineGame = useCallback((color: Color, timeControl: TimeControl) => {
     void prepareStockfish().catch(() => undefined);
     const chess = new Chess(START_FEN);
-    setPracticeSetupStage('playing');
+    setPlayerColor(color);
     setEngineTimeControl(timeControl);
     setSelectedEngineTimeControlId(timeControl.id);
-    setIsTimeControlPickerOpen(false);
+    setDrawNotice(null);
+    setIsDrawPending(false);
     setEngineGameStarted(true);
     setEngineClock(timeControl.minutes === null
       ? null
@@ -1291,17 +1302,27 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   }, [completeEngineClockMove, engineLevel]);
 
   const handleResignEngineGame = () => {
-    if (isEngineThinking || gameResult) return;
+    if (isEngineThinking || isDrawPending || gameResult) return;
     setSelectedSquare(null);
     setDidPlayerResign(true);
     setGameResult('engine');
   };
 
+  // Number of plies that must stay on the board so the player is back on move after a takeback.
+  // White starts from 0 plies; as Black the engine's opening move (1 ply) is always kept.
+  const takebackFloor = playerColor === 'w' ? 0 : 1;
+
+  const canTakeback =
+    engineGameStarted && !gameResult && !isEngineThinking && engineGameHistory.length > takebackFloor &&
+    currentTurn === playerColor;
+
   const handleUndoMoveEngine = () => {
-    if (engineGameHistory.length < 2 || isEngineThinking) return;
+    if (!canTakeback) return;
     try {
+      // Take back the engine's reply and the player's move before it (2 plies), never past the floor.
+      const keep = Math.max(takebackFloor, engineGameHistory.length - 2);
+      const historyToKeep = engineGameHistory.slice(0, keep);
       const chess = new Chess(START_FEN);
-      const historyToKeep = engineGameHistory.slice(0, -2);
       for (const m of historyToKeep) {
         chess.move(m.san);
       }
@@ -1309,14 +1330,39 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       setEngineGameHistory(historyToKeep);
       activeClockColorRef.current = chess.turn();
       lastClockTickRef.current = Date.now();
-      setLastEngineMove(null);
-      setGameResult(null);
-      setDidPlayerResign(false);
+      const lastKept = historyToKeep[historyToKeep.length - 1];
+      // It is the player's turn again, so the last kept ply is the engine's move.
+      setLastEngineMove(lastKept ? { from: lastKept.from as Square, to: lastKept.to as Square } : null);
       setSelectedSquare(null);
+      setDrawNotice(null);
       chessAudio.playMove();
     } catch {
       // fallback
     }
+  };
+
+  // Stockfish accepts a draw offer only when it is not clearly better and the game has developed.
+  const handleOfferDraw = () => {
+    if (!engineGameStarted || gameResult || isEngineThinking || isDrawPending || currentTurn !== playerColor) return;
+    setSelectedSquare(null);
+    if (engineGameHistory.length < 10) {
+      setDrawNotice('Stockfish declined the draw: it is too early in the game.');
+      return;
+    }
+    setIsDrawPending(true);
+    setDrawNotice('Draw offered… Stockfish is considering it.');
+    window.setTimeout(() => {
+      setIsDrawPending(false);
+      const engineColor: Color = playerColor === 'w' ? 'b' : 'w';
+      const whiteEval = /M/.test(engineEvalBar) ? (engineEvalBar.startsWith('-') ? -99 : 99) : parseFloat(engineEvalBar);
+      const engineEval = Number.isNaN(whiteEval) ? 0 : engineColor === 'w' ? whiteEval : -whiteEval;
+      if (engineEval <= 0.3) {
+        setDrawNotice(null);
+        setGameResult('draw');
+      } else {
+        setDrawNotice('Stockfish declined the draw. It thinks it is better — play on!');
+      }
+    }, 800);
   };
 
   const handleAnalyzeCompletedGame = async () => {
@@ -1343,7 +1389,6 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setReviewPlyIndex(0);
     setReviewPositionAnalysis(null);
     setReviewAnalysisError(null);
-    setIsEngineBoardFullscreen(false);
   };
 
   const handleReviewNavigation = (direction: -1 | 1) => {
@@ -1354,8 +1399,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const handleReviewPlayAgain = () => {
     setIsCompletedGameReviewOpen(false);
     setActiveTab('play_engine');
-    setIsEngineBoardFullscreen(false);
-    openEngineTimePicker(playerColor);
+    openEngineSetup('time');
   };
 
   const handleExitCompletedGameReview = () => {
@@ -1381,7 +1425,6 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setIsEngineThinking(false);
     setBoardFen(START_FEN);
     setCustomFenInput(START_FEN);
-    setIsEngineBoardFullscreen(false);
     setActiveTab('play_engine');
     onClose();
   };
@@ -1422,7 +1465,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       id="practice-mode-modal-backdrop"
       className={`fixed inset-0 z-50 flex items-center justify-center animate-fadeIn ${
         isEngineBoardFullscreen
-          ? 'overflow-hidden bg-[#0b0d12]'
+          ? 'overflow-hidden bg-[#0b0d12]/95 backdrop-blur-md p-1 sm:p-3'
           : 'overflow-y-auto bg-black/85 p-2 backdrop-blur-md sm:p-4'
       }`}
       onClick={onClose}
@@ -1431,8 +1474,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         id="practice-mode-container"
         className={`relative flex flex-col overflow-hidden bg-[#13151e] shadow-2xl shadow-cyan-950/40 ${
           isEngineBoardFullscreen
-            ? 'h-[100dvh] w-screen max-w-none rounded-none border-0'
-            : 'my-auto max-h-[92vh] w-full max-w-5xl rounded-2xl border border-cyan-500/40'
+            ? 'h-[100dvh] max-h-[100dvh] w-full max-w-4xl rounded-xl border border-zinc-800 sm:rounded-2xl'
+            : 'my-auto max-h-[92vh] w-full max-w-4xl rounded-2xl border border-cyan-500/40'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1452,38 +1495,31 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
                   Practice Mode
                 </h2>
-                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  <Flame className="w-3 h-3 text-cyan-400 fill-current" />
-                  <span>Stockfish Level {engineLevel}</span>
-                  <span className="text-zinc-400 font-mono">({getEloForLevel(engineLevel).elo} Elo)</span>
-                </div>
+                {activeTab === 'play_engine' && engineGameStarted && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                    <Flame className="w-3 h-3 text-cyan-400 fill-current" />
+                    <span>Stockfish Level {engineLevel}</span>
+                    <span className="text-zinc-400 font-mono">({getEloForLevel(engineLevel).elo} Elo)</span>
+                  </div>
+                )}
               </div>
               <p className={`text-xs text-zinc-400 ${isEngineBoardFullscreen ? 'hidden' : 'hidden sm:block'}`}>
-                Interactive Playable Board with Board Editor & Engine Analysis, Opening Explorer, and Play Engine
+                {activeTab === 'play_engine' ? 'Interactive Chess Engine Practice & Match' : 'Interactive Playable Board with Board Editor & Engine Analysis'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {isEngineBoardFullscreen && (
+            {(isEngineBoardFullscreen || activeTab === 'editor' || activeTab === 'explorer') && (
               <button
-                type="button"
-                onClick={() => setIsEngineBoardFullscreen(false)}
-                title="Exit full-screen board"
-                aria-label="Exit full-screen board"
+                id="btn-flip-practice-board"
+                onClick={() => setIsFlipped((prev) => !prev)}
+                title="Flip Board Perspective"
                 className="p-2 rounded-lg bg-[#1a1d27] hover:bg-[#222533] border border-zinc-800 text-zinc-300 transition-colors cursor-pointer"
               >
-                <Minimize2 className="w-4 h-4 text-cyan-400" />
+                <Repeat className="w-4 h-4 text-cyan-400" />
               </button>
             )}
-            <button
-              id="btn-flip-practice-board"
-              onClick={() => setIsFlipped((prev) => !prev)}
-              title="Flip Board Perspective"
-              className="p-2 rounded-lg bg-[#1a1d27] hover:bg-[#222533] border border-zinc-800 text-zinc-300 transition-colors cursor-pointer"
-            >
-              <Repeat className="w-4 h-4 text-cyan-400" />
-            </button>
             <button
               id="btn-close-practice-modal"
               onClick={onClose}
@@ -1637,10 +1673,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
             </section>
           ) : (
           <>
-          {/* Top Board & Status Layout */}
-          <div className={`flex flex-col items-center justify-center gap-5 ${activeTab === 'puzzles' && !isPuzzleActive ? 'hidden' : ''} ${isEngineBoardFullscreen ? 'min-h-0 flex-1 gap-2' : 'lg:flex-row lg:items-start'}`}>
+          {/* Top Board & Status Layout (Used for Board Editor & Opening Explorer) */}
+          <div className={`flex flex-col items-center justify-center gap-5 ${activeTab === 'play_engine' || (activeTab === 'puzzles' && !isPuzzleActive) ? 'hidden' : 'lg:flex-row lg:items-start'}`}>
             {/* Left Column: Board + Dedicated Bottom-of-Board FEN Bar */}
-            <div className={`flex flex-col items-center gap-2.5 ${isEngineBoardFullscreen ? 'min-h-0 w-full flex-1 justify-center' : 'w-full max-w-[380px] sm:max-w-[420px]'}`}>
+            <div className="flex flex-col items-center gap-2.5 w-full max-w-[380px] sm:max-w-[420px]">
               {previewFen && (
                 <div className="w-full px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-between text-xs text-amber-200 shadow-md">
                   <div className="flex items-center gap-2 font-semibold">
@@ -1663,19 +1699,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
               )}
 
               {/* The Fully Playable Chessboard */}
-              {activeTab === 'play_engine' && engineGameStarted && engineClock && (
-                <div className={`mb-2 flex items-center justify-between rounded-xl border px-4 py-2.5 ${
-                  activeClockColorRef.current !== playerColor && !gameResult
-                    ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-100'
-                    : 'border-zinc-800 bg-[#111319] text-zinc-300'
-                }`}>
-                  <span className="text-xs font-semibold">Stockfish ({playerColor === 'w' ? 'Black' : 'White'})</span>
-                  <span className="font-mono text-xl font-extrabold tabular-nums">{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
-                </div>
-              )}
               <div
                 className="relative aspect-square w-full select-none overflow-hidden rounded-xl border-4 border-zinc-800/90 shadow-2xl"
-                style={isEngineBoardFullscreen ? { width: 'min(100%, calc(100dvh - 12rem))' } : undefined}
               >
               <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
                 {(isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((r) =>
@@ -1899,85 +1924,6 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
             </div>
 
-            {activeTab === 'play_engine' && engineGameStarted && engineClock && (
-              <div className={`mt-2 flex items-center justify-between rounded-xl border px-4 py-2.5 ${
-                activeClockColorRef.current === playerColor && !gameResult
-                  ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
-                  : 'border-zinc-800 bg-[#111319] text-zinc-300'
-              }`}>
-                <span className="text-xs font-semibold">You ({playerColor === 'w' ? 'White' : 'Black'})</span>
-                <span className="font-mono text-xl font-extrabold tabular-nums">{formatClock(engineClock[playerColor])}</span>
-              </div>
-            )}
-
-            {activeTab === 'play_engine' && gameResult && (
-              <section
-                aria-labelledby="engine-game-result-title"
-                aria-live="polite"
-                className={`w-full rounded-xl border p-4 text-center shadow-lg animate-fadeIn sm:p-5 ${
-                  gameResult === 'player'
-                    ? 'border-emerald-400/60 bg-emerald-950/70 shadow-emerald-950/30'
-                    : gameResult === 'engine'
-                    ? 'border-rose-400/60 bg-rose-950/60 shadow-rose-950/30'
-                    : 'border-amber-300/50 bg-amber-950/50 shadow-amber-950/30'
-                }`}
-              >
-                <div className="relative mx-auto mb-2 flex h-12 w-14 items-center justify-center">
-                  <Star className={`absolute left-0 h-4 w-4 animate-celebration-left ${gameResult === 'player' ? 'text-emerald-300' : 'text-rose-300'}`} />
-                  <Sparkles className={`h-9 w-9 animate-winner-pop ${gameResult === 'player' ? 'text-emerald-300' : gameResult === 'engine' ? 'text-rose-300' : 'text-amber-300'}`} />
-                  <Star className={`absolute right-0 h-4 w-4 animate-celebration-right ${gameResult === 'player' ? 'text-lime-300' : 'text-amber-300'}`} />
-                </div>
-                <h2
-                  id="engine-game-result-title"
-                  className={`text-2xl font-black sm:text-3xl ${
-                    gameResult === 'player'
-                      ? 'text-emerald-300'
-                      : gameResult === 'engine'
-                      ? 'text-rose-300'
-                      : 'text-amber-200'
-                  }`}
-                >
-                  {gameResult === 'player' ? 'You Won!!' : gameResult === 'engine' ? 'Engine Won' : 'Game Draw'}
-                </h2>
-                <p className="mt-1 text-sm text-zinc-200">
-                  {didPlayerResign
-                    ? 'You resigned. Stockfish wins.'
-                    : gameResult === 'draw'
-                    ? 'The game ended in a draw.'
-                    : 'Checkmate. Well played.'}
-                </p>
-                <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
-                  <button
-                    id="btn-play-again"
-                    type="button"
-                    onClick={() => openEngineTimePicker(playerColor)}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Play Again
-                  </button>
-                  <button
-                    id="btn-analyze-completed-game"
-                    type="button"
-                    onClick={handleAnalyzeCompletedGame}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-cyan-400"
-                  >
-                    <TrendingUp className="h-4 w-4" />
-                    Analyze the Game
-                  </button>
-                  <button
-                    id="btn-exit-game-menu"
-                    type="button"
-                    onClick={onClose}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-500 bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-700"
-                  >
-                    <X className="h-4 w-4" />
-                    Exit to Main Menu
-                  </button>
-                </div>
-              </section>
-            )}
-
             {/* Bottom of the Board in Board Editor: Dedicated Copy FEN Bar for Uploading to AI */}
             {activeTab === 'editor' && (
               <div
@@ -2051,7 +1997,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           </div>
 
           {/* Quick Status Sidebar */}
-            <div className={`${(isEngineBoardFullscreen && activeTab === 'play_engine') || activeTab === 'puzzles' ? 'hidden ' : ''}flex w-full flex-col gap-3 lg:w-72`}>
+            <div className={`${activeTab === 'play_engine' || activeTab === 'puzzles' ? 'hidden ' : ''}flex w-full flex-col gap-3 lg:w-72`}>
               <div className="p-3.5 rounded-xl bg-[#181a24] border border-zinc-800 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -2216,9 +2162,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           {/* ==================================================== */}
           {/* THE OPTIONS UNDER THE BOARD */}
           {/* ==================================================== */}
-          <div className={`space-y-4 ${isEngineBoardFullscreen && activeTab === 'play_engine' ? '' : 'border-t border-zinc-800 pt-2'}`}>
-            {/* Main Tabs Selection (4 Modes) */}
-            {!(isEngineBoardFullscreen && activeTab === 'play_engine') && !(activeTab === 'puzzles' && isPuzzleActive) && (
+          <div className={`space-y-4 ${activeTab === 'play_engine' ? '' : 'border-t border-zinc-800 pt-2'}`}>
+            {/* Main Tabs Selection (4 Modes) - Hidden when in sequential Play Engine flow */}
+            {activeTab !== 'play_engine' && !(activeTab === 'puzzles' && isPuzzleActive) && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-[#10121a] border border-zinc-800/80 max-w-2xl mx-auto">
               <button
                 id="tab-btn-board-editor"
@@ -3154,204 +3100,571 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
               </div>
             )}
 
-            {/* OPTION 3: PLAY ENGINE (STOCKFISH ENGINE) */}
+            {/* OPTION 3: PLAY ENGINE (STOCKFISH ENGINE) - SEQUENTIAL STEP-BY-STEP WIZARD */}
             {activeTab === 'play_engine' && (
               <div id="content-play-engine" className={`space-y-4 animate-fadeIn ${isEngineBoardFullscreen ? 'flex w-full justify-center' : ''}`}>
-                {/* Engine Level Configuration (1 to 18) */}
-                {!isEngineBoardFullscreen && (
+                {/* Step 1: Initial Practice State (Entry Point Prompt Only) */}
                 <div
-                  id="engine-level-selector-box"
-                  className="p-4 rounded-xl bg-gradient-to-r from-[#141a29] via-[#161f30] to-[#121927] border border-cyan-500/40 shadow-lg space-y-3"
+                  id="engine-wizard-entry"
+                  className={`${isEngineWizardActive && engineSetupStep === 'entry' ? 'flex' : 'hidden'} mx-auto w-full max-w-xl flex-col items-center gap-5 rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-[#181c2b] via-[#141724] to-[#10121a] p-8 text-center shadow-2xl animate-fadeIn sm:p-10 my-4`}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                        <Gauge className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-2">
-                          <span>Engine Difficulty Level</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-cyan-500/25 text-cyan-300 border border-cyan-500/40">
-                            Level {engineLevel} / 18
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-cyan-300 font-medium">
-                          {getEloForLevel(engineLevel).title} • {getEloForLevel(engineLevel).elo} Elo
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Direct Level Number Input with Stepper Controls */}
-                    <div className="flex items-center gap-1.5 bg-black/60 border border-zinc-700/80 rounded-xl p-1">
-                      <button
-                        id="btn-engine-level-minus"
-                        type="button"
-                        onClick={() => setEngineLevel((prev) => Math.max(1, prev - 1))}
-                        disabled={engineLevel <= 1}
-                        className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
-                        title="Decrease Level"
-                      >
-                        -
-                      </button>
-
-                      <div className="flex items-center px-1">
-                        <span className="text-[11px] text-zinc-400 font-bold mr-1">Level:</span>
-                        <input
-                          id="input-engine-level-direct"
-                          type="number"
-                          min={1}
-                          max={18}
-                          value={engineLevel}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value, 10);
-                            if (!isNaN(val)) {
-                              setEngineLevel(Math.min(18, Math.max(1, val)));
-                            }
-                          }}
-                          className="w-12 py-0.5 rounded bg-zinc-900 border border-zinc-600 text-cyan-300 font-mono font-black text-center text-sm focus:outline-none focus:border-cyan-400"
-                        />
-                      </div>
-
-                      <button
-                        id="btn-engine-level-plus"
-                        type="button"
-                        onClick={() => setEngineLevel((prev) => Math.min(18, prev + 1))}
-                        disabled={engineLevel >= 18}
-                        className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
-                        title="Increase Level"
-                      >
-                        +
-                      </button>
-                    </div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/40 bg-cyan-500/15 text-cyan-300 shadow-lg shadow-cyan-500/15">
+                    <Swords className="h-8 w-8 text-cyan-400" />
                   </div>
-
-                  {/* Smooth Range Slider from 1 to 18 */}
-                  <div className="space-y-1">
-                    <input
-                      id="slider-engine-level"
-                      type="range"
-                      min={1}
-                      max={18}
-                      step={1}
-                      value={engineLevel}
-                      onChange={(e) => setEngineLevel(Number(e.target.value))}
-                      className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                    />
-                    <div className="flex justify-between text-[10px] text-zinc-500 font-mono px-0.5">
-                      <span>1 (Novice)</span>
-                      <span>5 (Club)</span>
-                      <span>10 (Expert)</span>
-                      <span>14 (Master)</span>
-                      <span>18 (Max 2950 Elo)</span>
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                      <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Stockfish 19 Engine</span>
                     </div>
+                    <h3 className="text-2xl font-black text-zinc-100 sm:text-3xl">
+                      Play Against Stockfish
+                    </h3>
+                    <p className="mt-1 text-sm text-zinc-400 max-w-md mx-auto leading-relaxed">
+                      Pick your time control, select your engine difficulty, and test your skills on a clean, dedicated match board.
+                    </p>
                   </div>
+                  <button
+                    id="btn-play-against-engine"
+                    type="button"
+                    onClick={() => setEngineSetupStep('time')}
+                    className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 px-8 py-3.5 text-base font-extrabold text-zinc-950 shadow-lg shadow-amber-500/25 transition-all hover:scale-[1.02] cursor-pointer sm:w-auto"
+                  >
+                    <Play className="h-4 w-4 fill-current" />
+                    <span>Play Against Engine</span>
+                  </button>
 
-                  <p className="text-[11px] text-zinc-400 italic">
-                    {getEloForLevel(engineLevel).desc}
-                  </p>
-                </div>
-                )}
-
-                {/* Game Controls & Color Chooser */}
-                <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-[#161822] p-3.5 ${isEngineBoardFullscreen ? 'w-full max-w-2xl' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-zinc-300">Play as:</span>
+                  {/* Accessible switcher for other practice tools */}
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-3 text-xs text-zinc-400 border-t border-zinc-800/80 w-full mt-2">
+                    <span className="text-zinc-500">Other Tools:</span>
                     <button
-                      id="btn-play-as-white"
+                      id="tab-btn-board-editor"
                       type="button"
-                      onClick={() => {
-                        openEngineTimePicker('w');
-                      }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        playerColor === 'w'
-                          ? 'bg-zinc-100 text-zinc-950 border-zinc-300'
-                          : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                      }`}
+                      onClick={() => handleTabChange('editor')}
+                      className="text-zinc-400 hover:text-cyan-300 transition-colors font-medium underline underline-offset-4 cursor-pointer"
                     >
-                      White
+                      Board Editor
+                    </button>
+                    <span className="text-zinc-700">•</span>
+                    <button
+                      id="tab-btn-opening-explorer"
+                      type="button"
+                      onClick={() => handleTabChange('explorer')}
+                      className="text-zinc-400 hover:text-emerald-300 transition-colors font-medium underline underline-offset-4 cursor-pointer"
+                    >
+                      Opening Explorer
+                    </button>
+                    <span className="text-zinc-700">•</span>
+                    <button
+                      id="tab-btn-puzzles"
+                      type="button"
+                      onClick={() => handleTabChange('puzzles')}
+                      className="text-zinc-400 hover:text-purple-300 transition-colors font-medium underline underline-offset-4 cursor-pointer"
+                    >
+                      Puzzles
                     </button>
                     <button
-                      id="btn-play-as-black"
+                      id="tab-btn-play-engine"
                       type="button"
-                      onClick={() => {
-                        openEngineTimePicker('b');
-                      }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        playerColor === 'b'
-                          ? 'bg-amber-400 text-zinc-950 border-amber-300'
-                          : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                      }`}
+                      onClick={() => handleTabChange('play_engine')}
+                      className="hidden"
                     >
-                      Black
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      id="btn-play-undo"
-                      type="button"
-                      onClick={handleUndoMoveEngine}
-                      disabled={engineGameHistory.length < 2 || isEngineThinking}
-                      className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Takeback</span>
-                    </button>
-
-                    {!gameResult && (
-                      <button
-                        id="btn-play-resign"
-                        type="button"
-                        onClick={handleResignEngineGame}
-                        disabled={isEngineThinking}
-                        className="px-3 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 disabled:opacity-40 text-rose-200 border border-rose-800/80 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Flag className="w-3.5 h-3.5" />
-                        <span>Resign</span>
-                      </button>
-                    )}
-
-                    <button
-                      id="btn-play-new-game"
-                      type="button"
-                      onClick={() => {
-                        openEngineTimePicker(playerColor);
-                        setIsEngineBoardFullscreen(true);
-                      }}
-                      className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Zap className="w-3.5 h-3.5 fill-current" />
-                      <span>New Game</span>
+                      Play Engine
                     </button>
                   </div>
                 </div>
 
-                {/* Move Notation List */}
-                {!isEngineBoardFullscreen && (
-                <div className="p-3 rounded-xl bg-[#111319] border border-zinc-800">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
-                    Move Notation
-                  </div>
-                  {engineGameHistory.length === 0 ? (
-                    <div className="text-xs text-zinc-500 italic py-2">
-                      Click your pieces on the board above to play against Stockfish.
+                {/* Step 2: Time Control Selection */}
+                <div className={`${isEngineWizardActive && engineSetupStep === 'time' ? 'block' : 'hidden'} animate-fadeIn space-y-4`}>
+                  <ol aria-label="Game setup progress" className="mx-auto flex w-full max-w-3xl items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
+                    <li aria-current="step" className="flex-1 rounded-lg border border-emerald-400/70 bg-emerald-500/15 text-emerald-200 px-3 py-2 text-center flex items-center justify-center gap-2">
+                      <Clock3 className="w-3.5 h-3.5" />
+                      <span>1. Time Control</span>
+                    </li>
+                    <li className="flex-1 rounded-lg border border-zinc-800 bg-[#111319] text-zinc-500 px-3 py-2 text-center flex items-center justify-center gap-2">
+                      <Gauge className="w-3.5 h-3.5" />
+                      <span>2. Engine Strength</span>
+                    </li>
+                  </ol>
+
+                  <TimeControlPicker
+                    inline
+                    isOpen={isEngineWizardActive && engineSetupStep === 'time'}
+                    selectedTimeControlId={selectedEngineTimeControlId}
+                    onSelect={(timeControl) => {
+                      setSelectedEngineTimeControlId(timeControl.id);
+                      setEngineTimeControl(timeControl);
+                      setEngineSetupStep('level');
+                    }}
+                    onContinue={(timeControl) => {
+                      setSelectedEngineTimeControlId(timeControl.id);
+                      setEngineTimeControl(timeControl);
+                      setEngineSetupStep('level');
+                    }}
+                    onBack={() => setEngineSetupStep('entry')}
+                    onClose={() => setEngineSetupStep('entry')}
+                    continueLabel="Next: Engine Strength"
+                  />
+                </div>
+
+                {/* Step 3: Engine Strength Selection & Match Config */}
+                <div className={`${isEngineWizardActive && engineSetupStep === 'level' ? 'block' : 'hidden'} mx-auto w-full max-w-3xl space-y-4 animate-fadeIn`}>
+                  <ol aria-label="Game setup progress" className="mx-auto flex w-full max-w-3xl items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
+                    <li className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/40 text-zinc-300 px-3 py-2 text-center flex items-center justify-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>1. {getTimeControl(selectedEngineTimeControlId).label}</span>
+                    </li>
+                    <li aria-current="step" className="flex-1 rounded-lg border border-cyan-400/70 bg-cyan-500/15 text-cyan-200 px-3 py-2 text-center flex items-center justify-center gap-2">
+                      <Gauge className="w-3.5 h-3.5" />
+                      <span>2. Engine Strength</span>
+                    </li>
+                  </ol>
+
+                  <div
+                    id="engine-level-selector-box"
+                    className="p-4 rounded-xl bg-gradient-to-r from-[#141a29] via-[#161f30] to-[#121927] border border-cyan-500/40 shadow-lg space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                          <Gauge className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-2">
+                            <span>Engine Difficulty Level</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-cyan-500/25 text-cyan-300 border border-cyan-500/40">
+                              Level {engineLevel} / 18
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-cyan-300 font-medium">
+                            {getEloForLevel(engineLevel).title} • {getEloForLevel(engineLevel).elo} Elo
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Direct Level Number Input with Stepper Controls */}
+                      <div className="flex items-center gap-1.5 bg-black/60 border border-zinc-700/80 rounded-xl p-1">
+                        <button
+                          id="btn-engine-level-minus"
+                          type="button"
+                          onClick={() => setEngineLevel((prev) => Math.max(1, prev - 1))}
+                          disabled={engineLevel <= 1}
+                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
+                          title="Decrease Level"
+                        >
+                          -
+                        </button>
+
+                        <div className="flex items-center px-1">
+                          <span className="text-[11px] text-zinc-400 font-bold mr-1">Level:</span>
+                          <input
+                            id="input-engine-level-direct"
+                            type="number"
+                            min={1}
+                            max={18}
+                            value={engineLevel}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val)) {
+                                setEngineLevel(Math.min(18, Math.max(1, val)));
+                              }
+                            }}
+                            className="w-12 py-0.5 rounded bg-zinc-900 border border-zinc-600 text-cyan-300 font-mono font-black text-center text-sm focus:outline-none focus:border-cyan-400"
+                          />
+                        </div>
+
+                        <button
+                          id="btn-engine-level-plus"
+                          type="button"
+                          onClick={() => setEngineLevel((prev) => Math.min(18, prev + 1))}
+                          disabled={engineLevel >= 18}
+                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-white font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
+                          title="Increase Level"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto font-mono text-xs">
-                      {engineGameHistory.map((m, idx) => (
-                        <span
-                          key={idx}
-                          className={`px-2 py-0.5 rounded ${
-                            idx % 2 === 0 ? 'bg-zinc-800 text-zinc-200' : 'bg-[#1c1f2e] text-cyan-300'
+
+                    {/* Smooth Range Slider from 1 to 18 */}
+                    <div className="space-y-1">
+                      <input
+                        id="slider-engine-level"
+                        type="range"
+                        min={1}
+                        max={18}
+                        step={1}
+                        value={engineLevel}
+                        onChange={(e) => setEngineLevel(Number(e.target.value))}
+                        className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                      />
+                      <div className="flex justify-between text-[10px] text-zinc-500 font-mono px-0.5">
+                        <span>1 (Novice)</span>
+                        <span>5 (Club)</span>
+                        <span>10 (Expert)</span>
+                        <span>14 (Master)</span>
+                        <span>18 (Max 2950 Elo)</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-zinc-400 italic">
+                      {getEloForLevel(engineLevel).desc}
+                    </p>
+                  </div>
+
+                  {/* Colour chooser, summary of the chosen clock, Back and New Game */}
+                  <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-[#161822] p-3.5 shadow-md">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-zinc-300">Play as:</span>
+                        <button
+                          id="btn-play-as-white"
+                          type="button"
+                          aria-pressed={playerColor === 'w'}
+                          onClick={() => setPlayerColor('w')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                            playerColor === 'w'
+                              ? 'bg-zinc-100 text-zinc-950 border-zinc-300 font-black'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
                           }`}
                         >
-                          {idx % 2 === 0 ? `${Math.floor(idx / 2) + 1}. ` : ''}
-                          {m.san}
-                        </span>
-                      ))}
+                          White
+                        </button>
+                        <button
+                          id="btn-play-as-black"
+                          type="button"
+                          aria-pressed={playerColor === 'b'}
+                          onClick={() => setPlayerColor('b')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                            playerColor === 'b'
+                              ? 'bg-amber-400 text-zinc-950 border-amber-300 font-black'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                          }`}
+                        >
+                          Black
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <Clock3 className="h-3.5 w-3.5 text-emerald-300" />
+                        <span>Time control: <strong className="font-mono text-zinc-100">{getTimeControl(selectedEngineTimeControlId).label}</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => setEngineSetupStep('time')}
+                          className="font-semibold text-cyan-300 underline-offset-2 hover:underline cursor-pointer"
+                        >
+                          Change
+                        </button>
+                      </div>
                     </div>
-                  )}
+
+                    <div className="flex flex-col-reverse gap-2 border-t border-zinc-800 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        id="btn-engine-setup-back"
+                        type="button"
+                        onClick={() => setEngineSetupStep('time')}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-zinc-800 cursor-pointer"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Back
+                      </button>
+                      <button
+                        id="btn-play-new-game"
+                        type="button"
+                        onClick={() => startNewEngineGame(playerColor, getTimeControl(selectedEngineTimeControlId))}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-2.5 text-sm font-extrabold text-zinc-950 transition-colors hover:bg-amber-400 cursor-pointer shadow-md shadow-amber-500/20"
+                      >
+                        <Zap className="h-4 w-4 fill-current" />
+                        New Game
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Step 4: Dedicated Engine Match Board & Action Controls */}
+                {isEngineBoardFullscreen && (
+                  <div
+                    id="dedicated-engine-board-container"
+                    className="mx-auto flex w-full max-w-xl flex-col items-center justify-center gap-2.5 animate-fadeIn px-2 py-1"
+                  >
+                    {/* Opponent Bar */}
+                    <div className="flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                          activeClockColorRef.current !== playerColor && !gameResult
+                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300 ring-2 ring-cyan-400/40 animate-pulse'
+                            : 'border-zinc-700 bg-zinc-800 text-zinc-300'
+                        }`}>
+                          <Cpu className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-zinc-100">Stockfish</span>
+                            <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-300 border border-cyan-500/30">
+                              Lvl {engineLevel}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 font-mono">
+                            {getEloForLevel(engineLevel).elo} Elo {isEngineThinking ? '• Calculating...' : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Opponent Clock */}
+                      {engineClock && (
+                        <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all ${
+                          activeClockColorRef.current !== playerColor && !gameResult
+                            ? 'border-cyan-400/80 bg-cyan-500/20 text-cyan-200 shadow-md shadow-cyan-500/20'
+                            : 'border-zinc-800 bg-black/40 text-zinc-400'
+                        }`}>
+                          <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current !== playerColor && !gameResult ? 'text-cyan-300 animate-spin' : 'text-zinc-500'}`} />
+                          <span>{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dedicated Chessboard */}
+                    <div
+                      className="relative aspect-square w-full select-none overflow-hidden rounded-2xl border-4 border-zinc-800/90 shadow-2xl max-w-[min(100%,calc(100dvh-17rem),460px)]"
+                    >
+                      <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
+                        {(isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((r) =>
+                          (isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((c) => {
+                            const piece = boardMatrix[r][c];
+                            const file = String.fromCharCode(97 + c);
+                            const rank = 8 - r;
+                            const square = `${file}${rank}` as Square;
+                            const isLight = (r + c) % 2 === 0;
+                            const squareColorClass = isLight ? currentTheme.lightSquare : currentTheme.darkSquare;
+                            const isSelected = selectedSquare === square;
+                            const isLegalDest = legalDestinations.includes(square);
+                            const isEngineMoveFrom = lastEngineMove?.from === square;
+                            const isEngineMoveTo = lastEngineMove?.to === square;
+                            const isCheckedKing = checkedKingSquare === square;
+
+                            return (
+                              <div
+                                key={square}
+                                onClick={() => handleSquareClickPlayEngine(square)}
+                                className={`relative flex items-center justify-center cursor-pointer transition-colors ${squareColorClass} ${
+                                  isSelected ? 'ring-4 ring-amber-400 ring-inset z-10' : ''
+                                } ${
+                                  isEngineMoveFrom ? 'engine-move-origin' : ''
+                                } ${
+                                  isEngineMoveTo ? 'engine-move-target' : ''
+                                } ${
+                                  isCheckedKing ? 'engine-checked-king' : ''
+                                }`}
+                              >
+                                {piece && (
+                                  <div className="w-full h-full p-0.5 pointer-events-none">
+                                    <ChessPiece type={piece.type} color={piece.color} />
+                                  </div>
+                                )}
+
+                                {isCheckedKing && (
+                                  <div
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute inset-0 z-20 bg-red-500/55 ring-4 ring-inset ring-red-200/90"
+                                  />
+                                )}
+
+                                {isLegalDest && (
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                    {piece ? (
+                                      <div className="w-full h-full border-4 border-amber-400/90 rounded-full" />
+                                    ) : (
+                                      <div className="w-3.5 h-3.5 rounded-full bg-amber-400/90 shadow-md ring-2 ring-black/40" />
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Coordinate labels */}
+                                {c === (isFlipped ? 7 : 0) && (
+                                  <span
+                                    className={`absolute top-0.5 left-1 text-[9px] font-bold font-mono select-none pointer-events-none ${
+                                      isLight
+                                        ? currentTheme.coordinateLight || 'text-zinc-700'
+                                        : currentTheme.coordinateDark || 'text-zinc-200'
+                                    }`}
+                                  >
+                                    {rank}
+                                  </span>
+                                )}
+                                {r === (isFlipped ? 0 : 7) && (
+                                  <span
+                                    className={`absolute bottom-0.5 right-1 text-[9px] font-bold font-mono select-none pointer-events-none ${
+                                      isLight
+                                        ? currentTheme.coordinateLight || 'text-zinc-700'
+                                        : currentTheme.coordinateDark || 'text-zinc-200'
+                                    }`}
+                                  >
+                                    {file}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Engine Thinking Overlay */}
+                      {isEngineThinking && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-white z-30">
+                          <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+                          <span className="text-xs font-bold text-cyan-300 tracking-wider">
+                            Stockfish Level {engineLevel} is calculating...
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Player Bar */}
+                    <div className="flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                          activeClockColorRef.current === playerColor && !gameResult
+                            ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-400/40 animate-pulse'
+                            : 'border-zinc-700 bg-zinc-800 text-zinc-300'
+                        }`}>
+                          <User className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-zinc-100">You</span>
+                            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold text-zinc-300 border border-zinc-700">
+                              {playerColor === 'w' ? 'White' : 'Black'}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400">
+                            {gameResult ? 'Game finished' : currentTurn === playerColor ? 'Your turn to move' : 'Waiting for opponent'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Player Clock */}
+                      {engineClock && (
+                        <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all ${
+                          activeClockColorRef.current === playerColor && !gameResult
+                            ? 'border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-md shadow-emerald-500/20'
+                            : 'border-zinc-800 bg-black/40 text-zinc-400'
+                        }`}>
+                          <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current === playerColor && !gameResult ? 'text-emerald-300' : 'text-zinc-500'}`} />
+                          <span>{formatClock(engineClock[playerColor])}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dedicated Action Controls: Resign, Draw, Takeback */}
+                    {!gameResult && (
+                      <div id="engine-game-controls" className="w-full max-w-[min(100%,calc(100dvh-17rem),460px)] space-y-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            id="btn-play-resign"
+                            type="button"
+                            onClick={handleResignEngineGame}
+                            disabled={isEngineThinking || isDrawPending}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-800/80 bg-rose-950/70 px-3 py-2.5 text-xs font-bold text-rose-200 transition-colors hover:bg-rose-900 disabled:opacity-40 cursor-pointer shadow-sm"
+                          >
+                            <Flag className="h-4 w-4" />
+                            <span>Resign</span>
+                          </button>
+                          <button
+                            id="btn-play-draw"
+                            type="button"
+                            onClick={handleOfferDraw}
+                            disabled={isEngineThinking || isDrawPending || currentTurn !== playerColor}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-700/60 bg-amber-950/50 px-3 py-2.5 text-xs font-bold text-amber-200 transition-colors hover:bg-amber-900/70 disabled:opacity-40 cursor-pointer shadow-sm"
+                          >
+                            <Swords className="h-4 w-4" />
+                            <span>Draw</span>
+                          </button>
+                          <button
+                            id="btn-play-undo"
+                            type="button"
+                            onClick={handleUndoMoveEngine}
+                            disabled={!canTakeback || isDrawPending}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-xs font-bold text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-40 cursor-pointer shadow-sm"
+                          >
+                            <Undo2 className="h-4 w-4" />
+                            <span>Takeback</span>
+                          </button>
+                        </div>
+                        {drawNotice && (
+                          <p role="status" aria-live="polite" className="rounded-xl border border-zinc-700 bg-[#111319] px-3 py-2 text-center text-xs text-zinc-300 animate-fadeIn">
+                            {drawNotice}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Game Result Card */}
+                    {gameResult && (
+                      <section
+                        aria-labelledby="engine-game-result-title"
+                        aria-live="polite"
+                        className={`w-full max-w-[min(100%,calc(100dvh-17rem),460px)] rounded-2xl border p-4 text-center shadow-xl animate-fadeIn ${
+                          gameResult === 'player'
+                            ? 'border-emerald-400/60 bg-emerald-950/70 shadow-emerald-950/30'
+                            : gameResult === 'engine'
+                            ? 'border-rose-400/60 bg-rose-950/60 shadow-rose-950/30'
+                            : 'border-amber-300/50 bg-amber-950/50 shadow-amber-950/30'
+                        }`}
+                      >
+                        <div className="relative mx-auto mb-2 flex h-10 w-12 items-center justify-center">
+                          <Star className={`absolute left-0 h-3.5 w-3.5 animate-celebration-left ${gameResult === 'player' ? 'text-emerald-300' : 'text-rose-300'}`} />
+                          <Sparkles className={`h-8 w-8 animate-winner-pop ${gameResult === 'player' ? 'text-emerald-300' : gameResult === 'engine' ? 'text-rose-300' : 'text-amber-300'}`} />
+                          <Star className={`absolute right-0 h-3.5 w-3.5 animate-celebration-right ${gameResult === 'player' ? 'text-lime-300' : 'text-amber-300'}`} />
+                        </div>
+                        <h2
+                          id="engine-game-result-title"
+                          className={`text-xl sm:text-2xl font-black ${
+                            gameResult === 'player'
+                              ? 'text-emerald-300'
+                              : gameResult === 'engine'
+                              ? 'text-rose-300'
+                              : 'text-amber-200'
+                          }`}
+                        >
+                          {gameResult === 'player' ? 'You Won!!' : gameResult === 'engine' ? 'Engine Won' : 'Game Draw'}
+                        </h2>
+                        <p className="mt-1 text-xs text-zinc-200">
+                          {didPlayerResign
+                            ? 'You resigned. Stockfish wins.'
+                            : gameResult === 'draw'
+                            ? 'The game ended in a draw.'
+                            : 'Checkmate. Well played.'}
+                        </p>
+                        <div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row">
+                          <button
+                            id="btn-play-again"
+                            type="button"
+                            onClick={() => openEngineSetup('time')}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-zinc-950 transition-colors hover:bg-amber-300 cursor-pointer shadow-md"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Play Again
+                          </button>
+                          <button
+                            id="btn-analyze-completed-game"
+                            type="button"
+                            onClick={handleAnalyzeCompletedGame}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-zinc-950 transition-colors hover:bg-cyan-400 cursor-pointer shadow-md"
+                          >
+                            <TrendingUp className="h-3.5 w-3.5" />
+                            Analyze the Game
+                          </button>
+                          <button
+                            id="btn-exit-game-menu"
+                            type="button"
+                            onClick={onClose}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-600 bg-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-100 transition-colors hover:bg-zinc-700 cursor-pointer"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Exit
+                          </button>
+                        </div>
+                      </section>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -3403,13 +3716,6 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         </div>
       </div>
     </div>
-    <TimeControlPicker
-      isOpen={isTimeControlPickerOpen}
-      selectedTimeControlId={selectedEngineTimeControlId}
-      onSelect={(timeControl) => setSelectedEngineTimeControlId(timeControl.id)}
-      onContinue={(timeControl) => startNewEngineGame(playerColor, timeControl)}
-      onClose={() => setIsTimeControlPickerOpen(false)}
-    />
     </>
   );
 };

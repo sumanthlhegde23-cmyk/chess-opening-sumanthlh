@@ -128,7 +128,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
         role="dialog"
         aria-modal="true"
         aria-labelledby="player-profile-title"
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-7"
+        className="profile-modal max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-7"
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
@@ -146,14 +146,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
               type="button"
               onClick={() => fileInputRef.current?.click()}
               aria-label="Choose profile photo"
-              className="group relative h-20 w-20 overflow-hidden rounded-xl border border-amber-500/40 bg-zinc-800"
+              className="profile-avatar group relative h-20 w-20 overflow-hidden rounded-xl border border-amber-500/40 bg-zinc-800"
             >
               {avatarDataUrl ? (
                 <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <UserRound className="mx-auto h-9 w-9 text-zinc-400" />
               )}
-              <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="profile-avatar-overlay absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
                 <ImagePlus className="h-5 w-5" />
               </span>
             </button>
@@ -188,7 +188,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
           {avatarError && <p role="alert" className="basis-full text-xs text-rose-300">{avatarError}</p>}
         </form>
 
-        <section aria-labelledby="streak-manager-title" className={`relative mb-5 overflow-hidden rounded-2xl border bg-gradient-to-br ${flameTone} p-4 sm:p-5`}>
+        <section aria-labelledby="streak-manager-title" className={`relative mb-5 overflow-hidden rounded-2xl border bg-gradient-to-br profile-streak ${flameTone} p-4 sm:p-5`}>
           <div className="absolute -right-5 -top-7 opacity-[0.12]"><Flame className="h-40 w-40" /></div>
           <div className="relative">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -284,7 +284,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
             role="dialog"
             aria-modal="true"
             aria-labelledby="choose-chess-avatar-title"
-            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-6"
+            className="profile-modal max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-6"
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
@@ -344,7 +344,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirm-chess-avatar-title"
-            className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#15191a] p-5 text-center shadow-2xl"
+            className="profile-modal w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#15191a] p-5 text-center shadow-2xl"
           >
             <img src={getChessAvatarDataUrl(pendingAvatarId)} alt="" className="mx-auto mb-3 h-20 w-20 rounded-xl" />
             <h3 id="confirm-chess-avatar-title" className="text-lg font-bold text-zinc-100">Use this avatar?</h3>

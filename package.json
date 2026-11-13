@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "theme:light": "node scripts/generateLightTheme.mjs",
+    "predev": "node scripts/generateLightTheme.mjs",
     "dev": "tsx server.ts",
+    "prebuild": "node scripts/generateLightTheme.mjs",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",

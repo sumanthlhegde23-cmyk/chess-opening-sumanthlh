@@ -120,21 +120,44 @@ export default function App() {
   const [isVariationUnlocksOpen, setIsVariationUnlocksOpen] = useState(false);
   const [isOnlineChessGameOpen, setIsOnlineChessGameOpen] = useState(false);
   const onboardingReturnScreenRef = useRef<'home' | 'openings' | 'variations' | 'study'>('home');
-  const hasRecordedLoginRef = useRef(false);
+  const practiceExitedProgrammaticallyRef = useRef(false);
   const sessionTickRef = useRef<number | null>(null);
+  const practiceStateStorageKey = 'chess-openings-practice-state';
 
   useEffect(() => {
-    window.history.replaceState({ chessAppScreen: 'intro' }, '', window.location.href);
+    localStorage.removeItem(practiceStateStorageKey);
+    setIsPracticeOpen(false);
+    window.history.replaceState({ chessAppScreen: 'home', navigationScreen: 'home' }, '', window.location.href);
     const handlePopState = (event: PopStateEvent) => {
-      if (event.state?.chessAppScreen === 'main-menu') {
-        const screen = event.state.navigationScreen;
+      const state = event.state as { chessAppPractice?: boolean; chessAppScreen?: string; navigationScreen?: 'home' | 'openings' | 'variations' | 'study' } | null;
+      setIsPracticeOpen(false);
+      localStorage.removeItem(practiceStateStorageKey);
+
+      if (practiceExitedProgrammaticallyRef.current) {
+        practiceExitedProgrammaticallyRef.current = false;
+        return;
+      }
+
+      if (state?.chessAppPractice) {
+        const screen = state.navigationScreen;
         setNavigationScreen(
           screen === 'openings' || screen === 'variations' || screen === 'study' ? screen : 'home'
         );
         setShowOpeningCinematic(false);
-      } else {
-        setShowOpeningCinematic(true);
+        return;
       }
+
+      if (state?.chessAppScreen === 'main-menu') {
+        const screen = state.navigationScreen;
+        setNavigationScreen(
+          screen === 'openings' || screen === 'variations' || screen === 'study' ? screen : 'home'
+        );
+        setShowOpeningCinematic(false);
+        return;
+      }
+
+      setShowOpeningCinematic(false);
+      setNavigationScreen('home');
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -153,40 +176,57 @@ export default function App() {
     }
   }, [userProfile]);
 
-  useEffect(() => {
-    if (hasRecordedLoginRef.current) return;
-    hasRecordedLoginRef.current = true;
-    const now = new Date();
-    const loginAt = now.toISOString();
-    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const previousDate = userProfile.lastActiveDate;
-    const previousMidnight = previousDate ? new Date(`${previousDate}T00:00:00`) : null;
-    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const dayGap = previousMidnight && !Number.isNaN(previousMidnight.getTime())
-      ? Math.round((todayMidnight.getTime() - previousMidnight.getTime()) / 86400000)
-      : null;
-    const alreadyRewardedToday = previousDate === localDate;
-    const nextStreak = alreadyRewardedToday
-      ? userProfile.currentStreak
-      : dayGap === 1
-        ? userProfile.currentStreak + 1
-        : 1;
-    const nextPoints = userProfile.totalPoints + (alreadyRewardedToday ? 0 : 4);
-    setUserProfile((profile) => ({
-      ...profile,
-      currentStreak: nextStreak,
-      longestStreak: Math.max(profile.longestStreak, nextStreak),
-      totalPoints: nextPoints,
-      lastActiveDate: alreadyRewardedToday ? profile.lastActiveDate : localDate,
-      lastLoginAt: loginAt,
-      loginHistory: [...profile.loginHistory, loginAt].slice(-25),
-    }));
-    if (!alreadyRewardedToday) {
-      setDailyReward({
+  const recordQualifyingActivity = useCallback(() => {
+    const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const getCalendarDayDifference = (from: string, to: string) => {
+      const fromDate = new Date(`${from}T00:00:00`);
+      const toDate = new Date(`${to}T00:00:00`);
+      return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
+    };
+
+    let rewardDetails: DailyReward | null = null;
+    setUserProfile((profile) => {
+      const todayKey = toDateKey(new Date());
+      const previousDate = profile.lastActiveDate;
+
+      if (!previousDate) {
+        const updatedProfile = {
+          ...profile,
+          currentStreak: 1,
+          longestStreak: Math.max(profile.longestStreak, 1),
+          lastActiveDate: todayKey,
+        };
+        rewardDetails = {
+          streak: 1,
+          totalPoints: profile.totalPoints + 4,
+          milestone: false,
+        };
+        return updatedProfile;
+      }
+
+      if (previousDate === todayKey) {
+        return profile;
+      }
+
+      const dayGap = getCalendarDayDifference(previousDate, todayKey);
+      const nextStreak = dayGap === 1 ? profile.currentStreak + 1 : 1;
+      const updatedProfile = {
+        ...profile,
+        currentStreak: nextStreak,
+        longestStreak: Math.max(profile.longestStreak, nextStreak),
+        lastActiveDate: todayKey,
+      };
+
+      rewardDetails = {
         streak: nextStreak,
-        totalPoints: nextPoints,
+        totalPoints: profile.totalPoints + 4,
         milestone: [10, 50, 100, 101].includes(nextStreak),
-      });
+      };
+      return updatedProfile;
+    });
+
+    if (rewardDetails) {
+      setDailyReward(rewardDetails);
     }
   }, []);
 
@@ -249,17 +289,37 @@ export default function App() {
   const isOwner = userRole === 'owner';
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
 
+  const openPractice = useCallback(() => {
+    if (!window.history.state?.chessAppPractice) {
+      window.history.pushState(
+        { chessAppScreen: 'main-menu', navigationScreen, chessAppPractice: true },
+        '',
+        window.location.href
+      );
+    }
+    setIsPracticeOpen(true);
+  }, [navigationScreen]);
+
+  const closePractice = useCallback(() => {
+    setIsPracticeOpen(false);
+    // Drop the practice history entry so back/forward stay on the main window's stack.
+    if (window.history.state?.chessAppPractice) {
+      practiceExitedProgrammaticallyRef.current = true;
+      window.history.back();
+    }
+  }, []);
+
   const startOnboarding = useCallback((mode: 'tour' | 'basics') => {
     onboardingReturnScreenRef.current = navigationScreen;
     setShowOpeningCinematic(false);
-    setIsPracticeOpen(false);
+    closePractice();
     setOnboardingMode(mode);
-  }, [navigationScreen]);
+  }, [navigationScreen, closePractice]);
 
   const finishOnboarding = useCallback((skipped: boolean) => {
     localStorage.setItem('chess-openings-onboarding-status', skipped ? 'skipped' : 'completed');
     setOnboardingMode(null);
-    setIsPracticeOpen(false);
+    closePractice();
     setNavigationScreen(onboardingReturnScreenRef.current);
   }, []);
 
@@ -362,6 +422,7 @@ export default function App() {
 
   // When opening changes, default to its first variation and reset move index
   const handleSelectOpening = useCallback((openingId: string) => {
+    recordQualifyingActivity();
     setSelectedOpeningId(openingId);
     setUserProfile((profile) => profile.learnedOpeningIds.includes(openingId)
       ? profile
@@ -379,10 +440,11 @@ export default function App() {
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
     navigateToScreen('variations');
-  }, [navigateToScreen]);
+  }, [navigateToScreen, recordQualifyingActivity]);
 
   // When variation changes, reset move index
   const handleSelectVariation = useCallback((variationId: string) => {
+    recordQualifyingActivity();
     setSelectedVariationId(variationId);
     setUserProfile((profile) => profile.learnedVariationIds.includes(variationId)
       ? profile
@@ -393,7 +455,7 @@ export default function App() {
     setGmMoveIndex(-1);
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
-  }, []);
+  }, [recordQualifyingActivity]);
 
   const handleOpenVariation = useCallback((variationId: string) => {
     handleSelectVariation(variationId);
@@ -418,6 +480,7 @@ export default function App() {
   }, [handleOpenVariation, isOwner, isPremiumUser, userProfile.totalPoints, userProfile.unlockedVariationIds]);
 
   const handleEngineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
+    recordQualifyingActivity();
     setUserProfile((profile) => ({
       ...profile,
       engineGames: {
@@ -427,9 +490,10 @@ export default function App() {
         draws: profile.engineGames.draws + (result === 'draw' ? 1 : 0),
       },
     }));
-  }, []);
+  }, [recordQualifyingActivity]);
 
   const handleOnlineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
+    recordQualifyingActivity();
     setUserProfile((profile) => ({
       ...profile,
       onlineGames: {
@@ -439,7 +503,7 @@ export default function App() {
         draws: profile.onlineGames.draws + (result === 'draw' ? 1 : 0),
       },
     }));
-  }, []);
+  }, [recordQualifyingActivity]);
 
   // Deviation controls (step, auto-play, reset to book)
   const handleStepDeviation = useCallback((direction: 1 | -1) => {
@@ -953,7 +1017,7 @@ export default function App() {
                 <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
               </button>
             </section>
-            <button type="button" onClick={() => setIsPracticeOpen(true)} className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg">
+            <button type="button" onClick={openPractice} className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg">
               <Cpu className="h-5 w-5 transition-transform group-hover:scale-110" />
               Practice Mode
               <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
@@ -1262,7 +1326,7 @@ export default function App() {
       {/* Practice Mode Modal (Stockfish Level 1 to 18 Engine & 200 Puzzles per Variation) */}
       <PracticeModeModal
         isOpen={isPracticeOpen}
-        onClose={() => setIsPracticeOpen(false)}
+        onClose={closePractice}
         boardTheme={boardTheme}
         initialOpeningId={currentOpening?.id}
         initialVariationId={currentVariation?.id}
@@ -1308,8 +1372,8 @@ export default function App() {
           initialMode={onboardingMode}
           language={language}
           onFinish={finishOnboarding}
-          onOpenPractice={() => setIsPracticeOpen(true)}
-          onClosePractice={() => setIsPracticeOpen(false)}
+          onOpenPractice={openPractice}
+          onClosePractice={closePractice}
           onNavigateToScreen={setNavigationScreen}
         />
       )}
