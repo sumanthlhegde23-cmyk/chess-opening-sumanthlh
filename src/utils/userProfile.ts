@@ -1,3 +1,5 @@
+import { loadStreakData, saveStreakData } from './streakManager';
+
 export interface UserProfile {
   username: string;
   avatarDataUrl: string | null;
@@ -79,13 +81,30 @@ export function loadUserProfile(): UserProfile {
     console.error('Could not access the saved player profile in this browser.', error);
     return createDefaultUserProfile();
   }
-  if (!storedProfile) return createDefaultUserProfile();
+
+  const streakData = loadStreakData();
+
+  if (!storedProfile) {
+    const defaults = createDefaultUserProfile();
+    return {
+      ...defaults,
+      currentStreak: streakData.currentStreak,
+      longestStreak: streakData.longestStreak,
+      lastActiveDate: streakData.lastActiveDate,
+    };
+  }
 
   try {
     const parsed = JSON.parse(storedProfile) as Partial<UserProfile>;
     const defaults = createDefaultUserProfile();
     const engineGames = parsed.engineGames;
     const onlineGames = parsed.onlineGames;
+
+    // Favor streakData from dedicated localStorage keys / composite profile
+    const currentStreak = streakData.currentStreak;
+    const longestStreak = streakData.longestStreak;
+    const lastActiveDate = streakData.lastActiveDate;
+
     return {
       ...defaults,
       ...parsed,
@@ -97,10 +116,10 @@ export function loadUserProfile(): UserProfile {
       totalSeconds: typeof parsed.totalSeconds === 'number' && Number.isFinite(parsed.totalSeconds) ? parsed.totalSeconds : 0,
       learnedOpeningIds: Array.isArray(parsed.learnedOpeningIds) ? parsed.learnedOpeningIds.filter((value): value is string => typeof value === 'string') : [],
       learnedVariationIds: Array.isArray(parsed.learnedVariationIds) ? parsed.learnedVariationIds.filter((value): value is string => typeof value === 'string') : [],
-      currentStreak: typeof parsed.currentStreak === 'number' && Number.isFinite(parsed.currentStreak) && parsed.currentStreak >= 0 ? Math.floor(parsed.currentStreak) : 0,
-      longestStreak: typeof parsed.longestStreak === 'number' && Number.isFinite(parsed.longestStreak) && parsed.longestStreak >= 0 ? Math.floor(parsed.longestStreak) : 0,
+      currentStreak,
+      longestStreak,
       totalPoints: typeof parsed.totalPoints === 'number' && Number.isFinite(parsed.totalPoints) && parsed.totalPoints >= 0 ? Math.floor(parsed.totalPoints) : 0,
-      lastActiveDate: typeof parsed.lastActiveDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.lastActiveDate) ? parsed.lastActiveDate : null,
+      lastActiveDate,
       unlockedVariationIds: Array.isArray(parsed.unlockedVariationIds) ? [...new Set(parsed.unlockedVariationIds.filter((value): value is string => typeof value === 'string'))] : [],
       totalVariationsUnlocked: typeof parsed.totalVariationsUnlocked === 'number' && Number.isFinite(parsed.totalVariationsUnlocked) && parsed.totalVariationsUnlocked >= 0
         ? Math.floor(parsed.totalVariationsUnlocked)
@@ -123,7 +142,16 @@ export function loadUserProfile(): UserProfile {
 }
 
 export function saveUserProfile(profile: UserProfile): void {
-  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  try {
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    saveStreakData({
+      currentStreak: profile.currentStreak,
+      longestStreak: profile.longestStreak,
+      lastActiveDate: profile.lastActiveDate,
+    });
+  } catch (error) {
+    console.error('Could not save user profile to localStorage', error);
+  }
 }
 
 export function formatStudyTime(totalSeconds: number): string {

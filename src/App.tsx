@@ -27,6 +27,7 @@ import { StreakRewardModal, DailyReward } from './components/StreakRewardModal';
 import { VariationUnlockModal } from './components/VariationUnlockModal';
 import { OnlineChessGameModal } from './components/OnlineChessGameModal';
 import { loadUserProfile, saveUserProfile, UserProfile } from './utils/userProfile';
+import { calculateStreakUpdate, StreakData, saveStreakData } from './utils/streakManager';
 import {
   PaidPlanTier,
   UserRole,
@@ -208,59 +209,70 @@ export default function App() {
     }
   }, [userProfile]);
 
+  // Ref to pass reward details out of React's async setUserProfile updater
+  const pendingRewardRef = useRef<DailyReward | null>(null);
+
+  /**
+   * recordQualifyingActivity — call ONLY when the user completes a genuine activity:
+   *   • Opening/studying a variation (entering study view)
+   *   • Completing an engine game
+   *   • Completing an online game
+   *   • Sending a message to the AI chat
+   *
+   * Never call on passive browsing (e.g. simply clicking through screens).
+   * Opening the app alone must NOT award a streak.
+   */
   const recordQualifyingActivity = useCallback(() => {
-    const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    const getCalendarDayDifference = (from: string, to: string) => {
-      const fromDate = new Date(`${from}T00:00:00`);
-      const toDate = new Date(`${to}T00:00:00`);
-      return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
-    };
-
-    let rewardDetails: DailyReward | null = null;
-    setUserProfile((profile) => {
-      const todayKey = toDateKey(new Date());
-      const previousDate = profile.lastActiveDate;
-
-      if (!previousDate) {
-        const updatedProfile = {
-          ...profile,
-          currentStreak: 1,
-          longestStreak: Math.max(profile.longestStreak, 1),
-          lastActiveDate: todayKey,
-        };
-        rewardDetails = {
-          streak: 1,
-          totalPoints: profile.totalPoints + 4,
-          milestone: false,
-        };
-        return updatedProfile;
-      }
-
-      if (previousDate === todayKey) {
-        return profile;
-      }
-
-      const dayGap = getCalendarDayDifference(previousDate, todayKey);
-      const nextStreak = dayGap === 1 ? profile.currentStreak + 1 : 1;
-      const updatedProfile = {
-        ...profile,
-        currentStreak: nextStreak,
-        longestStreak: Math.max(profile.longestStreak, nextStreak),
-        lastActiveDate: todayKey,
+    setUserProfile((prevProfile) => {
+      const currentStreakData: StreakData = {
+        currentStreak: prevProfile.currentStreak,
+        longestStreak: prevProfile.longestStreak,
+        lastActiveDate: prevProfile.lastActiveDate,
       };
 
-      rewardDetails = {
-        streak: nextStreak,
-        totalPoints: profile.totalPoints + 4,
-        milestone: [10, 50, 100, 101].includes(nextStreak),
+      const result = calculateStreakUpdate(currentStreakData);
+
+      // Already recorded today — keep current streak count the same, no duplicate reward
+      if (!result.isNewActivityToday) {
+        return prevProfile;
+      }
+
+      const pointsEarned = 4;
+      const nextProfile: UserProfile = {
+        ...prevProfile,
+        currentStreak: result.nextStreak.currentStreak,
+        longestStreak: result.nextStreak.longestStreak,
+        lastActiveDate: result.nextStreak.lastActiveDate,
+        totalPoints: prevProfile.totalPoints + pointsEarned,
       };
-      return updatedProfile;
+
+      // Persist streak and profile immediately into localStorage
+      saveStreakData(result.nextStreak);
+      try {
+        saveUserProfile(nextProfile);
+      } catch (err) {
+        console.error('Could not save user profile on activity:', err);
+      }
+
+      // Stash reward so the effect below can fire setDailyReward safely
+      pendingRewardRef.current = {
+        streak: result.nextStreak.currentStreak,
+        totalPoints: nextProfile.totalPoints,
+        milestone: [10, 50, 100, 101].includes(result.nextStreak.currentStreak),
+      };
+
+      return nextProfile;
     });
-
-    if (rewardDetails) {
-      setDailyReward(rewardDetails);
-    }
   }, []);
+
+  // After recordQualifyingActivity updates the profile, show the reward toast
+  // We use a ref + effect combo to safely bridge the async updater boundary
+  useEffect(() => {
+    if (pendingRewardRef.current) {
+      setDailyReward(pendingRewardRef.current);
+      pendingRewardRef.current = null;
+    }
+  }, [userProfile.lastActiveDate]);
 
   useEffect(() => {
     const recordVisibleTime = () => {
@@ -457,8 +469,8 @@ export default function App() {
   }, []);
 
   // When opening changes, default to its first variation and reset move index
+  // NOTE: Selecting an opening is passive browsing — no streak awarded here.
   const handleSelectOpening = useCallback((openingId: string) => {
-    recordQualifyingActivity();
     setSelectedOpeningId(openingId);
     setUserProfile((profile) => profile.learnedOpeningIds.includes(openingId)
       ? profile
@@ -476,11 +488,11 @@ export default function App() {
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
     navigateToScreen('variations');
-  }, [navigateToScreen, recordQualifyingActivity]);
+  }, [navigateToScreen]);
 
   // When variation changes, reset move index
+  // NOTE: Selecting a variation is passive browsing — no streak awarded here.
   const handleSelectVariation = useCallback((variationId: string) => {
-    recordQualifyingActivity();
     setSelectedVariationId(variationId);
     setUserProfile((profile) => profile.learnedVariationIds.includes(variationId)
       ? profile
@@ -491,12 +503,14 @@ export default function App() {
     setGmMoveIndex(-1);
     setCurrentMoveIndex(-1);
     setIsPlaying(false);
-  }, [recordQualifyingActivity]);
+  }, []);
 
+  // Opening a variation to study it IS a qualifying activity (intentional learning)
   const handleOpenVariation = useCallback((variationId: string) => {
+    recordQualifyingActivity();
     handleSelectVariation(variationId);
     navigateToScreen('study');
-  }, [handleSelectVariation, navigateToScreen]);
+  }, [handleSelectVariation, navigateToScreen, recordQualifyingActivity]);
 
   const handleLockedVariationClick = useCallback((variation: Variation, _index: number) => {
     if (userProfile.unlockedVariationIds.includes(variation.id)) {
@@ -515,6 +529,7 @@ export default function App() {
     setIsLockedVariationModalOpen(true);
   }, [handleOpenVariation, isOwner, isPremiumUser, userProfile.totalPoints, userProfile.unlockedVariationIds]);
 
+  // Completing an engine game is a qualifying activity
   const handleEngineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
     recordQualifyingActivity();
     setUserProfile((profile) => ({
@@ -528,6 +543,7 @@ export default function App() {
     }));
   }, [recordQualifyingActivity]);
 
+  // Completing an online game is a qualifying activity
   const handleOnlineGameCompleted = useCallback((result: 'win' | 'loss' | 'draw') => {
     recordQualifyingActivity();
     setUserProfile((profile) => ({
@@ -853,6 +869,9 @@ export default function App() {
 
       // Main line move attempt
       if (isCorrect) {
+        if (trainingMode) {
+          recordQualifyingActivity();
+        }
         setUserDeviation(null);
         setCurrentMoveIndex((prev) => Math.min(currentVariation.moves.length - 1, prev + 1));
       } else {
@@ -1001,6 +1020,7 @@ export default function App() {
         userTier={paidPlanTier}
         username={userProfile.username}
         avatarDataUrl={userProfile.avatarDataUrl}
+        currentStreak={userProfile.currentStreak}
         onOpenProfile={() => setIsUserProfileOpen(true)}
       />
 
@@ -1367,6 +1387,7 @@ export default function App() {
         initialOpeningId={currentOpening?.id}
         initialVariationId={currentVariation?.id}
         onEngineGameCompleted={handleEngineGameCompleted}
+        onPracticeActivity={recordQualifyingActivity}
         onOpenChatAiWithFen={(fen) => {
           setChatAiInitialFen(fen);
           setIsChatAiOpen(true);
@@ -1401,6 +1422,7 @@ export default function App() {
         currentVariationName={currentVariation?.name}
         initialFen={chatAiInitialFen}
         language={language}
+        onChatActivityRecorded={recordQualifyingActivity}
       />
 
       {onboardingMode && (

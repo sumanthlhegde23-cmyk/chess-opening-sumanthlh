@@ -75,6 +75,7 @@ interface OpeningPuzzlesSectionProps {
   initialVariationId?: string;
   onOpenChatAiWithFen?: (fen: string) => void;
   onPreviewFenChange?: (fen: string | null) => void;
+  onPuzzleSolved?: () => void;
 }
 
 export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
@@ -89,6 +90,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
   initialVariationId,
   onOpenChatAiWithFen,
   onPreviewFenChange,
+  onPuzzleSolved,
 }) => {
   // Selected Opening & Variation
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>(
@@ -336,6 +338,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
           onPuzzleInteractionLockChange?.(true);
           saveSolvedPuzzle(selectedOpeningId, selectedVariationId, puzzleNumber);
           setSolvedList((prev) => (prev.includes(puzzleNumber) ? prev : [...prev, puzzleNumber]));
+          onPuzzleSolved?.();
           chessAudio.playCheck();
         } else {
           // Opponent has a reply move in the sequence
@@ -385,6 +388,7 @@ export const OpeningPuzzlesSection: React.FC<OpeningPuzzlesSectionProps> = ({
                   onPuzzleInteractionLockChange?.(true);
                   saveSolvedPuzzle(selectedOpeningId, selectedVariationId, puzzleNumber);
                   setSolvedList((prev) => (prev.includes(puzzleNumber) ? prev : [...prev, puzzleNumber]));
+                  onPuzzleSolved?.();
                   chessAudio.playCheck();
                 } else {
                   setPuzzleStatus('playing');

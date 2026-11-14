@@ -204,7 +204,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
                 {profile.currentStreak >= 101 && <span className="absolute inset-0 flex items-center justify-center pt-1 text-xl text-white">♔</span>}
               </div>
               <div className="min-w-0">
-                <p className="text-3xl font-black leading-none text-white">{profile.currentStreak}</p>
+                <p id="streak-counter-value" data-testid="profile-current-streak" className="text-3xl font-black leading-none text-white">{profile.currentStreak}</p>
                 <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.17em] text-zinc-300">Day Streak</p>
                 <p className="mt-1 text-xs font-bold text-emerald-300">+4 daily points for every active day</p>
               </div>

@@ -16,6 +16,7 @@ import {
   GraduationCap,
   BookOpen,
   UserRound,
+  Flame,
 } from 'lucide-react';
 import { boardThemes } from '../utils/boardThemes';
 import { PaidPlanTier } from '../utils/pricingLocks';
@@ -44,6 +45,7 @@ interface NavbarProps {
   translationStatus?: string | null;
   username: string;
   avatarDataUrl: string | null;
+  currentStreak?: number;
   onOpenProfile: () => void;
 }
 
@@ -68,6 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   translationStatus,
   username,
   avatarDataUrl,
+  currentStreak = 0,
   onOpenProfile,
 }) => {
   const languageMenuRef = React.useRef<HTMLDetailsElement>(null);
@@ -290,6 +293,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
           </details>
+
+          {/* Streak Counter Badge */}
+          <button
+            id="navbar-streak-counter"
+            data-testid="streak-counter"
+            type="button"
+            onClick={onOpenProfile}
+            title={`${currentStreak} day streak`}
+            aria-label={`Current streak: ${currentStreak} days`}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-[#181a20] px-2.5 py-1.5 text-xs font-bold text-amber-300 transition-colors hover:border-amber-400/70 hover:bg-[#20242e]"
+          >
+            <Flame className="h-4 w-4 fill-amber-400 text-amber-400" />
+            <span id="streak-counter-value-nav" data-testid="streak-counter-value">{currentStreak}</span>
+          </button>
 
           <button
             id="navbar-player-profile-btn"

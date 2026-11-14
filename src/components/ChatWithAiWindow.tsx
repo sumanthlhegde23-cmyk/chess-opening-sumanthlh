@@ -30,6 +30,8 @@ interface ChatWithAiWindowProps {
   currentVariationName?: string;
   initialFen?: string;
   language: string;
+  /** Called once per calendar day when the user successfully sends a message — used for streak tracking */
+  onChatActivityRecorded?: () => void;
 }
 
 const INITIAL_GREETING: ChatMessage = {
@@ -53,6 +55,7 @@ export const ChatWithAiWindow: React.FC<ChatWithAiWindowProps> = ({
   currentVariationName,
   initialFen,
   language,
+  onChatActivityRecorded,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_GREETING]);
   const [input, setInput] = useState('');
@@ -98,6 +101,8 @@ export const ChatWithAiWindow: React.FC<ChatWithAiWindowProps> = ({
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+    // Record AI chat as a qualifying streak activity (once per calendar day at most)
+    onChatActivityRecorded?.();
 
     try {
       const response = await fetch('/api/chat', {

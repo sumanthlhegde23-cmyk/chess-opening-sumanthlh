@@ -68,6 +68,7 @@ interface PracticeModeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEngineGameCompleted?: (result: 'win' | 'loss' | 'draw') => void;
+  onPracticeActivity?: () => void;
   boardTheme?: string;
   onOpenChatAiWithFen?: (fen: string) => void;
   initialOpeningId?: string;
@@ -153,6 +154,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   isOpen,
   onClose,
   onEngineGameCompleted,
+  onPracticeActivity,
   boardTheme = 'maple',
   onOpenChatAiWithFen,
   initialOpeningId,
@@ -3712,6 +3714,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 initialVariationId={initialVariationId}
                 onOpenChatAiWithFen={onOpenChatAiWithFen}
                 onPreviewFenChange={(fen) => setPreviewFen(fen)}
+                onPuzzleSolved={onPracticeActivity}
               />
             )}
           </div>
