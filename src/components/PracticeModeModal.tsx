@@ -3415,7 +3415,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     className="mx-auto flex w-full max-w-xl flex-col items-center justify-center gap-2.5 animate-fadeIn px-2 py-1"
                   >
                     {/* Opponent Bar */}
-                    <div className="flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
+                    <div className="engine-player-bar engine-player-bar--opponent flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
                       <div className="flex items-center gap-2.5">
                         <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
                           activeClockColorRef.current !== playerColor && !gameResult
@@ -3439,13 +3439,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
                       {/* Opponent Clock */}
                       {engineClock && (
-                        <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all ${
-                          activeClockColorRef.current !== playerColor && !gameResult
-                            ? 'border-cyan-400/80 bg-cyan-500/20 text-cyan-200 shadow-md shadow-cyan-500/20'
-                            : 'border-zinc-800 bg-black/40 text-zinc-400'
-                        }`}>
+                        <div
+                          id="engine-opponent-clock"
+                          className={`engine-match-clock engine-match-clock--opponent ${
+                            activeClockColorRef.current !== playerColor && !gameResult
+                              ? 'engine-match-clock--active border-cyan-400/80 bg-cyan-500/20 text-cyan-200 shadow-md shadow-cyan-500/20'
+                              : 'engine-match-clock--inactive border-zinc-800 bg-black/40 text-zinc-400'
+                          } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all`}
+                        >
                           <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current !== playerColor && !gameResult ? 'text-cyan-300 animate-spin' : 'text-zinc-500'}`} />
-                          <span>{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
+                          <span id="engine-opponent-clock-time">{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
                         </div>
                       )}
                     </div>
@@ -3547,7 +3550,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     </div>
 
                     {/* Player Bar */}
-                    <div className="flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
+                    <div className="engine-player-bar engine-player-bar--user flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
                       <div className="flex items-center gap-2.5">
                         <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
                           activeClockColorRef.current === playerColor && !gameResult
@@ -3571,13 +3574,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
                       {/* Player Clock */}
                       {engineClock && (
-                        <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all ${
-                          activeClockColorRef.current === playerColor && !gameResult
-                            ? 'border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-md shadow-emerald-500/20'
-                            : 'border-zinc-800 bg-black/40 text-zinc-400'
-                        }`}>
+                        <div
+                          id="engine-player-clock"
+                          className={`engine-match-clock engine-match-clock--player ${
+                            activeClockColorRef.current === playerColor && !gameResult
+                              ? 'engine-match-clock--active border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-md shadow-emerald-500/20'
+                              : 'engine-match-clock--inactive border-zinc-800 bg-black/40 text-zinc-400'
+                          } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all`}
+                        >
                           <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current === playerColor && !gameResult ? 'text-emerald-300' : 'text-zinc-500'}`} />
-                          <span>{formatClock(engineClock[playerColor])}</span>
+                          <span id="engine-player-clock-time">{formatClock(engineClock[playerColor])}</span>
                         </div>
                       )}
                     </div>

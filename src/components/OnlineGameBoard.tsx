@@ -24,14 +24,14 @@ function PlayerBar({ name, color, clock, active, isYou }: {
   isYou: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 sm:px-4 sm:py-2.5 ${
-      active ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100' : 'border-zinc-800 bg-black/25 text-zinc-300'
+    <div className={`online-player-bar flex items-center justify-between gap-3 rounded-xl border px-3 py-2 sm:px-4 sm:py-2.5 ${
+      active ? 'online-player-bar--active border-emerald-400/60 bg-emerald-500/10 text-emerald-100' : 'online-player-bar--inactive border-zinc-800 bg-black/25 text-zinc-300'
     }`}>
       <div className="flex min-w-0 items-center gap-2">
         <span aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 rounded-full border ${color === 'w' ? 'border-zinc-400 bg-zinc-100' : 'border-zinc-500 bg-zinc-900'}`} />
         <span className="truncate text-sm font-semibold">{name}{isYou ? ' (You)' : ''}</span>
       </div>
-      {clock !== null && <span className="font-mono text-lg font-extrabold tabular-nums sm:text-xl">{formatClock(clock)}</span>}
+      {clock !== null && <span className="online-match-clock font-mono text-lg font-extrabold tabular-nums sm:text-xl">{formatClock(clock)}</span>}
     </div>
   );
 }

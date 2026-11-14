@@ -175,7 +175,7 @@ export const ChatWithAiWindow: React.FC<ChatWithAiWindowProps> = ({
   return (
     <div
       id="chat-with-ai-floating-window"
-      className={`fixed z-50 transition-all duration-300 flex flex-col bg-[#14171f] border border-zinc-700/80 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-md overflow-hidden ${
+      className={`chat-ai-window fixed z-50 transition-all duration-300 flex flex-col bg-[#14171f] border border-zinc-700/80 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-md overflow-hidden ${
         isMinimized
           ? 'bottom-5 right-5 w-80 h-14'
           : isExpanded

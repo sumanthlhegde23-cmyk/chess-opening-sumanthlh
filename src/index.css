@@ -783,6 +783,24 @@
   }
 }
 
+:root {
+  /* Dynamic Theme Variables (Default: Dark) */
+  --bg-color: #0b100e;
+  --bg-surface: #141916;
+  --bg-card: #181a24;
+  --bg-card-subtle: #111512;
+  --bg-hover: #1f2937;
+  --text-color: #f3f4f6;
+  --text-color-strong: #ffffff;
+  --text-color-muted: #9ca3af;
+  --text-color-subtle: #6b7280;
+  --border-color: #374151;
+  --border-color-subtle: #27272a;
+  --clock-bg-inactive: rgba(0, 0, 0, 0.45);
+  --clock-text-inactive: #9ca3af;
+  --clock-border-inactive: #27272a;
+}
+
 [data-color-mode="light"].app-shell {
   background-color: #edf1ec !important;
   background-image:
@@ -799,6 +817,22 @@
   color-scheme: light;
   background-color: var(--lm-page) !important;
   color: var(--lm-text);
+
+  /* Dynamic Theme Variables (Bright Mode) */
+  --bg-color: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-subtle: #f8fafc;
+  --bg-hover: #e2e8f0;
+  --text-color: #0f172a;
+  --text-color-strong: #020617;
+  --text-color-muted: #334155;
+  --text-color-subtle: #64748b;
+  --border-color: #cbd5e1;
+  --border-color-subtle: #e2e8f0;
+  --clock-bg-inactive: #f1f5f9;
+  --clock-text-inactive: #0f172a;
+  --clock-border-inactive: #94a3b8;
 
   /* Surfaces: well < card < raised < hover */
   --lm-page: #f1f5f9;
@@ -954,6 +988,475 @@
 [data-color-mode="light"] .profile-modal .profile-streak [class*="bg-rose-500/10"] {
   background-color: #ffe4e6 !important;
   border-color: #fb7185 !important;
+}
+
+/* ==========================================================================
+   BRIGHT (LIGHT) MODE ADAPTATIONS & HIGH-CONTRAST RULES
+   ========================================================================== */
+
+/* ---- 1. Time Control Panel: Container, Options, Hover, & Selected States ---- */
+[data-color-mode="light"] .time-control-panel {
+  background-color: var(--bg-surface, #ffffff) !important;
+  border-color: var(--border-color, #cbd5e1) !important;
+  color: var(--text-color, #0f172a) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] .time-control-panel #time-control-title,
+[data-color-mode="light"] .time-control-panel h2,
+[data-color-mode="light"] .time-control-panel h3,
+[data-color-mode="light"] .time-control-panel [class*="text-zinc-100"] {
+  color: var(--text-color-strong, #0f172a) !important;
+}
+
+[data-color-mode="light"] .time-control-panel p,
+[data-color-mode="light"] .time-control-panel [class*="text-zinc-400"] {
+  color: var(--text-color-muted, #334155) !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-category,
+[data-color-mode="light"] .time-control-panel section[aria-label] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-category h3 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .time-control-panel [class*="text-emerald-300"] {
+  color: #047857 !important;
+}
+
+[data-color-mode="light"] .time-control-panel [class*="text-amber-300"] {
+  color: #b45309 !important;
+}
+
+/* Time control UNSELECTED option buttons */
+[data-color-mode="light"] .time-control-panel .time-control-option:not(.is-selected),
+[data-color-mode="light"] .time-control-panel button[aria-pressed="false"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-option:not(.is-selected):hover,
+[data-color-mode="light"] .time-control-panel button[aria-pressed="false"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-option:not(.is-selected) span.font-mono,
+[data-color-mode="light"] .time-control-panel button[aria-pressed="false"] span.font-mono {
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-option:not(.is-selected) span[class*="text-zinc-400"],
+[data-color-mode="light"] .time-control-panel button[aria-pressed="false"] span[class*="text-zinc-400"] {
+  color: #475569 !important;
+}
+
+/* Time control SELECTED option buttons */
+[data-color-mode="light"] .time-control-panel .time-control-option.is-selected,
+[data-color-mode="light"] .time-control-panel button[aria-pressed="true"] {
+  background-color: #ecfdf5 !important;
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 1.5px #059669, 0 4px 6px -1px rgba(5, 150, 105, 0.15) !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-option.is-selected span.font-mono,
+[data-color-mode="light"] .time-control-panel button[aria-pressed="true"] span.font-mono {
+  color: #064e3b !important;
+  font-weight: 900;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-option.is-selected svg,
+[data-color-mode="light"] .time-control-panel button[aria-pressed="true"] svg {
+  color: #059669 !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-option.is-selected span[class*="text-zinc-400"],
+[data-color-mode="light"] .time-control-panel button[aria-pressed="true"] span[class*="text-zinc-400"] {
+  color: #047857 !important;
+  font-weight: 600;
+}
+
+/* Footer buttons & notes */
+[data-color-mode="light"] .time-control-panel .time-control-back-btn,
+[data-color-mode="light"] .time-control-panel [class*="border-zinc-700"][class*="bg-zinc-900"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-back-btn:hover,
+[data-color-mode="light"] .time-control-panel [class*="border-zinc-700"][class*="bg-zinc-900"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-continue-btn {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-continue-btn:hover {
+  background-color: #047857 !important;
+}
+
+
+/* ---- 2. Engine Match Timer & Active Display Elements ---- */
+[data-color-mode="light"] .engine-player-bar {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] .engine-player-bar [class*="text-zinc-100"] {
+  color: #0f172a !important;
+  font-weight: 700;
+}
+
+[data-color-mode="light"] .engine-player-bar [class*="text-zinc-400"] {
+  color: #475569 !important;
+}
+
+/* Engine Level Badge on Opponent Bar */
+[data-color-mode="light"] .engine-player-bar [class*="bg-cyan-500/20"] {
+  background-color: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+/* Player Color Badge (White / Black) */
+[data-color-mode="light"] .engine-player-bar [class*="bg-zinc-800"] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* INACTIVE Match Clock (Opponent & Player when it is NOT their turn) */
+[data-color-mode="light"] .engine-match-clock.engine-match-clock--inactive,
+[data-color-mode="light"] #dedicated-engine-board-container [class*="border-zinc-800"][class*="bg-black/40"] {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-color-mode="light"] .engine-match-clock.engine-match-clock--inactive span,
+[data-color-mode="light"] #dedicated-engine-board-container [class*="border-zinc-800"][class*="bg-black/40"] span {
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .engine-match-clock.engine-match-clock--inactive svg,
+[data-color-mode="light"] #dedicated-engine-board-container [class*="border-zinc-800"][class*="bg-black/40"] svg {
+  color: #475569 !important;
+}
+
+/* ACTIVE Opponent Clock (Stockfish turn) */
+[data-color-mode="light"] .engine-match-clock--opponent.engine-match-clock--active,
+[data-color-mode="light"] #engine-opponent-clock.engine-match-clock--active {
+  background-color: #e0f2fe !important;
+  border-color: #0284c7 !important;
+  color: #0369a1 !important;
+  box-shadow: 0 0 0 1.5px #0284c7, 0 4px 6px -1px rgba(2, 132, 199, 0.2) !important;
+}
+
+[data-color-mode="light"] .engine-match-clock--opponent.engine-match-clock--active span,
+[data-color-mode="light"] #engine-opponent-clock.engine-match-clock--active span {
+  color: #0369a1 !important;
+  font-weight: 900;
+}
+
+[data-color-mode="light"] .engine-match-clock--opponent.engine-match-clock--active svg,
+[data-color-mode="light"] #engine-opponent-clock.engine-match-clock--active svg {
+  color: #0284c7 !important;
+}
+
+/* ACTIVE Player Clock (User turn) */
+[data-color-mode="light"] .engine-match-clock--player.engine-match-clock--active,
+[data-color-mode="light"] #engine-player-clock.engine-match-clock--active {
+  background-color: #ecfdf5 !important;
+  border-color: #16a34a !important;
+  color: #14532d !important;
+  box-shadow: 0 0 0 1.5px #16a34a, 0 4px 6px -1px rgba(22, 163, 74, 0.2) !important;
+}
+
+[data-color-mode="light"] .engine-match-clock--player.engine-match-clock--active span,
+[data-color-mode="light"] #engine-player-clock.engine-match-clock--active span {
+  color: #14532d !important;
+  font-weight: 900;
+}
+
+[data-color-mode="light"] .engine-match-clock--player.engine-match-clock--active svg,
+[data-color-mode="light"] #engine-player-clock.engine-match-clock--active svg {
+  color: #16a34a !important;
+}
+
+/* Active Turn Avatar Icons */
+[data-color-mode="light"] .engine-player-bar [class*="border-emerald-400"][class*="bg-emerald-500/20"] {
+  background-color: #ecfdf5 !important;
+  border-color: #16a34a !important;
+  color: #15803d !important;
+}
+
+[data-color-mode="light"] .engine-player-bar [class*="border-cyan-400"][class*="bg-cyan-500/20"] {
+  background-color: #e0f2fe !important;
+  border-color: #0284c7 !important;
+  color: #0369a1 !important;
+}
+
+/* Match Action Buttons: Resign, Draw, Takeback */
+[data-color-mode="light"] #btn-play-resign {
+  background-color: #ffe4e6 !important;
+  border-color: #f43f5e !important;
+  color: #9f1239 !important;
+}
+[data-color-mode="light"] #btn-play-resign:hover:not(:disabled) {
+  background-color: #fecdd3 !important;
+}
+
+[data-color-mode="light"] #btn-play-draw {
+  background-color: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+[data-color-mode="light"] #btn-play-draw:hover:not(:disabled) {
+  background-color: #fde68a !important;
+}
+
+[data-color-mode="light"] #btn-play-undo {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+[data-color-mode="light"] #btn-play-undo:hover:not(:disabled) {
+  background-color: #e2e8f0 !important;
+}
+
+/* Engine Match Game Result Card */
+[data-color-mode="light"] section[aria-labelledby="engine-game-result-title"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+
+/* ---- 3. Practice Mode Modal & Setup Steps in Bright Mode ---- */
+[data-color-mode="light"] #practice-mode-container {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a;
+}
+
+[data-color-mode="light"] #practice-mode-header {
+  background-color: #f8fafc !important;
+  background-image: none !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] #practice-mode-header h2 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #practice-mode-header p {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] #engine-wizard-entry {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-color-mode="light"] #engine-wizard-entry h3 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #engine-wizard-entry p {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] ol[aria-label="Game setup progress"] li[aria-current="step"] {
+  background-color: #ecfdf5 !important;
+  border-color: #059669 !important;
+  color: #047857 !important;
+}
+
+[data-color-mode="light"] ol[aria-label="Game setup progress"] li:not([aria-current="step"]) {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+[data-color-mode="light"] #engine-level-selector-box {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #engine-level-selector-box [class*="text-zinc-200"],
+[data-color-mode="light"] #engine-level-selector-box [class*="text-zinc-100"] {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #engine-level-selector-box [class*="text-zinc-400"] {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] #engine-level-selector-box [class*="text-cyan-300"] {
+  color: #0369a1 !important;
+}
+
+[data-color-mode="light"] #engine-level-selector-box .bg-black\/60 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-color-mode="light"] #input-engine-level-direct {
+  background-color: #ffffff !important;
+  border-color: #94a3b8 !important;
+  color: #0369a1 !important;
+}
+
+[data-color-mode="light"] #btn-engine-level-minus,
+[data-color-mode="light"] #btn-engine-level-plus {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #btn-engine-level-minus:hover:not(:disabled),
+[data-color-mode="light"] #btn-engine-level-plus:hover:not(:disabled) {
+  background-color: #cbd5e1 !important;
+}
+
+/* Play as White / Black buttons in bright mode */
+[data-color-mode="light"] #btn-play-as-white[aria-pressed="true"] {
+  background-color: #0f172a !important;
+  border-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+[data-color-mode="light"] #btn-play-as-white[aria-pressed="false"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] #btn-play-as-white[aria-pressed="false"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] #btn-play-as-black[aria-pressed="true"] {
+  background-color: #d97706 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+[data-color-mode="light"] #btn-play-as-black[aria-pressed="false"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] #btn-play-as-black[aria-pressed="false"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+
+/* ---- 4. Online Game Board Clocks & Player Bars in Bright Mode ---- */
+[data-color-mode="light"] .online-player-bar {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .online-player-bar.online-player-bar--active {
+  background-color: #ecfdf5 !important;
+  border-color: #16a34a !important;
+  color: #14532d !important;
+  box-shadow: 0 0 0 1.5px #16a34a !important;
+}
+
+[data-color-mode="light"] .online-player-bar .online-match-clock {
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .online-player-bar.online-player-bar--active .online-match-clock {
+  color: #14532d !important;
+  font-weight: 900;
+}
+
+
+/* ---- 5. Chat with AI Floating Window in Bright Mode ---- */
+[data-color-mode="light"] .chat-ai-window {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] #chat-with-ai-header {
+  background-color: #f8fafc !important;
+  background-image: none !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] #chat-with-ai-header h3 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .chat-ai-window [class*="bg-[#0f1118]"] {
+  background-color: #f1f5f9 !important;
+}
+
+[data-color-mode="light"] .chat-ai-window [class*="bg-[#1a1e2b]"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+[data-color-mode="light"] .chat-ai-window [class*="bg-[#12141a]"],
+[data-color-mode="light"] .chat-ai-window [class*="bg-[#141720]"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] .chat-ai-window input[type="text"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .chat-ai-window button.bg-amber-500 {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+
+
+/* ---- 6. Global Modals & Dialogs Contrast in Bright Mode ---- */
+[data-color-mode="light"] [role="dialog"]:not(.on-scrim):not(.profile-modal):not(.time-control-panel) {
+  background-color: var(--bg-surface, #ffffff);
+  border-color: var(--border-color, #cbd5e1);
+  color: var(--text-color, #0f172a);
+}
+
+[data-color-mode="light"] [role="dialog"]:not(.on-scrim) h1,
+[data-color-mode="light"] [role="dialog"]:not(.on-scrim) h2,
+[data-color-mode="light"] [role="dialog"]:not(.on-scrim) h3 {
+  color: var(--text-color-strong, #0f172a);
+}
+
+[data-color-mode="light"] [role="dialog"]:not(.on-scrim) p {
+  color: var(--text-color-muted, #334155);
 }
 
 @keyframes shake {
