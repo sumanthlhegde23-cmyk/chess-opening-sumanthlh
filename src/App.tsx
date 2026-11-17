@@ -108,6 +108,7 @@ export default function App() {
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState<boolean>(false);
   const [isPracticeOpen, setIsPracticeOpen] = useState<boolean>(false);
+  const [practiceSessionKey, setPracticeSessionKey] = useState<number>(0);
   const [isChatAiOpen, setIsChatAiOpen] = useState<boolean>(false);
   const [chatAiInitialFen, setChatAiInitialFen] = useState<string | undefined>(undefined);
   const [paidPlanTier, setPaidPlanTier] = useState<PaidPlanTier>(() => getStoredPaidPlan());
@@ -163,6 +164,7 @@ export default function App() {
       if (isPracticeOpenRef.current) {
         isPracticeOpenRef.current = false;
         setIsPracticeOpen(false);
+        setPracticeSessionKey((prev) => prev + 1);
         clearPracticeStateStorage();
         // Strip #practice from whatever URL the history entry has
         const url = (event.state as { url?: string } | null)?.url ?? window.location.href;
@@ -335,7 +337,8 @@ export default function App() {
   const isPremiumUser = isOwner || paidPlanTier !== 'none';
 
   const openPractice = useCallback(() => {
-    // Push a dedicated #practice URL so the browser back button maps cleanly to home
+    // Reset session key so Practice Mode is guaranteed to mount fresh on its own Home Screen
+    setPracticeSessionKey((prev) => prev + 1);
     const practiceUrl = window.location.href.replace(/#.*$/, '') + '#practice';
     window.history.pushState(
       { chessAppScreen: 'practice', navigationScreen: 'home', chessAppPractice: true, url: practiceUrl },
@@ -350,6 +353,7 @@ export default function App() {
     isPracticeOpenRef.current = false;
     setIsPracticeOpen(false);
     clearPracticeStateStorage();
+    setPracticeSessionKey((prev) => prev + 1);
     // If we're on the #practice URL, navigate back to home without leaving #practice in the stack
     if (window.location.hash === '#practice') {
       practiceExitedProgrammaticallyRef.current = true;
@@ -1399,6 +1403,7 @@ export default function App() {
 
       {/* Practice Mode Modal (Stockfish Level 1 to 18 Engine & 200 Puzzles per Variation) */}
       <PracticeModeModal
+        key={practiceSessionKey}
         isOpen={isPracticeOpen}
         onClose={closePractice}
         boardTheme={boardTheme}

@@ -51,6 +51,7 @@
 [data-color-mode="light"] [class~="from-[#111927]"],
 [data-color-mode="light"] [class~="from-[#121522]"],
 [data-color-mode="light"] [class~="from-[#141724]"],
+[data-color-mode="light"] [class~="from-[#141d1a]"],
 [data-color-mode="light"] [class~="from-[#161824]"],
 [data-color-mode="light"] [class~="from-[#1b1c19]"],
 [data-color-mode="light"] [class~="from-[#1c1a16]"],
@@ -59,11 +60,14 @@
   --tw-gradient-from: var(--lm-card) !important;
 }
 
+[data-color-mode="light"] [class~="from-[#121c26]"],
 [data-color-mode="light"] [class~="from-[#141a29]"],
 [data-color-mode="light"] [class~="from-[#17251d]"],
 [data-color-mode="light"] [class~="from-[#181a24]"],
 [data-color-mode="light"] [class~="from-[#181c2b]"],
 [data-color-mode="light"] [class~="from-[#182a20]"],
+[data-color-mode="light"] [class~="from-[#1a1526]"],
+[data-color-mode="light"] [class~="from-[#1a1824]"],
 [data-color-mode="light"] [class~="from-[#1b1c24]"],
 [data-color-mode="light"] [class~="from-[#1b1c26]"],
 [data-color-mode="light"] [class~="from-[#1b1f2b]"],
@@ -103,12 +107,16 @@
 }
 
 [data-color-mode="light"] [class~="to-[#0a1e12]"],
+[data-color-mode="light"] [class~="to-[#0d131a]"],
+[data-color-mode="light"] [class~="to-[#0f1414]"],
 [data-color-mode="light"] [class~="to-[#10121a]"],
 [data-color-mode="light"] [class~="to-[#101724]"],
 [data-color-mode="light"] [class~="to-[#111713]"],
 [data-color-mode="light"] [class~="to-[#111c25]"],
+[data-color-mode="light"] [class~="to-[#120f1a]"],
 [data-color-mode="light"] [class~="to-[#121319]"],
 [data-color-mode="light"] [class~="to-[#12131a]"],
+[data-color-mode="light"] [class~="to-[#12131c]"],
 [data-color-mode="light"] [class~="to-[#12141a]"],
 [data-color-mode="light"] [class~="to-[#12141d]"],
 [data-color-mode="light"] [class~="to-[#121927]"],
@@ -162,10 +170,14 @@
   --tw-gradient-via: color-mix(in srgb, rgb(var(--lm-yellow-rgb)) 11%, transparent) !important;
 }
 
+[data-color-mode="light"] [class~="via-[#101720]"],
+[data-color-mode="light"] [class~="via-[#121918]"],
 [data-color-mode="light"] [class~="via-[#141620]"],
 [data-color-mode="light"] [class~="via-[#141724]"],
 [data-color-mode="light"] [class~="via-[#141820]"],
+[data-color-mode="light"] [class~="via-[#161220]"],
 [data-color-mode="light"] [class~="via-[#161720]"],
+[data-color-mode="light"] [class~="via-[#161722]"],
 [data-color-mode="light"] [class~="via-[#161822]"],
 [data-color-mode="light"] [class~="via-[#161922]"],
 [data-color-mode="light"] [class~="via-[#171a22]"],
@@ -643,7 +655,8 @@
 }
 
 [data-color-mode="light"] [class~="border-cyan-400/70"],
-[data-color-mode="light"] [class~="border-cyan-400/80"] {
+[data-color-mode="light"] [class~="border-cyan-400/80"],
+[data-color-mode="light"] [class~="hover:border-cyan-400/70"]:hover {
   border-color: rgb(var(--lm-cyan-rgb) / 0.9) !important;
 }
 
@@ -685,7 +698,8 @@
 }
 
 [data-color-mode="light"] [class~="border-emerald-400/70"],
-[data-color-mode="light"] [class~="border-emerald-400/80"] {
+[data-color-mode="light"] [class~="border-emerald-400/80"],
+[data-color-mode="light"] [class~="hover:border-emerald-400/70"]:hover {
   border-color: rgb(var(--lm-emerald-rgb) / 0.9) !important;
 }
 
@@ -705,6 +719,10 @@
 
 [data-color-mode="light"] [class~="border-purple-400/40"] {
   border-color: rgb(var(--lm-purple-rgb) / 0.52) !important;
+}
+
+[data-color-mode="light"] [class~="hover:border-purple-400/70"]:hover {
+  border-color: rgb(var(--lm-purple-rgb) / 0.9) !important;
 }
 
 [data-color-mode="light"] [class~="border-red-500/30"] {
@@ -824,6 +842,7 @@
 }
 
 [data-color-mode="light"] .group:hover [class~="group-hover:text-amber-200"],
+[data-color-mode="light"] .group:hover [class~="group-hover:text-amber-300"],
 [data-color-mode="light"] [class~="hover:text-amber-200"]:hover,
 [data-color-mode="light"] [class~="hover:text-amber-300"]:hover,
 [data-color-mode="light"] [class~="hover:text-amber-400"]:hover,
@@ -848,6 +867,7 @@
   color: var(--lm-blue) !important;
 }
 
+[data-color-mode="light"] .group:hover [class~="group-hover:text-cyan-300"],
 [data-color-mode="light"] [class~="hover:text-cyan-300"]:hover,
 [data-color-mode="light"] [class~="text-cyan-100"],
 [data-color-mode="light"] [class~="text-cyan-200"],
@@ -859,6 +879,7 @@
   color: var(--lm-cyan) !important;
 }
 
+[data-color-mode="light"] .group:hover [class~="group-hover:text-emerald-300"],
 [data-color-mode="light"] [class~="hover:text-emerald-300"]:hover,
 [data-color-mode="light"] [class~="text-emerald-100"],
 [data-color-mode="light"] [class~="text-emerald-100/90"],
@@ -874,9 +895,9 @@
   color: var(--lm-lime) !important;
 }
 
+[data-color-mode="light"] .group:hover [class~="group-hover:text-purple-300"],
 [data-color-mode="light"] [class~="hover:text-purple-300"]:hover,
 [data-color-mode="light"] [class~="text-[#bf82ff]"],
-[data-color-mode="light"] [class~="text-purple-200"],
 [data-color-mode="light"] [class~="text-purple-300"],
 [data-color-mode="light"] [class~="text-purple-400"] {
   color: var(--lm-purple) !important;

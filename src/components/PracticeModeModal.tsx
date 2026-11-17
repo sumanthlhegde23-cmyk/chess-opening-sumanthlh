@@ -38,6 +38,7 @@ import {
   Flag,
   Clock3,
   User,
+  Home,
 } from 'lucide-react';
 import { ChessPiece } from './ChessPiece';
 import { Chessboard } from './Chessboard';
@@ -75,7 +76,7 @@ interface PracticeModeModalProps {
   initialVariationId?: string;
 }
 
-type PracticeTab = 'editor' | 'explorer' | 'play_engine' | 'puzzles';
+type PracticeTab = 'home' | 'editor' | 'explorer' | 'play_engine' | 'puzzles';
 type EngineSetupStep = 'entry' | 'time' | 'level';
 type EngineGameMove = { san: string; from: string; to: string };
 type PuzzleMoveFeedback = { from: Square; to: Square; result: 'correct' | 'wrong' };
@@ -160,8 +161,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   initialOpeningId,
   initialVariationId,
 }) => {
-  // Current active sub-mode (starts in engine wizard for dedicated practice matches)
-  const [activeTab, setActiveTab] = useState<PracticeTab>('play_engine');
+  // Current active sub-mode (starts at Practice Home Screen with all options)
+  const [activeTab, setActiveTab] = useState<PracticeTab>('home');
   const [puzzleMoveFeedback, setPuzzleMoveFeedback] = useState<PuzzleMoveFeedback | null>(null);
   const [isPuzzleInteractionLocked, setIsPuzzleInteractionLocked] = useState(false);
   const [isPuzzleActive, setIsPuzzleActive] = useState(false);
@@ -324,6 +325,35 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     }
   }, [boardFen, selectedSquare]);
 
+  // Clear nested navigation and return strictly to the Practice Home Screen
+  const handleReturnToPracticeHome = useCallback(() => {
+    setEngineGameStarted(false);
+    setEngineClock(null);
+    engineClockRef.current = null;
+    setEngineSetupStep('entry');
+    setGameResult(null);
+    setDidPlayerResign(false);
+    setDrawNotice(null);
+    setIsDrawPending(false);
+    setIsCompletedGameReviewOpen(false);
+    setCompletedGameReview(null);
+    setIsPuzzleActive(false);
+    setPuzzleMoveFeedback(null);
+    setBoardFen(START_FEN);
+    setCustomFenInput(START_FEN);
+    setSelectedSquare(null);
+    setEngineAnalysis(null);
+    setPreviewFen(null);
+    setActiveExplanationIndex(null);
+    setIsAnalysisMode(false);
+    setAnalyzedBaseFen(null);
+    setAnalysisMoveHistory([]);
+    setAnalysisFenHistory([]);
+    setExplorerMoveHistory([]);
+    setExplorerFenHistory([START_FEN]);
+    setActiveTab('home');
+  }, []);
+
   // Keyboard shortcut listener for Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -334,6 +364,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         }
         if (isEngineWizardActive && engineSetupStep !== 'entry') {
           setEngineSetupStep((step) => (step === 'level' ? 'time' : 'entry'));
+          return;
+        }
+        if (activeTab !== 'home') {
+          handleReturnToPracticeHome();
           return;
         }
         onClose();
@@ -348,7 +382,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose, isEngineBoardFullscreen, isEngineWizardActive, engineSetupStep]);
+  }, [isOpen, onClose, isEngineBoardFullscreen, isEngineWizardActive, engineSetupStep, activeTab, handleReturnToPracticeHome]);
 
   useEffect(() => {
     if (!isCompletedGameReviewOpen || !completedGameReview) return;
@@ -375,6 +409,10 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Handle Tab changes
   const handleTabChange = (tab: PracticeTab) => {
+    if (tab === 'home') {
+      handleReturnToPracticeHome();
+      return;
+    }
     setIsPuzzleActive(false);
     setIsCompletedGameReviewOpen(false);
     setActiveTab(tab);
@@ -1216,25 +1254,12 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     setEngineSetupStep(step);
   };
 
-  // Closing Practice Mode abandons an unfinished engine game, so reopening starts fresh at step 1.
+  // Closing or leaving Practice Mode always clears all nested navigation and returns to Practice Home
   useEffect(() => {
     if (!isOpen) {
-      setEngineGameStarted(false);
-      setEngineClock(null);
-      engineClockRef.current = null;
-      setEngineSetupStep('entry');
-    } else {
-      setActiveTab('play_engine');
-      setEngineSetupStep('entry');
-      setEngineGameStarted(false);
-      setEngineClock(null);
-      engineClockRef.current = null;
-      setGameResult(null);
-      setDidPlayerResign(false);
-      setDrawNotice(null);
-      setIsDrawPending(false);
+      handleReturnToPracticeHome();
     }
-  }, [isOpen]);
+  }, [isOpen, handleReturnToPracticeHome]);
 
   // On unmount, clear any practice-related storage to guarantee a clean state on next load
   useEffect(() => {
@@ -1523,7 +1548,15 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 )}
               </div>
               <p className={`text-xs text-zinc-400 ${isEngineBoardFullscreen ? 'hidden' : 'hidden sm:block'}`}>
-                {activeTab === 'play_engine' ? 'Interactive Chess Engine Practice & Match' : 'Interactive Playable Board with Board Editor & Engine Analysis'}
+                {activeTab === 'home'
+                  ? 'Choose a practice mode to train your repertoire, play engine matches, or solve tactics'
+                  : activeTab === 'play_engine'
+                  ? 'Interactive Chess Engine Practice & Match'
+                  : activeTab === 'explorer'
+                  ? 'Interactive Opening Explorer & Statistics'
+                  : activeTab === 'puzzles'
+                  ? 'Opening Tactical Puzzles'
+                  : 'Interactive Playable Board with Board Editor & Engine Analysis'}
               </p>
             </div>
           </div>
@@ -1539,19 +1572,20 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 <Repeat className="w-4 h-4 text-cyan-400" />
               </button>
             )}
-            {/* In-app explicit Back to Home button — always visible for clear UX */}
+            {/* In-app Back button: returns to Practice Home from inside submodes, or exits to App Main Menu from Practice Home */}
             <button
               id="btn-practice-back-to-home"
-              onClick={onClose}
-              title="Back to Home"
+              onClick={activeTab === 'home' ? onClose : handleReturnToPracticeHome}
+              title={activeTab === 'home' ? 'Exit to Main Menu' : 'Back to Practice Home'}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white bg-[#1a1d27] hover:bg-zinc-700 border border-zinc-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden sm:inline">{activeTab === 'home' ? 'Main Menu' : 'Practice Home'}</span>
             </button>
             <button
               id="btn-close-practice-modal"
               onClick={onClose}
+              title="Close Practice Mode"
               className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -1684,7 +1718,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   id="btn-analysis-play-again"
                   type="button"
                   onClick={handleReviewPlayAgain}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300 cursor-pointer"
                 >
                   <RotateCcw className="h-4 w-4" />
                   Play Again
@@ -1692,14 +1726,148 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 <button
                   id="btn-analysis-exit-menu"
                   type="button"
-                  onClick={handleExitCompletedGameReview}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-600 bg-zinc-800 px-5 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-700"
+                  onClick={handleReturnToPracticeHome}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-600 bg-zinc-800 px-5 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-700 cursor-pointer"
                 >
-                  <X className="h-4 w-4" />
-                  Exit to Main Menu
+                  <Home className="h-4 w-4" />
+                  Practice Home
                 </button>
               </div>
             </section>
+          ) : activeTab === 'home' ? (
+            <div id="practice-home-dashboard" className="mx-auto w-full max-w-4xl py-2 sm:py-5 animate-fadeIn space-y-6">
+              <div className="text-center space-y-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  Practice &amp; Training Hub
+                </span>
+                <h3 className="text-2xl font-black text-zinc-100 sm:text-3xl">
+                  Select Practice Option
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                  Choose an option below to play engine matches, explore opening book moves &amp; statistics, solve tactical puzzles, or analyze positions.
+                </p>
+              </div>
+
+              {/* 4 Interactive Practice Options Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                {/* 1. Play Against Engine */}
+                <button
+                  type="button"
+                  id="practice-home-card-play-engine"
+                  onClick={() => handleTabChange('play_engine')}
+                  className="group relative flex flex-col justify-between rounded-2xl border border-amber-500/30 bg-gradient-to-br from-[#1a1824] via-[#161722] to-[#12131c] p-5 text-left transition-all hover:-translate-y-1 hover:border-amber-400/70 hover:shadow-xl hover:shadow-amber-500/10 cursor-pointer"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/15 text-amber-400 group-hover:scale-105 transition-transform shadow-md shadow-amber-950/30">
+                        <Swords className="h-6 w-6" />
+                      </div>
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                        Levels 1–18
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">
+                      Play Against Engine
+                    </h4>
+                    <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                      Play practice matches against Stockfish across 18 difficulty levels with custom timers, clocks, and full game analysis.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                    <span>Play Engine Match</span>
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </button>
+
+                {/* 2. Opening Explorer */}
+                <button
+                  type="button"
+                  id="practice-home-card-explorer"
+                  onClick={() => handleTabChange('explorer')}
+                  className="group relative flex flex-col justify-between rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-[#141d1a] via-[#121918] to-[#0f1414] p-5 text-left transition-all hover:-translate-y-1 hover:border-emerald-400/70 hover:shadow-xl hover:shadow-emerald-500/10 cursor-pointer"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-500/15 text-emerald-400 group-hover:scale-105 transition-transform shadow-md shadow-emerald-950/30">
+                        <Compass className="h-6 w-6" />
+                      </div>
+                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
+                        Master Stats
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-black text-white group-hover:text-emerald-300 transition-colors">
+                      Opening Explorer
+                    </h4>
+                    <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                      Browse opening master games, explore win rates and statistics from Chess.com, Lichess, and Master games.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <span>Explore Openings</span>
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </button>
+
+                {/* 3. Opening Puzzles */}
+                <button
+                  type="button"
+                  id="practice-home-card-puzzles"
+                  onClick={() => handleTabChange('puzzles')}
+                  className="group relative flex flex-col justify-between rounded-2xl border border-purple-500/30 bg-gradient-to-br from-[#1a1526] via-[#161220] to-[#120f1a] p-5 text-left transition-all hover:-translate-y-1 hover:border-purple-400/70 hover:shadow-xl hover:shadow-purple-500/10 cursor-pointer"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-purple-400/40 bg-purple-500/15 text-purple-400 group-hover:scale-105 transition-transform shadow-md shadow-purple-950/30">
+                        <Puzzle className="h-6 w-6" />
+                      </div>
+                      <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-bold text-purple-300 uppercase tracking-wider">
+                        Tactics Training
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-black text-white group-hover:text-purple-300 transition-colors">
+                      Puzzles
+                    </h4>
+                    <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                      Solve curated tactical puzzles for your variations. Train pattern recognition and master tactical calculation.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-purple-400">
+                    <span>Solve Puzzles</span>
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </button>
+
+                {/* 4. Board Editor & Free Analysis */}
+                <button
+                  type="button"
+                  id="practice-home-card-editor"
+                  onClick={() => handleTabChange('editor')}
+                  className="group relative flex flex-col justify-between rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-[#121c26] via-[#101720] to-[#0d131a] p-5 text-left transition-all hover:-translate-y-1 hover:border-cyan-400/70 hover:shadow-xl hover:shadow-cyan-500/10 cursor-pointer"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-500/15 text-cyan-400 group-hover:scale-105 transition-transform shadow-md shadow-cyan-950/30">
+                        <Sliders className="h-6 w-6" />
+                      </div>
+                      <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
+                        Interactive Setup
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-black text-white group-hover:text-cyan-300 transition-colors">
+                      Board Editor &amp; Analysis
+                    </h4>
+                    <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                      Set up custom positions, paste FENs, place pieces, and evaluate positions using real-time Stockfish engine calculations.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-cyan-400">
+                    <span>Open Board Editor</span>
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </button>
+              </div>
+            </div>
           ) : (
           <>
           {/* Top Board & Status Layout (Used for Board Editor & Opening Explorer) */}
@@ -2192,35 +2360,17 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           {/* THE OPTIONS UNDER THE BOARD */}
           {/* ==================================================== */}
           <div className={`space-y-4 ${activeTab === 'play_engine' ? '' : 'border-t border-zinc-800 pt-2'}`}>
-            {/* Main Tabs Selection (4 Modes) - Hidden when in sequential Play Engine flow */}
-            {activeTab !== 'play_engine' && !(activeTab === 'puzzles' && isPuzzleActive) && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-[#10121a] border border-zinc-800/80 max-w-2xl mx-auto">
+            {/* Main Tabs Selection (5 Modes including Practice Home) */}
+            {activeTab !== 'home' && activeTab !== 'play_engine' && !(activeTab === 'puzzles' && isPuzzleActive) && (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 p-1 rounded-xl bg-[#10121a] border border-zinc-800/80 max-w-3xl mx-auto">
               <button
-                id="tab-btn-board-editor"
+                id="tab-btn-practice-home"
                 type="button"
-                onClick={() => handleTabChange('editor')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeTab === 'editor'
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#181a24]'
-                }`}
+                onClick={handleReturnToPracticeHome}
+                className="py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-zinc-400 hover:text-cyan-300 hover:bg-[#181a24]"
               >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>1. Board Editor</span>
-              </button>
-
-              <button
-                id="tab-btn-opening-explorer"
-                type="button"
-                onClick={() => handleTabChange('explorer')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeTab === 'explorer'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#181a24]'
-                }`}
-              >
-                <Compass className="w-3.5 h-3.5" />
-                <span>2. Opening Explorer</span>
+                <Home className="w-3.5 h-3.5" />
+                <span>Practice Home</span>
               </button>
 
               <button
@@ -2234,7 +2384,21 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 }`}
               >
                 <Swords className="w-3.5 h-3.5" />
-                <span>3. Play Engine</span>
+                <span>Play Engine</span>
+              </button>
+
+              <button
+                id="tab-btn-opening-explorer"
+                type="button"
+                onClick={() => handleTabChange('explorer')}
+                className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'explorer'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#181a24]'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Explorer</span>
               </button>
 
               <button
@@ -2248,10 +2412,21 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 }`}
               >
                 <Puzzle className="w-3.5 h-3.5" />
-                <span>4. Puzzles</span>
-                <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-200 border border-purple-400/40 hidden sm:inline">
-                  Puzzels
-                </span>
+                <span>Puzzles</span>
+              </button>
+
+              <button
+                id="tab-btn-board-editor"
+                type="button"
+                onClick={() => handleTabChange('editor')}
+                className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'editor'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#181a24]'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Editor</span>
               </button>
               </div>
             )}
@@ -3162,18 +3337,19 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     <span>Play Against Engine</span>
                   </button>
 
-                  {/* Accessible switcher for other practice tools */}
+                  {/* Accessible switcher for other practice tools and back to practice home */}
                   <div className="flex flex-wrap items-center justify-center gap-3 pt-3 text-xs text-zinc-400 border-t border-zinc-800/80 w-full mt-2">
-                    <span className="text-zinc-500">Other Tools:</span>
                     <button
-                      id="tab-btn-board-editor"
+                      id="btn-engine-back-to-practice-home"
                       type="button"
-                      onClick={() => handleTabChange('editor')}
-                      className="text-zinc-400 hover:text-cyan-300 transition-colors font-medium underline underline-offset-4 cursor-pointer"
+                      onClick={handleReturnToPracticeHome}
+                      className="inline-flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 transition-colors font-bold cursor-pointer"
                     >
-                      Board Editor
+                      <Home className="w-3.5 h-3.5" />
+                      <span>Practice Home</span>
                     </button>
                     <span className="text-zinc-700">•</span>
+                    <span className="text-zinc-500">Other Modes:</span>
                     <button
                       id="tab-btn-opening-explorer"
                       type="button"
@@ -3191,13 +3367,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     >
                       Puzzles
                     </button>
+                    <span className="text-zinc-700">•</span>
                     <button
-                      id="tab-btn-play-engine"
+                      id="tab-btn-board-editor"
                       type="button"
-                      onClick={() => handleTabChange('play_engine')}
-                      className="hidden"
+                      onClick={() => handleTabChange('editor')}
+                      className="text-zinc-400 hover:text-cyan-300 transition-colors font-medium underline underline-offset-4 cursor-pointer"
                     >
-                      Play Engine
+                      Board Editor
                     </button>
                   </div>
                 </div>

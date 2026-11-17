@@ -75,9 +75,93 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const languageMenuRef = React.useRef<HTMLDetailsElement>(null);
   const [languageSearch, setLanguageSearch] = React.useState('');
+  const [panelPlacement, setPanelPlacement] = React.useState<React.CSSProperties>({});
   const filteredLanguages = languages.filter((option) =>
     `${option.name} ${option.nativeName} ${option.code}`.toLowerCase().includes(languageSearch.trim().toLowerCase())
   );
+
+  const updatePanelPlacement = React.useCallback(() => {
+    if (!languageMenuRef.current?.open) return;
+    const summary = languageMenuRef.current.querySelector('summary');
+    if (!summary) return;
+
+    const rect = summary.getBoundingClientRect();
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const margin = 8; // Small edge margin from screen
+
+    // Target width: 288px on wider screens, clamped to screen width minus margins on small phones
+    const availableWidth = Math.max(200, vw - margin * 2);
+    const panelWidth = Math.min(288, availableWidth);
+
+    // Initial position: align right edge of panel to right edge of the three-dot button
+    let left = rect.right - panelWidth;
+
+    // If it overflows the left side of the screen, reposition to the right
+    if (left < margin) {
+      left = margin;
+    }
+    // If it overflows the right side of the screen, reposition to the left
+    if (left + panelWidth > vw - margin) {
+      left = Math.max(margin, vw - margin - panelWidth);
+    }
+
+    // Vertical placement: prefer below the button, but check available viewport height
+    let top = rect.bottom + 8;
+    const spaceBelow = vh - top - margin;
+    const spaceAbove = rect.top - margin - 8;
+    let maxHeight = spaceBelow;
+
+    // If space below is constrained (less than 260px) and space above has more room, flip above
+    if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+      const desiredHeight = Math.min(480, spaceAbove);
+      top = Math.max(margin, rect.top - desiredHeight - 8);
+      maxHeight = desiredHeight;
+    } else {
+      maxHeight = Math.min(500, spaceBelow);
+    }
+
+    setPanelPlacement({
+      position: 'fixed',
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
+      width: `${Math.round(panelWidth)}px`,
+      maxWidth: `calc(100vw - ${margin * 2}px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))`,
+      maxHeight: `${Math.round(Math.max(220, maxHeight))}px`,
+      zIndex: 100,
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const handleReposition = () => {
+      if (languageMenuRef.current?.open) {
+        updatePanelPlacement();
+      }
+    };
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [updatePanelPlacement]);
+
+  React.useEffect(() => {
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (
+        languageMenuRef.current?.open &&
+        !languageMenuRef.current.contains(event.target as Node)
+      ) {
+        languageMenuRef.current.open = false;
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, []);
 
   return (
     <header id="app-navbar" className="bg-[#12141a] border-b border-zinc-800/80 sticky top-0 z-40">
@@ -203,6 +287,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             ref={languageMenuRef}
             id="navbar-language-menu"
             className="relative"
+            onToggle={(event) => {
+              if (event.currentTarget.open) {
+                updatePanelPlacement();
+              }
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Escape' && languageMenuRef.current?.open) {
                 languageMenuRef.current.open = false;
@@ -219,77 +308,108 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <MoreVertical className="h-4 w-4" />
             </summary>
-            <div id="navbar-language-menu-panel" className="absolute left-auto right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-lg border border-zinc-700 bg-[#181a20] p-1.5 shadow-xl">
-              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Take Demo</div>
-              <div className="grid grid-cols-2 gap-1 px-1 pb-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onReplayAppTour();
-                    if (languageMenuRef.current) languageMenuRef.current.open = false;
-                  }}
-                  className="flex items-center justify-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-2 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/20"
-                >
-                  <GraduationCap className="h-3.5 w-3.5" /> App Tour
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onReplayChessBasics();
-                    if (languageMenuRef.current) languageMenuRef.current.open = false;
-                  }}
-                  className="flex items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-2 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-800"
-                >
-                  <BookOpen className="h-3.5 w-3.5" /> Chess Basics
-                </button>
-              </div>
-              <div className="mx-1 border-t border-zinc-700/70" />
-              <p className="px-2 py-1.5 text-[11px] font-semibold uppercase text-zinc-500">Settings · Language ({languages.length})</p>
-              <label className="relative block px-1 pb-2">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                <input
-                  type="search"
-                  value={languageSearch}
-                  onChange={(event) => setLanguageSearch(event.target.value)}
-                  placeholder="Search languages"
-                  aria-label="Search languages"
-                  className="w-full rounded-md border border-zinc-700 bg-[#101218] py-2 pl-8 pr-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-amber-500/70"
-                />
-              </label>
-              <p className="px-2 pb-2 text-[10px] leading-relaxed text-zinc-500">
-                New visible text is translated as needed and cached on this device. Chess notation stays unchanged.
-              </p>
-              {translationStatus && (
-                <p role="status" aria-live="polite" className="mx-1 mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-200">
-                  {translationStatus}
+            <div
+              id="navbar-language-menu-panel"
+              style={{
+                ...panelPlacement,
+                backgroundColor: 'var(--bg-surface, #181a20)',
+                borderColor: 'var(--border-color, #3f3f46)',
+                color: 'var(--text-color, #f4f4f5)',
+              }}
+              className="rounded-xl border p-2 shadow-2xl overflow-hidden flex flex-col animate-fadeIn"
+            >
+              {/* Header section with App Tour & Chess Basics Demo (always visible) */}
+              <div className="shrink-0 pb-1">
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-400" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
+                  Take Demo
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 px-1 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReplayAppTour();
+                      if (languageMenuRef.current) languageMenuRef.current.open = false;
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/20 cursor-pointer"
+                  >
+                    <GraduationCap className="h-4 w-4 text-amber-400" />
+                    <span>App Tour</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReplayChessBasics();
+                      if (languageMenuRef.current) languageMenuRef.current.open = false;
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-bold transition-colors hover:opacity-90 cursor-pointer"
+                    style={{
+                      backgroundColor: 'var(--bg-card-subtle, #27272a)',
+                      borderColor: 'var(--border-color, #3f3f46)',
+                      color: 'var(--text-color, #f4f4f5)',
+                    }}
+                  >
+                    <BookOpen className="h-4 w-4 text-cyan-400" />
+                    <span>Chess Basics</span>
+                  </button>
+                </div>
+                <div className="mx-1 my-1 border-t" style={{ borderColor: 'var(--border-color, #3f3f46)' }} />
+                <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-400" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
+                  Settings · Language ({languages.length})
                 </p>
-              )}
-              <div className="max-h-[min(60vh,28rem)] overflow-y-auto overscroll-contain pr-0.5">
-              {filteredLanguages.map((option) => (
-                <button
-                  key={option.code}
-                  type="button"
-                  onClick={() => {
-                    onChangeLanguage(option.code);
-                    setLanguageSearch('');
-                    if (languageMenuRef.current) languageMenuRef.current.open = false;
-                  }}
-                  aria-current={language === option.code ? 'true' : undefined}
-                  aria-pressed={language === option.code}
-                  className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
-                >
-                  <span className="flex min-w-0 flex-col">
-                    <span data-no-translate="true" className="truncate">{option.nativeName}</span>
-                    {option.nativeName !== option.name && (
-                      <span data-no-translate="true" className="truncate text-[10px] text-zinc-500">{option.name}</span>
-                    )}
-                  </span>
-                  {language === option.code && <Check className="h-4 w-4 text-amber-400" />}
-                </button>
-              ))}
-              {filteredLanguages.length === 0 && (
-                <p className="px-2 py-3 text-sm text-zinc-500">No languages found</p>
-              )}
+                <label className="relative block px-1 pb-1.5">
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <input
+                    type="search"
+                    value={languageSearch}
+                    onChange={(event) => setLanguageSearch(event.target.value)}
+                    placeholder="Search languages"
+                    aria-label="Search languages"
+                    className="w-full rounded-lg border py-1.5 pl-8 pr-2 text-xs outline-none focus:border-amber-500/70"
+                    style={{
+                      backgroundColor: 'var(--bg-card-subtle, #101218)',
+                      borderColor: 'var(--border-color, #3f3f46)',
+                      color: 'var(--text-color, #f4f4f5)',
+                    }}
+                  />
+                </label>
+                <p className="px-2 pb-1.5 text-[10px] leading-relaxed text-zinc-400" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
+                  New visible text is translated as needed and cached on this device.
+                </p>
+                {translationStatus && (
+                  <p role="status" aria-live="polite" className="mx-1 mb-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-1.5 text-[11px] leading-relaxed text-amber-200">
+                    {translationStatus}
+                  </p>
+                )}
+              </div>
+
+              {/* Scrollable Language List */}
+              <div className="overflow-y-auto overscroll-contain flex-1 pr-0.5 border-t pt-1" style={{ borderColor: 'var(--border-color, #3f3f46)' }}>
+                {filteredLanguages.map((option) => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    onClick={() => {
+                      onChangeLanguage(option.code);
+                      setLanguageSearch('');
+                      if (languageMenuRef.current) languageMenuRef.current.open = false;
+                    }}
+                    aria-current={language === option.code ? 'true' : undefined}
+                    aria-pressed={language === option.code}
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs hover:bg-black/10 transition-colors cursor-pointer"
+                    style={{ color: 'var(--text-color, #f4f4f5)' }}
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span data-no-translate="true" className="truncate font-semibold">{option.nativeName}</span>
+                      {option.nativeName !== option.name && (
+                        <span data-no-translate="true" className="truncate text-[10px] opacity-70">{option.name}</span>
+                      )}
+                    </span>
+                    {language === option.code && <Check className="h-4 w-4 text-amber-400 shrink-0" />}
+                  </button>
+                ))}
+                {filteredLanguages.length === 0 && (
+                  <p className="px-2 py-3 text-center text-xs text-zinc-500">No languages found</p>
+                )}
               </div>
             </div>
           </details>
