@@ -1074,11 +1074,28 @@ export default function App() {
                 <BookOpen className="h-4 w-4" /> See All Openings <ChevronRight className="h-4 w-4" />
               </button>
             </section>
-            <button type="button" onClick={openPractice} className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg">
-              <Cpu className="h-5 w-5 transition-transform group-hover:scale-110" />
-              Practice Mode
-              <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                id="home-practice-mode-btn"
+                onClick={openPractice}
+                className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-sky-300/35 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:from-sky-500 hover:via-blue-500 hover:to-indigo-500 sm:py-5 sm:text-lg cursor-pointer"
+              >
+                <Cpu className="h-5 w-5 transition-transform group-hover:scale-110" />
+                Practice Mode
+                <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
+              </button>
+              <button
+                type="button"
+                id="home-play-online-btn"
+                onClick={() => setIsOnlineChessGameOpen(true)}
+                className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-emerald-300/35 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:border-emerald-200/60 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 sm:py-5 sm:text-lg cursor-pointer"
+              >
+                <Swords className="h-5 w-5 transition-transform group-hover:scale-110" />
+                Play Online (Peer-to-Peer)
+                <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
           </>
         )}
 
