@@ -865,7 +865,8 @@
 [data-color-mode="light"] [class~="text-emerald-200"],
 [data-color-mode="light"] [class~="text-emerald-300"],
 [data-color-mode="light"] [class~="text-emerald-300/90"],
-[data-color-mode="light"] [class~="text-emerald-400"] {
+[data-color-mode="light"] [class~="text-emerald-400"],
+[data-color-mode="light"] [class~="text-emerald-400/80"] {
   color: var(--lm-emerald) !important;
 }
 

@@ -97,14 +97,14 @@ function savePlayerCode(code: string): void {
 const cleanCodeInput = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
 
 const STEPS = [
-  { id: 1, label: 'Time Control', desc: 'Sync timers' },
-  { id: 2, label: 'Dual Secret Codes', desc: 'Our code & Opponent code' },
-  { id: 3, label: 'Verification & Match', desc: 'Handshake & Launch' },
+  { id: 1, label: '1. Time Control', desc: 'Select timer' },
+  { id: 2, label: '2. Dual Secret Codes', desc: 'Our & Opponent Code' },
+  { id: 3, label: '3. Verify & Start', desc: 'Handshake' },
 ] as const;
 
 const StepHeader: React.FC<{ current: 1 | 2 | 3 }> = ({ current }) => (
   <nav aria-label="Online game setup steps" className="mx-auto mb-4 w-full max-w-xl">
-    <ol className="flex items-center justify-between gap-1 sm:gap-2">
+    <ol className="flex items-center justify-between gap-1.5 sm:gap-2">
       {STEPS.map((stepItem) => {
         const done = stepItem.id < current;
         const active = stepItem.id === current;
@@ -168,14 +168,23 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [waitingElapsed, setWaitingElapsed] = useState(0);
+
+  const prevIsOpenRef = useRef(false);
   const completionRef = useRef<string | null>(loadCompletedGameId());
 
-  // Reset to Step 1 when opened without an ongoing game
+  // Reset to Step 1 ONLY when modal transitions from closed to open (never on step changes)
   useEffect(() => {
-    if (isOpen && !game && !savedSession && step !== 'time') {
-      setStep('time');
+    if (isOpen && !prevIsOpenRef.current) {
+      if (!game && !savedSession) {
+        setStep('time');
+        setError(null);
+        setNotice(null);
+        setWaitingElapsed(0);
+      }
     }
-  }, [isOpen, game, savedSession, step]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, game, savedSession]);
 
   const timeControlLabel = (id: string) => {
     const control = getTimeControl(id);
@@ -199,6 +208,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     setView('board');
     setStep('playing');
     setMatchToken(null);
+    setWaitingElapsed(0);
     setNotice(`Opponent verified! You are playing ${nextGame.yourColor === 'w' ? 'White' : 'Black'}.`);
   }, []);
 
@@ -244,16 +254,40 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
       } catch (requestError) {
         if (cancelled) return;
         setMatchToken(null);
+        // Automatically redirect into dual secret code window so user can put right codes
         setStep('codes');
-        setError(requestError instanceof Error ? requestError.message : 'Lost connection while waiting for your opponent.');
+        setError('Codes did not match or match session expired. Please re-enter the correct codes.');
       }
     };
+
     const timer = window.setInterval(() => void checkMatch(), 1000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
   }, [isOpen, step, matchToken, applyGame]);
+
+  // Timeout waiting tracker: if codes don't match after 25s, automatically redirect to dual secret codes window
+  useEffect(() => {
+    if (step !== 'waiting') {
+      setWaitingElapsed(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setWaitingElapsed((prev) => {
+        if (prev >= 24) {
+          // Timeout reached: codes didn't match
+          cancelPendingMatch(matchToken);
+          setMatchToken(null);
+          setStep('codes');
+          setError("Codes didn't match or opponent has not entered your code yet. Please check and re-enter your codes.");
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [step, matchToken, cancelPendingMatch]);
 
   const isFinished = game?.status === 'finished';
 
@@ -331,6 +365,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     setOpponentTimeControlId(null);
     setError(null);
     setNotice(null);
+    setWaitingElapsed(0);
   }, []);
 
   const leaveToMainMenu = () => {
@@ -346,11 +381,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     setStep('time');
   };
 
+  // STEP 1 -> STEP 2 Transition
   const startCodeEntry = () => {
-    if (!username.trim()) {
-      setError('Save a username in your profile before playing online.');
-      return;
-    }
     setError(null);
     setStep('codes');
   };
@@ -372,28 +404,41 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     }
   };
 
-  const verifyAndConnect = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!CODE_PATTERN.test(playerCode)) {
+  // STEP 2 -> STEP 3: Verify and connect
+  const verifyAndConnect = async (event?: React.FormEvent<HTMLFormElement>) => {
+    if (event) event.preventDefault();
+
+    const cleanPlayer = cleanCodeInput(playerCode);
+    const cleanOpponent = cleanCodeInput(opponentCode);
+
+    if (!CODE_PATTERN.test(cleanPlayer)) {
       setError('Our / Player code must be 4–12 letters or numbers.');
       return;
     }
-    if (!CODE_PATTERN.test(opponentCode)) {
+    if (!CODE_PATTERN.test(cleanOpponent)) {
       setError("Please enter your opponent's secret code (4–12 letters or numbers).");
       return;
     }
-    if (playerCode === opponentCode) {
+    if (cleanPlayer === cleanOpponent) {
       setError("Our code and Opponent's secret code must be different.");
       return;
     }
+
     setIsBusy(true);
     setError(null);
-    savePlayerCode(playerCode);
+    savePlayerCode(cleanPlayer);
+    const effectiveUsername = username.trim() || 'Player';
+
     try {
       const response = await fetch('/api/online-games/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, timeControlId: selectedTimeControlId, playerCode, opponentCode }),
+        body: JSON.stringify({
+          username: effectiveUsername,
+          timeControlId: selectedTimeControlId,
+          playerCode: cleanPlayer,
+          opponentCode: cleanOpponent,
+        }),
       });
       const result = await readApiResponse<MatchResponse>(response);
       if (result.status === 'matched') {
@@ -401,10 +446,13 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
       } else {
         setMatchToken(result.matchToken ?? null);
         setOpponentTimeControlId(result.status === 'mismatch' ? result.opponentTimeControlId : null);
+        setWaitingElapsed(0);
         setStep('waiting');
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not connect to online match server.');
+      // If code verification failed, stay in or redirect to dual secret code window
+      setStep('codes');
+      setError(requestError instanceof Error ? requestError.message : 'Could not verify codes. Please check and re-enter.');
     } finally {
       setIsBusy(false);
     }
@@ -418,15 +466,19 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     cancelPendingMatch(matchToken);
     const targetTimeControlId = opponentTimeControlId;
     setSelectedTimeControlId(targetTimeControlId);
+    const cleanPlayer = cleanCodeInput(playerCode);
+    const cleanOpponent = cleanCodeInput(opponentCode);
+    const effectiveUsername = username.trim() || 'Player';
+
     try {
       const response = await fetch('/api/online-games/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username,
+          username: effectiveUsername,
           timeControlId: targetTimeControlId,
-          playerCode,
-          opponentCode,
+          playerCode: cleanPlayer,
+          opponentCode: cleanOpponent,
         }),
       });
       const result = await readApiResponse<MatchResponse>(response);
@@ -435,18 +487,22 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
       } else {
         setMatchToken(result.matchToken ?? null);
         setOpponentTimeControlId(result.status === 'mismatch' ? result.opponentTimeControlId : null);
+        setWaitingElapsed(0);
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not synchronize time control.');
+      setStep('codes');
+      setError(requestError instanceof Error ? requestError.message : 'Could not synchronize time control. Re-enter codes.');
     } finally {
       setIsBusy(false);
     }
   };
 
-  const editCodes = () => {
+  // Redirect back to dual secret codes window
+  const redirectToCodesWindow = () => {
     cancelPendingMatch(matchToken);
     setMatchToken(null);
     setOpponentTimeControlId(null);
+    setWaitingElapsed(0);
     setStep('codes');
   };
 
@@ -454,6 +510,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     cancelPendingMatch(matchToken);
     setMatchToken(null);
     setOpponentTimeControlId(null);
+    setWaitingElapsed(0);
     setStep('time');
   };
 
@@ -565,29 +622,29 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
     );
   }
 
-  // STEP 1: TIME CONTROL SELECTION (Must be completed first before asking for any codes)
+  // STEP 1: TIME CONTROL SELECTION WINDOW (First step in the sequence)
   if (step === 'time') {
     return (
-      <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 p-3 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 p-3 backdrop-blur-sm animate-fadeIn">
         <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-4">
           <StepHeader current={1} />
 
           <div
-            className="mx-auto mb-3 w-full max-w-xl rounded-xl border p-3 text-center text-xs"
+            className="mx-auto mb-3 w-full max-w-xl rounded-xl border p-3.5 text-center text-xs shadow-sm"
             style={{
               backgroundColor: 'var(--bg-card-subtle, #181a20)',
               borderColor: 'var(--border-color, #27272a)',
               color: 'var(--text-color-muted, #a1a1aa)',
             }}
           >
-            <span className="font-bold text-emerald-400">Step 1: Time Control Selection.</span>{' '}
-            Select your desired time control. Both players must choose the same time control for the match to begin.
+            <span className="font-bold text-emerald-400">Step 1: Time Selection.</span>{' '}
+            Choose your preferred time control. You will then enter secret codes to pair with your opponent.
           </div>
 
           <TimeControlPicker
             isOpen
             inline
-            continueLabel="Next: Dual Secret Codes"
+            continueLabel="Next: Dual Secret Codes →"
             selectedTimeControlId={selectedTimeControlId}
             onSelect={(control) => setSelectedTimeControlId(control.id)}
             onContinue={startCodeEntry}
@@ -602,9 +659,9 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
 
   const isMismatch = step === 'waiting' && opponentTimeControlId !== null;
 
-  // STEPS 2 & 3: DUAL CODE INPUT & VERIFICATION
+  // STEP 2 & STEP 3: DUAL SECRET CODES WINDOW & VERIFICATION
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm animate-fadeIn">
       <section
         role="dialog"
         aria-modal="true"
@@ -624,8 +681,8 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-400">
               <Swords className="h-4 w-4" /> Peer-to-Peer Online Match
             </p>
-            <h2 id="online-chess-title" className="mt-1 text-xl font-bold sm:text-2xl" style={{ color: 'var(--text-color, #f4f4f5)' }}>
-              {step === 'codes' ? 'Dual Code Setup' : 'Verifying & Synchronizing Match'}
+            <h2 id="online-chess-title" className="mt-1 text-xl font-black sm:text-2xl" style={{ color: 'var(--text-color, #f4f4f5)' }}>
+              {step === 'codes' ? 'Dual Secret Codes' : 'Verifying & Synchronizing Match'}
             </h2>
             <div className="mt-1.5 flex items-center gap-2">
               <span
@@ -642,7 +699,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStep('time')}
-                  className="text-xs text-sky-400 underline hover:text-sky-300"
+                  className="text-xs text-sky-400 underline hover:text-sky-300 cursor-pointer"
                 >
                   Change
                 </button>
@@ -653,15 +710,28 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
             type="button"
             onClick={leaveToMainMenu}
             aria-label="Close online game setup"
-            className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+            className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* STEP 2: DUAL CODE INPUT */}
+        {/* STEP 2: DUAL SECRET CODES WINDOW */}
         {step === 'codes' && (
           <form onSubmit={verifyAndConnect} className="space-y-4">
+            {error && (
+              <div
+                role="alert"
+                className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs font-semibold text-rose-300 flex items-start gap-2"
+              >
+                <TriangleAlert className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+                <div>
+                  <p className="font-bold text-rose-200">Verification Notice</p>
+                  <p className="mt-0.5">{error}</p>
+                </div>
+              </div>
+            )}
+
             {/* Card 1: Our / Player's Code */}
             <div
               className="rounded-xl border p-4 shadow-sm"
@@ -674,20 +744,30 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 <label htmlFor="online-player-code" className="flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-400">
                   <User className="h-4 w-4" /> 1. Our / Player's Code (Your Identifier)
                 </label>
-                <span className="text-[11px] text-zinc-400">Share with opponent</span>
+                <span className="text-[11px] font-semibold text-emerald-400/80">Share with opponent</span>
               </div>
-              <p className="mt-0.5 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
-                Give this secret code to your friend. They must type it as their Opponent's Code.
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
+                Send this secret code to your opponent. They must enter this exact code as their Opponent's Code.
               </p>
               <div className="mt-2.5 flex gap-2">
                 <input
                   id="online-player-code"
                   value={playerCode}
                   onChange={(event) => setPlayerCode(cleanCodeInput(event.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (!opponentCode.trim()) {
+                        document.getElementById('online-opponent-code')?.focus();
+                      } else {
+                        void verifyAndConnect();
+                      }
+                    }
+                  }}
                   autoComplete="off"
                   spellCheck={false}
                   maxLength={12}
-                  className="min-w-0 flex-1 rounded-xl border px-3.5 py-2.5 font-mono text-lg font-bold tracking-[0.25em] outline-none transition focus:border-emerald-400"
+                  className="min-w-0 flex-1 rounded-xl border px-3.5 py-2.5 font-mono text-lg font-black tracking-[0.25em] outline-none transition focus:border-emerald-400"
                   style={{
                     backgroundColor: 'var(--bg-surface, #141916)',
                     borderColor: 'var(--border-color, #3f3f46)',
@@ -699,7 +779,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                   onClick={regeneratePlayerCode}
                   aria-label="Generate new code"
                   title="Generate a new code"
-                  className="inline-flex items-center justify-center rounded-xl border px-3 text-zinc-300 hover:bg-zinc-800/80 transition"
+                  className="inline-flex items-center justify-center rounded-xl border px-3 text-zinc-300 hover:bg-zinc-800/80 transition cursor-pointer"
                   style={{ borderColor: 'var(--border-color, #3f3f46)' }}
                 >
                   <Dices className="h-5 w-5" />
@@ -709,7 +789,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                   onClick={() => void copyPlayerCode()}
                   aria-label="Copy your code"
                   title="Copy your code"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -738,10 +818,10 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 <label htmlFor="online-opponent-code" className="flex items-center gap-2 text-xs font-bold tracking-wide text-sky-400">
                   <KeyRound className="h-4 w-4" /> 2. Opponent's Secret Code
                 </label>
-                <span className="text-[11px] text-zinc-400">Required</span>
+                <span className="text-[11px] font-semibold text-rose-400">Required</span>
               </div>
-              <p className="mt-0.5 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
-                Enter the secret code provided by your opponent to pair your devices.
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-color-muted, #a1a1aa)' }}>
+                Ask your opponent for their secret code and type it here. Press Enter to verify and start.
               </p>
               <div className="mt-2.5 flex gap-2">
                 <input
@@ -749,11 +829,17 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                   type={showOpponentCode ? 'text' : 'password'}
                   value={opponentCode}
                   onChange={(event) => setOpponentCode(cleanCodeInput(event.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void verifyAndConnect();
+                    }
+                  }}
                   autoComplete="off"
                   spellCheck={false}
                   maxLength={12}
                   placeholder="e.g. K7M2QX"
-                  className="min-w-0 flex-1 rounded-xl border px-3.5 py-2.5 font-mono text-lg font-bold tracking-[0.25em] outline-none transition focus:border-sky-400"
+                  className="min-w-0 flex-1 rounded-xl border px-3.5 py-2.5 font-mono text-lg font-black tracking-[0.25em] outline-none transition focus:border-sky-400"
                   style={{
                     backgroundColor: 'var(--bg-surface, #141916)',
                     borderColor: 'var(--border-color, #3f3f46)',
@@ -765,7 +851,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                   onClick={() => setShowOpponentCode((value) => !value)}
                   aria-label={showOpponentCode ? 'Hide opponent code' : 'Show opponent code'}
                   title={showOpponentCode ? 'Hide opponent code' : 'Show opponent code'}
-                  className="inline-flex items-center justify-center rounded-xl border px-3 text-zinc-300 hover:bg-zinc-800/80 transition"
+                  className="inline-flex items-center justify-center rounded-xl border px-3 text-zinc-300 hover:bg-zinc-800/80 transition cursor-pointer"
                   style={{ borderColor: 'var(--border-color, #3f3f46)' }}
                 >
                   {showOpponentCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -773,7 +859,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
               </div>
             </div>
 
-            {/* Handshake Explainer */}
+            {/* Explainer */}
             <div
               className="rounded-xl border p-3 text-xs leading-relaxed"
               style={{
@@ -782,10 +868,12 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 color: 'var(--text-color-muted, #a1a1aa)',
               }}
             >
-              <p className="font-semibold text-emerald-400">Handshake Requirement:</p>
-              <p className="mt-0.5">
-                Both players must enter each other's codes and choose matching time controls. As soon as both sides confirm, the dedicated game board launches automatically.
-              </p>
+              <p className="font-bold text-emerald-400">Sequence &amp; Handshake Rules:</p>
+              <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                <li>Player A enters Player B's code, and Player B enters Player A's code.</li>
+                <li>Both players must select matching time controls ({timeControlLabel(selectedTimeControlId)}).</li>
+                <li>Press <kbd className="rounded border border-zinc-600 px-1 py-0.5 font-mono text-[10px] text-zinc-200">Enter</kbd> to verify and launch the match instantly.</li>
+              </ul>
             </div>
 
             {/* Navigation & Submit Buttons */}
@@ -793,14 +881,14 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
               <button
                 type="button"
                 onClick={() => setStep('time')}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold hover:opacity-90 transition"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold hover:opacity-90 transition cursor-pointer"
                 style={{
                   backgroundColor: 'var(--bg-card-subtle, #181a20)',
                   borderColor: 'var(--border-color, #3f3f46)',
                   color: 'var(--text-color, #f4f4f5)',
                 }}
               >
-                <ArrowLeft className="h-4 w-4" /> Change Time Control
+                <ArrowLeft className="h-4 w-4" /> Back to Time Selection
               </button>
               <button
                 id="btn-verify-start-game"
@@ -809,7 +897,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-3 text-sm font-black text-zinc-950 shadow-md shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 transition cursor-pointer"
               >
                 {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-                Verify &amp; Start Game
+                Verify &amp; Start Match (Enter ↵)
               </button>
             </div>
           </form>
@@ -851,7 +939,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 <p className="mt-1 text-xs leading-relaxed text-amber-100/90">
                   You selected <strong>{timeControlLabel(selectedTimeControlId)}</strong>, but your opponent selected{' '}
                   <strong className="text-amber-300">{timeControlLabel(opponentTimeControlId!)}</strong>.
-                  Both players must agree on the same time control to start.
+                  Both players must agree on the same time control before the match starts.
                 </p>
                 <div className="mt-4 flex flex-col gap-2">
                   <button
@@ -867,7 +955,7 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                   <button
                     type="button"
                     onClick={changeTimeControl}
-                    className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20"
+                    className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 cursor-pointer"
                   >
                     Change My Time Control Manually
                   </button>
@@ -883,49 +971,62 @@ export const OnlineChessGameModal: React.FC<OnlineChessGameModalProps> = ({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-emerald-300">
-                    Verifying Codes &amp; Synchronizing Match…
+                    Verifying Codes &amp; Waiting for Opponent…
                   </p>
                   <p className="mt-1 text-xs text-zinc-400">
-                    Waiting for your opponent to submit your code with matching time control ({timeControlLabel(selectedTimeControlId)}).
+                    Waiting for opponent to submit your code <strong className="font-mono text-zinc-200">{playerCode}</strong> with matching time control ({timeControlLabel(selectedTimeControlId)}).
+                  </p>
+                  <p className="mt-2 text-[11px] text-zinc-500">
+                    Auto-checking peer handshake ({25 - waitingElapsed}s remaining before code re-entry)
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Back / Edit Actions */}
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            {/* If codes didn't match: prominent button to redirect into dual secret codes window */}
+            <div className="rounded-xl border border-zinc-700/60 bg-black/30 p-3 text-center">
+              <p className="text-xs text-zinc-400">
+                Opponent entered a different code or made a typo?
+              </p>
               <button
                 type="button"
-                onClick={editCodes}
-                className="rounded-xl border px-4 py-2.5 text-xs font-semibold hover:opacity-90 transition"
+                id="btn-re-enter-codes"
+                onClick={redirectToCodesWindow}
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/25 transition cursor-pointer"
+              >
+                <KeyRound className="h-4 w-4" />
+                Codes Didn't Match? Re-enter Codes
+              </button>
+            </div>
+
+            {/* Back / Exit Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={redirectToCodesWindow}
+                className="rounded-xl border px-4 py-2.5 text-xs font-semibold hover:opacity-90 transition cursor-pointer"
                 style={{
                   backgroundColor: 'var(--bg-card-subtle, #181a20)',
                   borderColor: 'var(--border-color, #3f3f46)',
                   color: 'var(--text-color, #f4f4f5)',
                 }}
               >
-                Edit Secret Codes
+                Back to Dual Codes
               </button>
               <button
                 type="button"
                 onClick={leaveToMainMenu}
-                className="rounded-xl border px-4 py-2.5 text-xs font-semibold hover:opacity-90 transition"
+                className="rounded-xl border px-4 py-2.5 text-xs font-semibold hover:opacity-90 transition cursor-pointer"
                 style={{
                   backgroundColor: 'var(--bg-card-subtle, #181a20)',
                   borderColor: 'var(--border-color, #3f3f46)',
                   color: 'var(--text-color, #f4f4f5)',
                 }}
               >
-                Cancel &amp; Exit
+                Cancel &amp; Main Menu
               </button>
             </div>
           </div>
-        )}
-
-        {error && (
-          <p role="alert" className="mt-4 rounded-lg bg-rose-500/10 p-2.5 text-center text-xs font-semibold text-rose-400">
-            {error}
-          </p>
         )}
 
         <div className="mt-5 border-t pt-3 text-center text-[11px] text-zinc-500" style={{ borderColor: 'var(--border-color, #27272a)' }}>
