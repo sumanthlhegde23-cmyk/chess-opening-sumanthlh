@@ -35,22 +35,35 @@ export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
         className={inline
           ? 'time-control-panel mx-auto w-full max-w-3xl animate-fadeIn rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-xl sm:p-6'
           : 'time-control-panel max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#141916] p-4 shadow-2xl sm:p-6'}
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-color)',
+        }}
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-300"><Swords className="h-4 w-4" /> Set the pace</p>
-            <h2 id="time-control-title" className="mt-1 text-2xl font-bold text-zinc-100">Choose Time Control</h2>
-            <p className="mt-1 text-sm text-zinc-400">Select the clocks for both players. You can change this for every new game.</p>
+            <h2 id="time-control-title" className="mt-1 text-2xl font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Choose Time Control</h2>
+            <p className="mt-1 text-sm text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Select the clocks for both players. You can change this for every new game.</p>
           </div>
-          {!inline && <button type="button" onClick={onClose} aria-label="Close time control selection" className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"><X className="h-5 w-5" /></button>}
+          {!inline && <button type="button" onClick={onClose} aria-label="Close time control selection" className="time-control-close-btn rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"><X className="h-5 w-5" /></button>}
         </div>
 
         <div className="space-y-4">
           {TIME_CONTROLS.map(({ category, controls }) => {
             const unlimited = category === 'No Time Control';
             return (
-              <section key={category} aria-label={category} className={`time-control-category rounded-xl border p-3 sm:p-4 ${unlimited ? 'border-emerald-500/30 bg-emerald-950/15' : 'border-zinc-800 bg-black/15'}`}>
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-100">
+              <section
+                key={category}
+                aria-label={category}
+                className={`time-control-category rounded-xl border p-3 sm:p-4 ${unlimited ? 'border-emerald-500/30 bg-emerald-950/15' : 'border-zinc-800 bg-black/15'}`}
+                style={{
+                  backgroundColor: unlimited ? undefined : 'var(--bg-card-subtle)',
+                  borderColor: unlimited ? undefined : 'var(--border-color)',
+                }}
+              >
+                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>
                   {unlimited ? <Infinity className="h-4 w-4 text-emerald-300" /> : <span aria-hidden="true" className="text-base text-amber-300">♟</span>}
                   {category}
                 </h3>
@@ -71,12 +84,21 @@ export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
                             ? 'is-selected border-emerald-400 bg-emerald-500/15 text-white ring-1 ring-emerald-400/40'
                             : 'is-unselected border-zinc-700 bg-[#111512] text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800/80'
                         }`}
+                        style={
+                          selected
+                            ? undefined
+                            : {
+                                backgroundColor: 'var(--bg-surface)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-color)',
+                              }
+                        }
                       >
                         <span className="flex items-center justify-between gap-1">
                           <span className="font-mono text-base font-extrabold">{control.label}</span>
                           {selected && <Check className="h-4 w-4 text-emerald-300" />}
                         </span>
-                        <span className="mt-1 block text-[10px] leading-snug text-zinc-400">{detail}</span>
+                        <span className="mt-1 block text-[10px] leading-snug text-zinc-400" style={{ color: selected ? undefined : 'var(--text-color-muted)' }}>{detail}</span>
                       </button>
                     );
                   })}
@@ -86,14 +108,23 @@ export const TimeControlPicker: React.FC<TimeControlPickerProps> = ({
           })}
         </div>
 
-        <div className="mt-5 flex flex-col-reverse justify-between gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:items-center">
+        <div className="mt-5 flex flex-col-reverse justify-between gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:items-center" style={{ borderColor: 'var(--border-color)' }}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             {inline && onBack && (
-              <button type="button" onClick={onBack} className="time-control-back-btn inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-zinc-800">
+              <button
+                type="button"
+                onClick={onBack}
+                className="time-control-back-btn inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-zinc-800"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-color)',
+                }}
+              >
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
             )}
-            <p className="flex items-center gap-2 text-xs text-zinc-400"><Clock3 className="h-4 w-4 shrink-0 text-emerald-300" /> Increment is added to the mover’s clock after each legal move.</p>
+            <p className="time-control-note flex items-center gap-2 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}><Clock3 className="h-4 w-4 shrink-0 text-emerald-300" /> Increment is added to the mover’s clock after each legal move.</p>
           </div>
           <button
             type="button"

@@ -24,12 +24,23 @@ function PlayerBar({ name, color, clock, active, isYou }: {
   isYou: boolean;
 }) {
   return (
-    <div className={`online-player-bar flex items-center justify-between gap-3 rounded-xl border px-3 py-2 sm:px-4 sm:py-2.5 ${
-      active ? 'online-player-bar--active border-emerald-400/60 bg-emerald-500/10 text-emerald-100' : 'online-player-bar--inactive border-zinc-800 bg-black/25 text-zinc-300'
-    }`}>
+    <div
+      className={`online-player-bar flex items-center justify-between gap-3 rounded-xl border px-3 py-2 sm:px-4 sm:py-2.5 ${
+        active ? 'online-player-bar--active border-emerald-400/60 bg-emerald-500/10 text-emerald-100' : 'online-player-bar--inactive border-zinc-800 bg-black/25 text-zinc-300'
+      }`}
+      style={
+        active
+          ? undefined
+          : {
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-color)',
+            }
+      }
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 rounded-full border ${color === 'w' ? 'border-zinc-400 bg-zinc-100' : 'border-zinc-500 bg-zinc-900'}`} />
-        <span className="truncate text-sm font-semibold">{name}{isYou ? ' (You)' : ''}</span>
+        <span className="truncate text-sm font-semibold" style={{ color: active ? undefined : 'var(--text-color)' }}>{name}{isYou ? ' (You)' : ''}</span>
       </div>
       {clock !== null && <span className="online-match-clock font-mono text-lg font-extrabold tabular-nums sm:text-xl">{formatClock(clock)}</span>}
     </div>
@@ -117,14 +128,28 @@ export const OnlineGameBoard: React.FC<OnlineGameBoardProps> = ({
         </div>
 
         <aside className="mx-auto flex w-full max-w-[640px] flex-col gap-3 lg:mx-0 lg:w-80 lg:max-w-none lg:shrink-0">
-          <div className="rounded-xl border border-zinc-800 bg-[#141916] p-3">
+          <div
+            className="rounded-xl border border-zinc-800 bg-[#141916] p-3"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-color)',
+            }}
+          >
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-300">Online match · {timeControl.minutes === null ? 'No time control' : timeControl.label}</p>
-            <p role="status" aria-live="polite" className={`mt-1 text-base font-bold ${drawOfferedByOpponent ? 'text-amber-200' : 'text-zinc-100'}`}>{statusText}</p>
-            <p className="mt-0.5 text-xs text-zinc-400">You are playing {game.yourColor === 'w' ? 'White' : 'Black'}</p>
+            <p role="status" aria-live="polite" className={`mt-1 text-base font-bold ${drawOfferedByOpponent ? 'text-amber-200' : 'text-zinc-100'}`} style={{ color: drawOfferedByOpponent ? undefined : 'var(--text-color)' }}>{statusText}</p>
+            <p className="mt-0.5 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>You are playing {game.yourColor === 'w' ? 'White' : 'Black'}</p>
           </div>
 
           {isPlaying && (
-            <div className="rounded-xl border border-zinc-800 bg-[#141916] p-3">
+            <div
+              className="rounded-xl border border-zinc-800 bg-[#141916] p-3"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-color)',
+              }}
+            >
               {drawOfferedByOpponent ? (
                 <div className="space-y-2">
                   <p className="text-sm text-amber-200">{opponentName} offered a draw.</p>
@@ -155,17 +180,24 @@ export const OnlineGameBoard: React.FC<OnlineGameBoardProps> = ({
             </div>
           )}
 
-          <div className="rounded-xl border border-zinc-800 bg-[#141916] p-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Moves</h3>
+          <div
+            className="rounded-xl border border-zinc-800 bg-[#141916] p-3"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-color)',
+            }}
+          >
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Moves</h3>
             {movePairs.length === 0 ? (
-              <p className="mt-2 text-xs text-zinc-500">No moves yet. White moves first.</p>
+              <p className="mt-2 text-xs text-zinc-500" style={{ color: 'var(--text-color-subtle)' }}>No moves yet. White moves first.</p>
             ) : (
               <ol ref={moveListRef} className="mt-2 max-h-40 space-y-0.5 overflow-y-auto pr-1 font-mono text-sm lg:max-h-72">
                 {movePairs.map((pair) => (
                   <li key={pair.number} className="grid grid-cols-[2rem_1fr_1fr] gap-2">
-                    <span className="text-zinc-500">{pair.number}.</span>
-                    <span className="text-zinc-100">{pair.white}</span>
-                    <span className="text-zinc-100">{pair.black ?? ''}</span>
+                    <span className="text-zinc-500" style={{ color: 'var(--text-color-subtle)' }}>{pair.number}.</span>
+                    <span className="text-zinc-100" style={{ color: 'var(--text-color)' }}>{pair.white}</span>
+                    <span className="text-zinc-100" style={{ color: 'var(--text-color)' }}>{pair.black ?? ''}</span>
                   </li>
                 ))}
               </ol>

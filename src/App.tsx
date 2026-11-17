@@ -199,6 +199,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('chess-openings-color-mode', colorMode);
+    document.documentElement.setAttribute('data-color-mode', colorMode);
   }, [colorMode]);
 
   useEffect(() => {

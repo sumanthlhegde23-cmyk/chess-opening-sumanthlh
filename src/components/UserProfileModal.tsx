@@ -129,18 +129,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
         aria-modal="true"
         aria-labelledby="player-profile-title"
         className="profile-modal max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-7"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-color)',
+        }}
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">Player dashboard</p>
-            <h2 id="player-profile-title" className="mt-1 text-2xl font-bold text-zinc-100">Your profile</h2>
+            <p className="profile-dashboard-tag text-xs font-bold uppercase tracking-[0.18em] text-amber-400">Player dashboard</p>
+            <h2 id="player-profile-title" className="profile-title mt-1 text-2xl font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Your profile</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close profile" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white">
+          <button type="button" onClick={onClose} aria-label="Close profile" className="profile-close-btn rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={saveProfile} className="mb-6 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-black/20 p-4 sm:flex-row sm:items-center">
+        <form
+          onSubmit={saveProfile}
+          className="profile-user-form mb-6 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-black/20 p-4 sm:flex-row sm:items-center"
+          style={{
+            backgroundColor: 'var(--bg-card-subtle)',
+            borderColor: 'var(--border-color)',
+          }}
+        >
           <div className="flex shrink-0 flex-col items-center gap-2">
             <button
               type="button"
@@ -151,7 +163,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
               {avatarDataUrl ? (
                 <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <UserRound className="mx-auto h-9 w-9 text-zinc-400" />
+                <UserRound className="profile-avatar-fallback mx-auto h-9 w-9 text-zinc-400" />
               )}
               <span className="profile-avatar-overlay absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
                 <ImagePlus className="h-5 w-5" />
@@ -164,23 +176,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
                 setIsAvatarConfirmationOpen(false);
                 setIsAvatarPickerOpen(true);
               }}
-              className="rounded-md border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-amber-200 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10"
+              className="profile-choose-avatar-btn rounded-md border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-amber-200 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10"
             >
               Choose avatar
             </button>
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
           <div className="min-w-0 flex-1">
-            <label htmlFor="player-username" className="mb-1.5 block text-xs font-semibold text-zinc-300">Username</label>
+            <label htmlFor="player-username" className="profile-username-label mb-1.5 block text-xs font-semibold text-zinc-300" style={{ color: 'var(--text-color-muted)' }}>Username</label>
             <input
               id="player-username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               maxLength={32}
               placeholder="Enter your username"
-              className="w-full rounded-lg border border-zinc-700 bg-[#101312] px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-amber-500"
+              className="profile-username-input w-full rounded-lg border border-zinc-700 bg-[#101312] px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-amber-500"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-color)',
+              }}
             />
-            <p className="mt-1.5 text-[11px] text-zinc-500">Photo and username are saved only in this browser.</p>
+            <p className="profile-subtext mt-1.5 text-[11px] text-zinc-500" style={{ color: 'var(--text-color-subtle)' }}>Photo and username are saved only in this browser.</p>
           </div>
           <button type="submit" className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-400">
             Save profile
@@ -239,34 +256,53 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
 
         <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {stats.map(({ label, value, icon: Icon }) => (
-            <div key={label} className="rounded-xl border border-zinc-800 bg-[#101312] p-3">
-              <Icon className="mb-2 h-4 w-4 text-amber-400" />
-              <p className="text-xl font-bold text-zinc-100">{value}</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-zinc-400">{label}</p>
+            <div
+              key={label}
+              className="profile-stat-card rounded-xl border border-zinc-800 bg-[#101312] p-3"
+              style={{
+                backgroundColor: 'var(--bg-card-subtle)',
+                borderColor: 'var(--border-color)',
+              }}
+            >
+              <Icon className="profile-stat-icon mb-2 h-4 w-4 text-amber-400" />
+              <p className="profile-stat-value text-xl font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>{value}</p>
+              <p className="profile-stat-label mt-0.5 text-[11px] leading-snug text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>{label}</p>
             </div>
           ))}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-zinc-800 bg-black/20 p-4">
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-300">Account activity</h3>
-            <p className="text-xs text-zinc-400">Profile created <span className="mt-1 block text-zinc-200">{formatDate(profile.createdAt)}</span></p>
-            <p className="mt-3 text-xs text-zinc-400">Last login <span className="mt-1 block text-zinc-200">{formatDate(profile.lastLoginAt)}</span></p>
+          <div
+            className="profile-activity-card rounded-xl border border-zinc-800 bg-black/20 p-4"
+            style={{
+              backgroundColor: 'var(--bg-card-subtle)',
+              borderColor: 'var(--border-color)',
+            }}
+          >
+            <h3 className="profile-activity-title mb-2 text-xs font-bold uppercase tracking-wider text-zinc-300" style={{ color: 'var(--text-color)' }}>Account activity</h3>
+            <p className="text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Profile created <span className="mt-1 block text-zinc-200" style={{ color: 'var(--text-color)' }}>{formatDate(profile.createdAt)}</span></p>
+            <p className="mt-3 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Last login <span className="mt-1 block text-zinc-200" style={{ color: 'var(--text-color)' }}>{formatDate(profile.lastLoginAt)}</span></p>
           </div>
-          <div className="rounded-xl border border-zinc-800 bg-black/20 p-4">
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-300">Recent logins</h3>
+          <div
+            className="profile-activity-card rounded-xl border border-zinc-800 bg-black/20 p-4"
+            style={{
+              backgroundColor: 'var(--bg-card-subtle)',
+              borderColor: 'var(--border-color)',
+            }}
+          >
+            <h3 className="profile-activity-title mb-2 text-xs font-bold uppercase tracking-wider text-zinc-300" style={{ color: 'var(--text-color)' }}>Recent logins</h3>
             {profile.loginHistory.length > 0 ? (
               <ul className="space-y-1.5">
                 {profile.loginHistory.slice(-4).reverse().map((login, index) => (
-                  <li key={`${login}-${index}`} className="text-xs text-zinc-300">{formatDate(login)}</li>
+                  <li key={`${login}-${index}`} className="text-xs text-zinc-300" style={{ color: 'var(--text-color)' }}>{formatDate(login)}</li>
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-zinc-500">Your login history will appear here.</p>
+              <p className="text-xs text-zinc-500" style={{ color: 'var(--text-color-subtle)' }}>Your login history will appear here.</p>
             )}
           </div>
         </div>
-        <p className="mt-4 text-[11px] leading-relaxed text-zinc-500">
+        <p className="profile-subtext mt-4 text-[11px] leading-relaxed text-zinc-500" style={{ color: 'var(--text-color-subtle)' }}>
           Opening and variation counts record the unique lines you select. Online game codes connect players through this app’s server; they do not use Bluetooth.
         </p>
         <button
@@ -285,11 +321,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
             aria-modal="true"
             aria-labelledby="choose-chess-avatar-title"
             className="profile-modal max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191a] p-5 shadow-2xl sm:p-6"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-color)',
+            }}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h3 id="choose-chess-avatar-title" className="text-lg font-bold text-zinc-100">Choose a chess avatar</h3>
-                <p className="mt-1 text-xs text-zinc-400">Pick one of these 10 chess-themed profile pictures.</p>
+                <h3 id="choose-chess-avatar-title" className="text-lg font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Choose a chess avatar</h3>
+                <p className="mt-1 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Pick one of these 10 chess-themed profile pictures.</p>
               </div>
               <button type="button" onClick={() => {
                 setPendingAvatarId(null);
@@ -313,17 +354,34 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
                       ? 'border-amber-400 bg-amber-500/15'
                       : 'border-zinc-700 bg-black/20 hover:border-zinc-500'
                   }`}
+                  style={
+                    pendingAvatarId === avatar.id
+                      ? undefined
+                      : {
+                          backgroundColor: 'var(--bg-card-subtle)',
+                          borderColor: 'var(--border-color)',
+                        }
+                  }
                 >
                   <img src={getChessAvatarDataUrl(avatar.id)} alt="" className="h-16 w-16 rounded-lg" />
-                  <span className="text-center text-[11px] font-medium text-zinc-200">{avatar.name}</span>
+                  <span className="text-center text-[11px] font-medium text-zinc-200" style={{ color: pendingAvatarId === avatar.id ? undefined : 'var(--text-color)' }}>{avatar.name}</span>
                 </button>
               ))}
             </div>
             <div className="mt-5 flex flex-col-reverse justify-end gap-2 border-t border-zinc-800 pt-4 sm:flex-row">
-              <button type="button" onClick={() => {
-                setPendingAvatarId(null);
-                setIsAvatarPickerOpen(false);
-              }} className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingAvatarId(null);
+                  setIsAvatarPickerOpen(false);
+                }}
+                className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-color)',
+                }}
+              >
                 Cancel
               </button>
               <button
@@ -345,10 +403,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
             aria-modal="true"
             aria-labelledby="confirm-chess-avatar-title"
             className="profile-modal w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#15191a] p-5 text-center shadow-2xl"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-color)',
+            }}
           >
             <img src={getChessAvatarDataUrl(pendingAvatarId)} alt="" className="mx-auto mb-3 h-20 w-20 rounded-xl" />
-            <h3 id="confirm-chess-avatar-title" className="text-lg font-bold text-zinc-100">Use this avatar?</h3>
-            <p className="mt-2 text-sm text-zinc-300">
+            <h3 id="confirm-chess-avatar-title" className="text-lg font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Use this avatar?</h3>
+            <p className="mt-2 text-sm text-zinc-300" style={{ color: 'var(--text-color-muted)' }}>
               Would you like to use the {chessAvatars.find((avatar) => avatar.id === pendingAvatarId)?.name} as your profile picture?
             </p>
             <div className="mt-5 flex flex-col-reverse justify-center gap-2 sm:flex-row">
@@ -356,6 +419,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
                 type="button"
                 onClick={() => setIsAvatarConfirmationOpen(false)}
                 className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-color)',
+                }}
               >
                 No, go back
               </button>

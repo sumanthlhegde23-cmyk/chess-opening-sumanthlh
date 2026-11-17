@@ -3341,10 +3341,17 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                   </div>
 
                   {/* Colour chooser, summary of the chosen clock, Back and New Game */}
-                  <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-[#161822] p-3.5 shadow-md">
+                  <div
+                    className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-[#161822] p-3.5 shadow-md"
+                    style={{
+                      backgroundColor: 'var(--bg-surface)',
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-color)',
+                    }}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-zinc-300">Play as:</span>
+                        <span className="text-xs font-bold text-zinc-300" style={{ color: 'var(--text-color-muted)' }}>Play as:</span>
                         <button
                           id="btn-play-as-white"
                           type="button"
@@ -3372,9 +3379,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                           Black
                         </button>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-zinc-400">
+                      <div className="flex items-center gap-2 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>
                         <Clock3 className="h-3.5 w-3.5 text-emerald-300" />
-                        <span>Time control: <strong className="font-mono text-zinc-100">{getTimeControl(selectedEngineTimeControlId).label}</strong></span>
+                        <span>Time control: <strong className="font-mono text-zinc-100" style={{ color: 'var(--text-color)' }}>{getTimeControl(selectedEngineTimeControlId).label}</strong></span>
                         <button
                           type="button"
                           onClick={() => setEngineSetupStep('time')}
@@ -3385,12 +3392,17 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex flex-col-reverse gap-2 border-t border-zinc-800 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col-reverse gap-2 border-t border-zinc-800 pt-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border-color)' }}>
                       <button
                         id="btn-engine-setup-back"
                         type="button"
                         onClick={() => setEngineSetupStep('time')}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-zinc-800 cursor-pointer"
+                        style={{
+                          backgroundColor: 'var(--bg-surface)',
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-color)',
+                        }}
                       >
                         <ChevronLeft className="h-4 w-4" />
                         Back
@@ -3415,7 +3427,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     className="mx-auto flex w-full max-w-xl flex-col items-center justify-center gap-2.5 animate-fadeIn px-2 py-1"
                   >
                     {/* Opponent Bar */}
-                    <div className="engine-player-bar engine-player-bar--opponent flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
+                    <div
+                      className="engine-player-bar engine-player-bar--opponent flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md"
+                      style={{
+                        backgroundColor: 'var(--bg-surface)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-color)',
+                      }}
+                    >
                       <div className="flex items-center gap-2.5">
                         <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
                           activeClockColorRef.current !== playerColor && !gameResult
@@ -3426,12 +3445,12 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-zinc-100">Stockfish</span>
+                            <span className="text-xs font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Stockfish</span>
                             <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-300 border border-cyan-500/30">
                               Lvl {engineLevel}
                             </span>
                           </div>
-                          <div className="text-[10px] text-zinc-400 font-mono">
+                          <div className="text-[10px] text-zinc-400 font-mono" style={{ color: 'var(--text-color-muted)' }}>
                             {getEloForLevel(engineLevel).elo} Elo {isEngineThinking ? '• Calculating...' : ''}
                           </div>
                         </div>
@@ -3446,6 +3465,15 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                               ? 'engine-match-clock--active border-cyan-400/80 bg-cyan-500/20 text-cyan-200 shadow-md shadow-cyan-500/20'
                               : 'engine-match-clock--inactive border-zinc-800 bg-black/40 text-zinc-400'
                           } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all`}
+                          style={
+                            activeClockColorRef.current !== playerColor && !gameResult
+                              ? undefined
+                              : {
+                                  backgroundColor: 'var(--clock-bg-inactive)',
+                                  borderColor: 'var(--clock-border-inactive)',
+                                  color: 'var(--clock-text-inactive)',
+                                }
+                          }
                         >
                           <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current !== playerColor && !gameResult ? 'text-cyan-300 animate-spin' : 'text-zinc-500'}`} />
                           <span id="engine-opponent-clock-time">{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
@@ -3456,6 +3484,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     {/* Dedicated Chessboard */}
                     <div
                       className="relative aspect-square w-full select-none overflow-hidden rounded-2xl border-4 border-zinc-800/90 shadow-2xl max-w-[min(100%,calc(100dvh-17rem),460px)]"
+                      style={{
+                        borderColor: 'var(--border-color)',
+                      }}
                     >
                       <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
                         {(isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((r) =>
@@ -3550,7 +3581,14 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                     </div>
 
                     {/* Player Bar */}
-                    <div className="engine-player-bar engine-player-bar--user flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md">
+                    <div
+                      className="engine-player-bar engine-player-bar--user flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md"
+                      style={{
+                        backgroundColor: 'var(--bg-surface)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-color)',
+                      }}
+                    >
                       <div className="flex items-center gap-2.5">
                         <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
                           activeClockColorRef.current === playerColor && !gameResult
@@ -3561,12 +3599,19 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-zinc-100">You</span>
-                            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold text-zinc-300 border border-zinc-700">
+                            <span className="text-xs font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>You</span>
+                            <span
+                              className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold text-zinc-300 border border-zinc-700"
+                              style={{
+                                backgroundColor: 'var(--bg-card-subtle)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-color)',
+                              }}
+                            >
                               {playerColor === 'w' ? 'White' : 'Black'}
                             </span>
                           </div>
-                          <div className="text-[10px] text-zinc-400">
+                          <div className="text-[10px] text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>
                             {gameResult ? 'Game finished' : currentTurn === playerColor ? 'Your turn to move' : 'Waiting for opponent'}
                           </div>
                         </div>
@@ -3581,6 +3626,15 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                               ? 'engine-match-clock--active border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-md shadow-emerald-500/20'
                               : 'engine-match-clock--inactive border-zinc-800 bg-black/40 text-zinc-400'
                           } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all`}
+                          style={
+                            activeClockColorRef.current === playerColor && !gameResult
+                              ? undefined
+                              : {
+                                  backgroundColor: 'var(--clock-bg-inactive)',
+                                  borderColor: 'var(--clock-border-inactive)',
+                                  color: 'var(--clock-text-inactive)',
+                                }
+                          }
                         >
                           <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current === playerColor && !gameResult ? 'text-emerald-300' : 'text-zinc-500'}`} />
                           <span id="engine-player-clock-time">{formatClock(engineClock[playerColor])}</span>
@@ -3618,13 +3672,27 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             onClick={handleUndoMoveEngine}
                             disabled={!canTakeback || isDrawPending}
                             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-xs font-bold text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-40 cursor-pointer shadow-sm"
+                            style={{
+                              backgroundColor: 'var(--bg-surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-color)',
+                            }}
                           >
                             <Undo2 className="h-4 w-4" />
                             <span>Takeback</span>
                           </button>
                         </div>
                         {drawNotice && (
-                          <p role="status" aria-live="polite" className="rounded-xl border border-zinc-700 bg-[#111319] px-3 py-2 text-center text-xs text-zinc-300 animate-fadeIn">
+                          <p
+                            role="status"
+                            aria-live="polite"
+                            className="rounded-xl border border-zinc-700 bg-[#111319] px-3 py-2 text-center text-xs text-zinc-300 animate-fadeIn"
+                            style={{
+                              backgroundColor: 'var(--bg-card-subtle)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-color)',
+                            }}
+                          >
                             {drawNotice}
                           </p>
                         )}
@@ -3692,6 +3760,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             type="button"
                             onClick={onClose}
                             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-600 bg-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-100 transition-colors hover:bg-zinc-700 cursor-pointer"
+                            style={{
+                              backgroundColor: 'var(--bg-surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-color)',
+                            }}
                           >
                             <X className="h-3.5 w-3.5" />
                             Exit

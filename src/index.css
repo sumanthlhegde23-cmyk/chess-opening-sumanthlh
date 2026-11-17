@@ -909,15 +909,52 @@
 
 /* ---- User profile modal: high-contrast light mode ---- */
 [data-color-mode="light"] .profile-modal {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a;
+  background-color: var(--bg-surface, #ffffff) !important;
+  border-color: var(--border-color, #cbd5e1) !important;
+  color: var(--text-color, #0f172a) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* Dark card/inset surfaces -> light surfaces */
+[data-color-mode="light"] .profile-modal h2,
+[data-color-mode="light"] .profile-modal h3,
+[data-color-mode="light"] .profile-modal #player-profile-title,
+[data-color-mode="light"] .profile-modal #choose-chess-avatar-title,
+[data-color-mode="light"] .profile-modal #confirm-chess-avatar-title {
+  color: var(--text-color-strong, #0f172a) !important;
+}
+
+[data-color-mode="light"] .profile-modal p,
+[data-color-mode="light"] .profile-modal label {
+  color: var(--text-color-muted, #334155) !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-subtext {
+  color: var(--text-color-subtle, #64748b) !important;
+}
+
+/* User profile form and inset cards */
+[data-color-mode="light"] .profile-modal .profile-user-form,
+[data-color-mode="light"] .profile-modal form,
 [data-color-mode="light"] .profile-modal [class*="bg-[#101312]"],
 [data-color-mode="light"] .profile-modal [class*="bg-black/20"] {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Username input field on profile form */
+[data-color-mode="light"] .profile-modal input#player-username {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .profile-modal input#player-username:focus {
+  border-color: #d97706 !important;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2) !important;
+}
+
+[data-color-mode="light"] .profile-modal input#player-username::placeholder {
+  color: #64748b !important;
 }
 
 /* Typography: dark, fully opaque text on light surfaces */
@@ -965,6 +1002,24 @@
   border-width: 2px;
 }
 
+[data-color-mode="light"] .profile-modal .profile-avatar svg {
+  color: #475569 !important;
+}
+
+/* Choose avatar button under profile photo */
+[data-color-mode="light"] .profile-modal .profile-choose-avatar-btn,
+[data-color-mode="light"] .profile-modal .profile-avatar + button {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #92400e !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-choose-avatar-btn:hover,
+[data-color-mode="light"] .profile-modal .profile-avatar + button:hover {
+  background-color: #fef3c7 !important;
+  border-color: #b45309 !important;
+}
+
 /* Hover overlay sits on a dark scrim, so its icon must stay white */
 [data-color-mode="light"] .profile-modal .profile-avatar-overlay,
 [data-color-mode="light"] .profile-modal .profile-avatar-overlay * {
@@ -975,10 +1030,49 @@
 [data-color-mode="light"] .profile-modal .profile-streak {
   background-image: linear-gradient(135deg, #fef3c7 0%, #fffbeb 55%, #ffffff 100%) !important;
   border-color: #d97706 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak #streak-manager-title {
+  color: #451a03 !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak p {
+  color: #78350f !important;
 }
 
 [data-color-mode="light"] .profile-modal .profile-streak [class*="bg-black/25"] {
   background-color: #ffffff !important;
+  border-color: #fcd34d !important;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.08) !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak [class*="bg-black/25"] p {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak [class*="bg-black/25"] p:last-child {
+  color: #78350f !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak #streak-counter-value {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak [class*="text-emerald-300"] {
+  color: #047857 !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak .lucide-flame {
+  color: #d97706 !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-streak .lucide-sparkles,
+[data-color-mode="light"] .profile-modal .profile-streak .lucide-trophy,
+[data-color-mode="light"] .profile-modal .profile-streak .lucide-book-open,
+[data-color-mode="light"] .profile-modal .profile-streak .lucide-lock-keyhole,
+[data-color-mode="light"] .profile-modal .profile-streak .lucide-calendar-days {
+  color: #b45309 !important;
 }
 
 [data-color-mode="light"] .profile-modal .profile-streak [class*="border-white/10"] {
@@ -988,6 +1082,154 @@
 [data-color-mode="light"] .profile-modal .profile-streak [class*="bg-rose-500/10"] {
   background-color: #ffe4e6 !important;
   border-color: #fb7185 !important;
+  color: #be123c !important;
+}
+
+/* Profile Stat Cards */
+[data-color-mode="light"] .profile-modal .profile-stat-card,
+[data-color-mode="light"] .profile-modal [class*="bg-[#101312]"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-stat-card .profile-stat-value,
+[data-color-mode="light"] .profile-modal [class*="bg-[#101312]"] p.text-xl {
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .profile-modal .profile-stat-card .profile-stat-label,
+[data-color-mode="light"] .profile-modal [class*="bg-[#101312]"] p.text-\[11px\] {
+  color: #475569 !important;
+  font-weight: 600;
+}
+
+[data-color-mode="light"] .profile-modal .profile-stat-card svg,
+[data-color-mode="light"] .profile-modal [class*="bg-[#101312]"] svg {
+  color: #b45309 !important;
+}
+
+/* Profile Activity & Recent Logins */
+[data-color-mode="light"] .profile-modal .profile-activity-card,
+[data-color-mode="light"] .profile-modal [class*="bg-black/20"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-activity-card h3 {
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .profile-modal .profile-activity-card p {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .profile-modal .profile-activity-card span {
+  color: #0f172a !important;
+  font-weight: 700;
+}
+
+[data-color-mode="light"] .profile-modal .profile-activity-card li {
+  color: #1e293b !important;
+  font-weight: 600;
+}
+
+/* Avatar picker dialog options */
+[data-color-mode="light"] .profile-modal button[aria-pressed="true"] {
+  background-color: #fef3c7 !important;
+  border-color: #d97706 !important;
+  box-shadow: 0 0 0 1.5px #d97706 !important;
+}
+
+[data-color-mode="light"] .profile-modal button[aria-pressed="true"] span {
+  color: #78350f !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .profile-modal button[aria-pressed="false"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-color-mode="light"] .profile-modal button[aria-pressed="false"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] .profile-modal button[aria-pressed="false"] span {
+  color: #0f172a !important;
+  font-weight: 600;
+}
+
+[data-color-mode="light"] .profile-modal button.rounded-lg.border-zinc-700 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .profile-modal button.rounded-lg.border-zinc-700:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] .profile-modal button[aria-label="Close profile"],
+[data-color-mode="light"] .profile-modal button[aria-label="Close avatar choices"] {
+  color: #64748b !important;
+}
+
+[data-color-mode="light"] .profile-modal button[aria-label="Close profile"]:hover,
+[data-color-mode="light"] .profile-modal button[aria-label="Close avatar choices"]:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .profile-modal .border-t {
+  border-top-color: #e2e8f0 !important;
+}
+
+/* ---- Navbar Profile & Streak in Bright Mode ---- */
+[data-color-mode="light"] #navbar-streak-counter {
+  background-color: #ffffff !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] #navbar-streak-counter:hover {
+  background-color: #fef3c7 !important;
+  border-color: #f59e0b !important;
+}
+
+[data-color-mode="light"] #navbar-streak-counter svg {
+  fill: #d97706 !important;
+  color: #d97706 !important;
+}
+
+[data-color-mode="light"] #navbar-player-profile-btn {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-color-mode="light"] #navbar-player-profile-btn:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] #navbar-player-profile-btn span:first-child {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-color-mode="light"] #navbar-player-profile-btn span:first-child svg {
+  color: #b45309 !important;
+}
+
+[data-color-mode="light"] #navbar-player-profile-btn span:last-child {
+  color: #0f172a !important;
+  font-weight: 700;
 }
 
 /* ==========================================================================
@@ -1020,11 +1262,18 @@
   border-color: #e2e8f0 !important;
 }
 
-[data-color-mode="light"] .time-control-panel .time-control-category h3 {
-  color: #0f172a !important;
+[data-color-mode="light"] .time-control-panel .time-control-category[class*="bg-emerald-950"] {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
 }
 
-[data-color-mode="light"] .time-control-panel [class*="text-emerald-300"] {
+[data-color-mode="light"] .time-control-panel .time-control-category h3 {
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+[data-color-mode="light"] .time-control-panel [class*="text-emerald-300"],
+[data-color-mode="light"] .time-control-panel svg.lucide-infinity {
   color: #047857 !important;
 }
 
@@ -1083,6 +1332,18 @@
   font-weight: 600;
 }
 
+/* Close button on time control panel */
+[data-color-mode="light"] .time-control-panel button[aria-label="Close time control selection"],
+[data-color-mode="light"] .time-control-panel .time-control-close-btn {
+  color: #64748b !important;
+}
+
+[data-color-mode="light"] .time-control-panel button[aria-label="Close time control selection"]:hover,
+[data-color-mode="light"] .time-control-panel .time-control-close-btn:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
 /* Footer buttons & notes */
 [data-color-mode="light"] .time-control-panel .time-control-back-btn,
 [data-color-mode="light"] .time-control-panel [class*="border-zinc-700"][class*="bg-zinc-900"] {
@@ -1106,12 +1367,24 @@
   background-color: #047857 !important;
 }
 
+[data-color-mode="light"] .time-control-panel .border-t {
+  border-top-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-note {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .time-control-panel .time-control-note svg {
+  color: #047857 !important;
+}
+
 
 /* ---- 2. Engine Match Timer & Active Display Elements ---- */
 [data-color-mode="light"] .engine-player-bar {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
 [data-color-mode="light"] .engine-player-bar [class*="text-zinc-100"] {
@@ -1135,10 +1408,12 @@
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
+  font-weight: 700;
 }
 
 /* INACTIVE Match Clock (Opponent & Player when it is NOT their turn) */
 [data-color-mode="light"] .engine-match-clock.engine-match-clock--inactive,
+[data-color-mode="light"] .engine-match-clock:not(.engine-match-clock--active),
 [data-color-mode="light"] #dedicated-engine-board-container [class*="border-zinc-800"][class*="bg-black/40"] {
   background-color: #f1f5f9 !important;
   border-color: #94a3b8 !important;
@@ -1147,12 +1422,14 @@
 }
 
 [data-color-mode="light"] .engine-match-clock.engine-match-clock--inactive span,
+[data-color-mode="light"] .engine-match-clock:not(.engine-match-clock--active) span,
 [data-color-mode="light"] #dedicated-engine-board-container [class*="border-zinc-800"][class*="bg-black/40"] span {
   color: #0f172a !important;
   font-weight: 800;
 }
 
 [data-color-mode="light"] .engine-match-clock.engine-match-clock--inactive svg,
+[data-color-mode="light"] .engine-match-clock:not(.engine-match-clock--active) svg,
 [data-color-mode="light"] #dedicated-engine-board-container [class*="border-zinc-800"][class*="bg-black/40"] svg {
   color: #475569 !important;
 }
@@ -1197,6 +1474,21 @@
   color: #16a34a !important;
 }
 
+/* Dedicated board border in bright mode */
+[data-color-mode="light"] #dedicated-engine-board-container > div.relative.aspect-square {
+  border-color: #94a3b8 !important;
+}
+
+/* Engine thinking overlay */
+[data-color-mode="light"] #dedicated-engine-board-container [class*="backdrop-blur"] {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+[data-color-mode="light"] #dedicated-engine-board-container [class*="backdrop-blur"] span {
+  color: #0369a1 !important;
+  font-weight: 800;
+}
+
 /* Active Turn Avatar Icons */
 [data-color-mode="light"] .engine-player-bar [class*="border-emerald-400"][class*="bg-emerald-500/20"] {
   background-color: #ecfdf5 !important;
@@ -1208,6 +1500,13 @@
   background-color: #e0f2fe !important;
   border-color: #0284c7 !important;
   color: #0369a1 !important;
+}
+
+/* Inactive Avatar Icons */
+[data-color-mode="light"] .engine-player-bar [class*="border-zinc-700"][class*="bg-zinc-800"] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 /* Match Action Buttons: Resign, Draw, Takeback */
@@ -1238,11 +1537,26 @@
   background-color: #e2e8f0 !important;
 }
 
+[data-color-mode="light"] #engine-game-controls p[role="status"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
 /* Engine Match Game Result Card */
 [data-color-mode="light"] section[aria-labelledby="engine-game-result-title"] {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
+}
+
+[data-color-mode="light"] #btn-exit-game-menu {
+  background-color: #ffffff !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+[data-color-mode="light"] #btn-exit-game-menu:hover {
+  background-color: #f1f5f9 !important;
 }
 
 
@@ -1267,6 +1581,50 @@
   color: #475569 !important;
 }
 
+[data-color-mode="light"] #btn-flip-practice-board,
+[data-color-mode="light"] #btn-practice-back-to-home {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #btn-flip-practice-board:hover,
+[data-color-mode="light"] #btn-practice-back-to-home:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] #btn-close-practice-modal {
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+[data-color-mode="light"] #btn-close-practice-modal:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #practice-mode-container > div:last-child {
+  background-color: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* Practice Mode Tabs Bar */
+[data-color-mode="light"] #practice-mode-container .grid.grid-cols-2 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] #practice-mode-container button[id^="tab-btn-"]:not([class*="bg-gradient"]) {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] #practice-mode-container button[id^="tab-btn-"]:not([class*="bg-gradient"]):hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
 [data-color-mode="light"] #engine-wizard-entry {
   background-color: #ffffff !important;
   background-image: none !important;
@@ -1280,6 +1638,15 @@
 
 [data-color-mode="light"] #engine-wizard-entry p {
   color: #475569 !important;
+}
+
+[data-color-mode="light"] #engine-wizard-entry div.border-t {
+  border-top-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] #engine-wizard-entry div.border-t button {
+  color: #0f172a !important;
 }
 
 [data-color-mode="light"] ol[aria-label="Game setup progress"] li[aria-current="step"] {
@@ -1299,6 +1666,7 @@
   background-image: none !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
 
 [data-color-mode="light"] #engine-level-selector-box [class*="text-zinc-200"],
@@ -1306,12 +1674,14 @@
   color: #0f172a !important;
 }
 
-[data-color-mode="light"] #engine-level-selector-box [class*="text-zinc-400"] {
+[data-color-mode="light"] #engine-level-selector-box [class*="text-zinc-400"],
+[data-color-mode="light"] #engine-level-selector-box p {
   color: #475569 !important;
 }
 
 [data-color-mode="light"] #engine-level-selector-box [class*="text-cyan-300"] {
   color: #0369a1 !important;
+  font-weight: 700;
 }
 
 [data-color-mode="light"] #engine-level-selector-box .bg-black\/60 {
@@ -1323,6 +1693,7 @@
   background-color: #ffffff !important;
   border-color: #94a3b8 !important;
   color: #0369a1 !important;
+  font-weight: 800;
 }
 
 [data-color-mode="light"] #btn-engine-level-minus,
@@ -1336,11 +1707,47 @@
   background-color: #cbd5e1 !important;
 }
 
+[data-color-mode="light"] #slider-engine-level {
+  background-color: #cbd5e1 !important;
+  accent-color: #0284c7;
+}
+
+/* Step 3 Config Card in Practice Wizard */
+[data-color-mode="light"] #content-play-engine [class*="bg-[#161822]"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-color-mode="light"] #content-play-engine [class*="bg-[#161822]"] span {
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] #content-play-engine [class*="bg-[#161822]"] strong {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #content-play-engine [class*="bg-[#161822]"] .border-t {
+  border-top-color: #e2e8f0 !important;
+}
+
+[data-color-mode="light"] #btn-engine-setup-back {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] #btn-engine-setup-back:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
 /* Play as White / Black buttons in bright mode */
 [data-color-mode="light"] #btn-play-as-white[aria-pressed="true"] {
   background-color: #0f172a !important;
   border-color: #0f172a !important;
   color: #ffffff !important;
+  font-weight: 800;
 }
 
 [data-color-mode="light"] #btn-play-as-white[aria-pressed="false"] {
@@ -1358,6 +1765,7 @@
   background-color: #d97706 !important;
   border-color: #b45309 !important;
   color: #ffffff !important;
+  font-weight: 800;
 }
 
 [data-color-mode="light"] #btn-play-as-black[aria-pressed="false"] {
@@ -1373,10 +1781,26 @@
 
 
 /* ---- 4. Online Game Board Clocks & Player Bars in Bright Mode ---- */
+[data-color-mode="light"] div[aria-label="Online chess game"] {
+  background-color: var(--lm-page, #f1f5f9) !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] div[aria-label="Online chess game"] aside > div {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] div[aria-label="Online chess game"] aside ol li span {
+  color: #0f172a !important;
+}
+
 [data-color-mode="light"] .online-player-bar {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
 [data-color-mode="light"] .online-player-bar.online-player-bar--active {
