@@ -330,7 +330,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, prof
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 id="choose-chess-avatar-title" className="text-lg font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Choose a chess avatar</h3>
-                <p className="mt-1 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Pick one of these 10 chess-themed profile pictures.</p>
+                <p className="mt-1 text-xs text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>Pick one of these {chessAvatars.length} chess-themed profile pictures.</p>
               </div>
               <button type="button" onClick={() => {
                 setPendingAvatarId(null);

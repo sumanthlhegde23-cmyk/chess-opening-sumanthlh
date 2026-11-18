@@ -1,4 +1,5 @@
 import { loadStreakData, saveStreakData } from './streakManager';
+import { customAvatarDataUrls } from './customAvatarsData';
 
 export interface UserProfile {
   username: string;
@@ -40,11 +41,18 @@ export const chessAvatars = [
   { id: 'black-queen', name: 'Black Queen', piece: '♛', background: '#392f43', foreground: '#e7c4db' },
   { id: 'black-rook', name: 'Black Rook', piece: '♜', background: '#293b3c', foreground: '#aed9cb' },
   { id: 'black-knight', name: 'Black Knight', piece: '♞', background: '#40342d', foreground: '#efd2a9' },
+  { id: 'purple-knight', name: 'Royal Knight', piece: '♞', background: '#594c9d', foreground: '#ffffff' },
+  { id: 'emerald-queen', name: 'Emerald Queen', piece: '♛', background: '#157256', foreground: '#f9bf41' },
+  { id: 'grandmaster', name: 'Grandmaster', piece: '♔', background: '#cb5331', foreground: '#f5dfc6' },
+  { id: 'pink-rook', name: 'Castle Rook', piece: '♜', background: '#a03b63', foreground: '#ffffff' },
 ] as const;
 
 export type ChessAvatarId = (typeof chessAvatars)[number]['id'];
 
 export function getChessAvatarDataUrl(id: ChessAvatarId): string {
+  if (customAvatarDataUrls[id]) {
+    return customAvatarDataUrls[id];
+  }
   const avatar = chessAvatars.find((item) => item.id === id);
   if (!avatar) throw new Error(`Unknown chess avatar: ${id}`);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="18" fill="${avatar.background}"/><path d="M14 100h100" stroke="${avatar.foreground}" stroke-opacity=".22" stroke-width="3"/><text x="64" y="87" text-anchor="middle" font-size="82" fill="${avatar.foreground}" font-family="Segoe UI Symbol, Noto Sans Symbols 2, serif">${avatar.piece}</text></svg>`;
