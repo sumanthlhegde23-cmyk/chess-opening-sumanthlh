@@ -802,16 +802,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
           isMoving: false,
           secondaryPiece,
         });
-        // Immediately highlight origin square so player can clearly see which piece is being moved
-        setLastEngineMove({ from: engineMove.from, to: engineMove.to });
+        // Highlight only the moving piece origin square during transit
+        setLastEngineMove({ from: engineMove.from, to: engineMove.from });
 
-        // Trigger the smooth gliding CSS transition in the next frame
+        // Trigger the smooth gliding CSS transform in the next frame
         await new Promise((res) => setTimeout(res, 25));
         if (engineSessionRef.current !== sessionId) return;
         setAnimatingEnginePiece((prev) => (prev ? { ...prev, isMoving: true } : null));
 
-        // Wait for the slide transition to smoothly land on destination square (480ms)
-        await new Promise((res) => setTimeout(res, 500));
+        // Wait for the slide transition to smoothly land on destination square (420ms)
+        await new Promise((res) => setTimeout(res, 440));
         if (engineSessionRef.current !== sessionId) return;
 
         // Finalize move on chess engine instance
@@ -1643,50 +1643,50 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     if (!animatingEnginePiece) return null;
     const fromCoords = getGridCoords(animatingEnginePiece.from, isFlipped);
     const toCoords = getGridCoords(animatingEnginePiece.to, isFlipped);
-    const targetCol = animatingEnginePiece.isMoving ? toCoords.col : fromCoords.col;
-    const targetRow = animatingEnginePiece.isMoving ? toCoords.row : fromCoords.row;
+    const dx = (toCoords.col - fromCoords.col) * 100;
+    const dy = (toCoords.row - fromCoords.row) * 100;
 
     const sec = animatingEnginePiece.secondaryPiece;
     const secFrom = sec ? getGridCoords(sec.from, isFlipped) : null;
     const secTo = sec ? getGridCoords(sec.to, isFlipped) : null;
-    const secTargetCol = sec && secFrom && secTo ? (animatingEnginePiece.isMoving ? secTo.col : secFrom.col) : 0;
-    const secTargetRow = sec && secFrom && secTo ? (animatingEnginePiece.isMoving ? secTo.row : secFrom.row) : 0;
+    const secDx = sec && secFrom && secTo ? (secTo.col - secFrom.col) * 100 : 0;
+    const secDy = sec && secFrom && secTo ? (secTo.row - secFrom.row) * 100 : 0;
 
     return (
-      <div className="pointer-events-none absolute inset-0 z-30">
+      <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
         <div
-          className="absolute flex items-center justify-center p-0.5 will-change-transform"
+          className="absolute flex items-center justify-center p-0.5"
           style={{
             width: '12.5%',
             height: '12.5%',
-            left: `${targetCol * 12.5}%`,
-            top: `${targetRow * 12.5}%`,
+            left: `${fromCoords.col * 12.5}%`,
+            top: `${fromCoords.row * 12.5}%`,
+            transform: animatingEnginePiece.isMoving
+              ? `translate3d(${dx}%, ${dy}%, 0)`
+              : 'translate3d(0, 0, 0)',
             transition: animatingEnginePiece.isMoving
-              ? 'left 480ms cubic-bezier(0.25, 1, 0.5, 1), top 480ms cubic-bezier(0.25, 1, 0.5, 1), transform 480ms cubic-bezier(0.25, 1, 0.5, 1)'
+              ? 'transform 420ms cubic-bezier(0.25, 1, 0.5, 1)'
               : 'none',
-            transform: animatingEnginePiece.isMoving ? 'scale(1.14)' : 'scale(1)',
-            filter: animatingEnginePiece.isMoving
-              ? 'drop-shadow(0 12px 14px rgba(0, 0, 0, 0.45)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3))'
-              : 'none',
+            willChange: 'transform',
           }}
         >
           <ChessPiece type={animatingEnginePiece.piece.type} color={animatingEnginePiece.piece.color} />
         </div>
         {sec && secFrom && secTo && (
           <div
-            className="absolute flex items-center justify-center p-0.5 will-change-transform"
+            className="absolute flex items-center justify-center p-0.5"
             style={{
               width: '12.5%',
               height: '12.5%',
-              left: `${secTargetCol * 12.5}%`,
-              top: `${secTargetRow * 12.5}%`,
+              left: `${secFrom.col * 12.5}%`,
+              top: `${secFrom.row * 12.5}%`,
+              transform: animatingEnginePiece.isMoving
+                ? `translate3d(${secDx}%, ${secDy}%, 0)`
+                : 'translate3d(0, 0, 0)',
               transition: animatingEnginePiece.isMoving
-                ? 'left 480ms cubic-bezier(0.25, 1, 0.5, 1), top 480ms cubic-bezier(0.25, 1, 0.5, 1), transform 480ms cubic-bezier(0.25, 1, 0.5, 1)'
+                ? 'transform 420ms cubic-bezier(0.25, 1, 0.5, 1)'
                 : 'none',
-              transform: animatingEnginePiece.isMoving ? 'scale(1.08)' : 'scale(1)',
-              filter: animatingEnginePiece.isMoving
-                ? 'drop-shadow(0 12px 14px rgba(0, 0, 0, 0.45)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3))'
-                : 'none',
+              willChange: 'transform',
             }}
           >
             <ChessPiece type={sec.piece.type} color={sec.piece.color} />
@@ -2092,7 +2092,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
               {/* The Fully Playable Chessboard */}
               <div
-                className="relative aspect-square w-full select-none overflow-hidden rounded-xl border-4 border-zinc-800/90 shadow-2xl"
+                className="relative aspect-square w-full select-none overflow-hidden rounded-xl border-4 border-zinc-800/90 shadow-2xl shrink-0"
               >
               <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
                 {(isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]).map((r) =>
@@ -3497,7 +3497,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
             {/* OPTION 3: PLAY ENGINE (STOCKFISH ENGINE) - SEQUENTIAL STEP-BY-STEP WIZARD */}
             {activeTab === 'play_engine' && (
-              <div id="content-play-engine" className={`space-y-4 animate-fadeIn ${isEngineBoardFullscreen ? 'flex w-full justify-center' : ''}`}>
+              <div id="content-play-engine" className={`space-y-4 ${isEngineBoardFullscreen ? 'flex w-full justify-center' : 'animate-fadeIn'}`}>
                 {/* Step 1: Initial Practice State (Entry Point Prompt Only) */}
                 <div
                   id="engine-wizard-entry"
@@ -3792,45 +3792,40 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 {isEngineBoardFullscreen && (
                   <div
                     id="dedicated-engine-board-container"
-                    className="mx-auto flex w-full max-w-xl flex-col items-center justify-center gap-2.5 animate-fadeIn px-2 py-1"
+                    className="mx-auto flex w-full max-w-xl flex-col items-center gap-2.5 px-2 py-1"
                   >
                     {/* Opponent Bar */}
                     <div
-                      className="engine-player-bar engine-player-bar--opponent flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md"
+                      className="engine-player-bar engine-player-bar--opponent flex h-14 shrink-0 w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md"
                       style={{
                         backgroundColor: 'var(--bg-surface)',
                         borderColor: 'var(--border-color)',
                         color: 'var(--text-color)',
                       }}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
                           activeClockColorRef.current !== playerColor && !gameResult
-                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300 ring-2 ring-cyan-400/40 animate-pulse'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
                             : 'border-zinc-700 bg-zinc-800 text-zinc-300'
                         }`}>
                           <Cpu className="h-4 w-4" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>Stockfish</span>
-                            <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-300 border border-cyan-500/30">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 h-5">
+                            <span className="text-xs font-bold text-zinc-100 truncate" style={{ color: 'var(--text-color)' }}>Stockfish</span>
+                            <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-300 border border-cyan-500/30 shrink-0">
                               Lvl {engineLevel}
                             </span>
-                            {isEngineThinking && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                          </div>
+                          <div className="text-[10px] text-zinc-400 font-mono h-4 flex items-center gap-1.5" style={{ color: 'var(--text-color-muted)' }}>
+                            <span>{getEloForLevel(engineLevel).elo} Elo</span>
+                            {isEngineThinking ? (
+                              <span className="text-cyan-400 font-sans font-medium flex items-center gap-1 shrink-0">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                                 Thinking...
                               </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1" style={{ color: 'var(--text-color-muted)' }}>
-                            <span>{getEloForLevel(engineLevel).elo} Elo</span>
-                            {isEngineThinking && (
-                              <span className="text-cyan-400 font-sans font-medium flex items-center gap-0.5">
-                                • Calculating move...
-                              </span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -3839,11 +3834,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       {engineClock && (
                         <div
                           id="engine-opponent-clock"
-                          className={`engine-match-clock engine-match-clock--opponent ${
+                          className={`engine-match-clock engine-match-clock--opponent shrink-0 ${
                             activeClockColorRef.current !== playerColor && !gameResult
                               ? 'engine-match-clock--active border-cyan-400/80 bg-cyan-500/20 text-cyan-200 shadow-md shadow-cyan-500/20'
                               : 'engine-match-clock--inactive border-zinc-800 bg-black/40 text-zinc-400'
-                          } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all`}
+                          } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-colors duration-150`}
                           style={
                             activeClockColorRef.current !== playerColor && !gameResult
                               ? undefined
@@ -3854,7 +3849,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                                 }
                           }
                         >
-                          <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current !== playerColor && !gameResult ? 'text-cyan-300 animate-spin' : 'text-zinc-500'}`} />
+                          <Clock3 className={`h-3.5 w-3.5 shrink-0 ${activeClockColorRef.current !== playerColor && !gameResult ? 'text-cyan-300' : 'text-zinc-500'}`} />
                           <span id="engine-opponent-clock-time">{formatClock(engineClock[playerColor === 'w' ? 'b' : 'w'])}</span>
                         </div>
                       )}
@@ -3862,7 +3857,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
                     {/* Dedicated Chessboard */}
                     <div
-                      className="relative aspect-square w-full select-none overflow-hidden rounded-2xl border-4 border-zinc-800/90 shadow-2xl max-w-[min(100%,calc(100dvh-17rem),460px)]"
+                      className="relative aspect-square w-full select-none overflow-hidden rounded-2xl border-4 border-zinc-800/90 shadow-2xl max-w-[min(100%,calc(100dvh-17rem),460px)] shrink-0"
                       style={{
                         borderColor: 'var(--border-color)',
                       }}
@@ -3957,26 +3952,26 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
                     {/* Player Bar */}
                     <div
-                      className="engine-player-bar engine-player-bar--user flex w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md"
+                      className="engine-player-bar engine-player-bar--user flex h-14 shrink-0 w-full max-w-[min(100%,calc(100dvh-17rem),460px)] items-center justify-between rounded-xl border border-zinc-800 bg-[#141620] px-3.5 py-2 shadow-md"
                       style={{
                         backgroundColor: 'var(--bg-surface)',
                         borderColor: 'var(--border-color)',
                         color: 'var(--text-color)',
                       }}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
                           activeClockColorRef.current === playerColor && !gameResult
-                            ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-400/40 animate-pulse'
+                            ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300'
                             : 'border-zinc-700 bg-zinc-800 text-zinc-300'
                         }`}>
                           <User className="h-4 w-4" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-zinc-100" style={{ color: 'var(--text-color)' }}>You</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 h-5">
+                            <span className="text-xs font-bold text-zinc-100 truncate" style={{ color: 'var(--text-color)' }}>You</span>
                             <span
-                              className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold text-zinc-300 border border-zinc-700"
+                              className="rounded bg-zinc-800 px-1.5 py-0.2 text-[10px] font-bold text-zinc-300 border border-zinc-700 shrink-0"
                               style={{
                                 backgroundColor: 'var(--bg-card-subtle)',
                                 borderColor: 'var(--border-color)',
@@ -3986,7 +3981,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                               {playerColor === 'w' ? 'White' : 'Black'}
                             </span>
                           </div>
-                          <div className="text-[10px] text-zinc-400" style={{ color: 'var(--text-color-muted)' }}>
+                          <div className="text-[10px] text-zinc-400 font-mono h-4 flex items-center truncate" style={{ color: 'var(--text-color-muted)' }}>
                             {gameResult ? 'Game finished' : currentTurn === playerColor ? 'Your turn to move' : 'Waiting for opponent'}
                           </div>
                         </div>
@@ -3996,11 +3991,11 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                       {engineClock && (
                         <div
                           id="engine-player-clock"
-                          className={`engine-match-clock engine-match-clock--player ${
+                          className={`engine-match-clock engine-match-clock--player shrink-0 ${
                             activeClockColorRef.current === playerColor && !gameResult
                               ? 'engine-match-clock--active border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-md shadow-emerald-500/20'
                               : 'engine-match-clock--inactive border-zinc-800 bg-black/40 text-zinc-400'
-                          } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-all`}
+                          } flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-base font-black tabular-nums transition-colors duration-150`}
                           style={
                             activeClockColorRef.current === playerColor && !gameResult
                               ? undefined
@@ -4011,7 +4006,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                                 }
                           }
                         >
-                          <Clock3 className={`h-3.5 w-3.5 ${activeClockColorRef.current === playerColor && !gameResult ? 'text-emerald-300' : 'text-zinc-500'}`} />
+                          <Clock3 className={`h-3.5 w-3.5 shrink-0 ${activeClockColorRef.current === playerColor && !gameResult ? 'text-emerald-300' : 'text-zinc-500'}`} />
                           <span id="engine-player-clock-time">{formatClock(engineClock[playerColor])}</span>
                         </div>
                       )}
@@ -4019,7 +4014,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
                     {/* Dedicated Action Controls: Resign, Draw, Takeback */}
                     {!gameResult && (
-                      <div id="engine-game-controls" className="w-full max-w-[min(100%,calc(100dvh-17rem),460px)] space-y-2">
+                      <div id="engine-game-controls" className="w-full max-w-[min(100%,calc(100dvh-17rem),460px)] space-y-2 shrink-0">
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             id="btn-play-resign"
