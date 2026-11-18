@@ -151,6 +151,42 @@ function matrixToFen(
   return `${rows.join('/')} ${turn} ${castling} - 0 1`;
 }
 
+// Convert chess square (e.g. 'e4') to 0-indexed column and row in an 8x8 grid
+const getGridCoords = (sq: Square, flipped: boolean) => {
+  const fileIndex = sq.charCodeAt(0) - 97;
+  const rankIndex = 8 - parseInt(sq[1], 10);
+  return {
+    col: flipped ? 7 - fileIndex : fileIndex,
+    row: flipped ? 7 - rankIndex : rankIndex,
+  };
+};
+
+// Returns castling rook movement if a move is kingside or queenside castle
+const getCastlingRookMove = (
+  piece: { type: string; color: Color },
+  from: Square,
+  to: Square
+): { from: Square; to: Square } | null => {
+  if (piece.type.toLowerCase() !== 'k') return null;
+  if (from === 'e1' && to === 'g1') return { from: 'h1', to: 'f1' };
+  if (from === 'e1' && to === 'c1') return { from: 'a1', to: 'd1' };
+  if (from === 'e8' && to === 'g8') return { from: 'h8', to: 'f8' };
+  if (from === 'e8' && to === 'c8') return { from: 'a8', to: 'd8' };
+  return null;
+};
+
+interface EnginePieceAnimationState {
+  piece: { type: PieceSymbol; color: Color };
+  from: Square;
+  to: Square;
+  isMoving: boolean;
+  secondaryPiece?: {
+    piece: { type: PieceSymbol; color: Color };
+    from: Square;
+    to: Square;
+  };
+}
+
 export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   isOpen,
   onClose,
@@ -227,6 +263,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const [engineGameHistory, setEngineGameHistory] = useState<{ san: string; from: string; to: string }[]>([]);
   const [lastEngineMove, setLastEngineMove] = useState<{ from: Square; to: Square } | null>(null);
   const [isEngineThinking, setIsEngineThinking] = useState<boolean>(false);
+  const [animatingEnginePiece, setAnimatingEnginePiece] = useState<EnginePieceAnimationState | null>(null);
+  const engineSessionRef = useRef<number>(0);
   const [gameResult, setGameResult] = useState<'player' | 'engine' | 'draw' | null>(null);
   const [didPlayerResign, setDidPlayerResign] = useState<boolean>(false);
   const [engineEvalBar, setEngineEvalBar] = useState<string>('0.00');
@@ -327,6 +365,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
   // Clear nested navigation and return strictly to the Practice Home Screen
   const handleReturnToPracticeHome = useCallback(() => {
+    engineSessionRef.current += 1;
+    setAnimatingEnginePiece(null);
+    setIsEngineThinking(false);
     setEngineGameStarted(false);
     setEngineClock(null);
     engineClockRef.current = null;
@@ -686,9 +727,148 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
     }
   };
 
+  // Helper to execute engine's move with human-like natural thinking time and smooth piece animation
+  const executeEngineMoveWithAnimation = useCallback(
+    async (
+      currentFen: string,
+      timeControl: TimeControl | null,
+      sessionId: number,
+      thinkStartTime: number
+    ) => {
+      try {
+        const engineMove = await getStockfish18Move(currentFen, engineLevel);
+        if (engineSessionRef.current !== sessionId) return;
+
+        // Ensure human-like natural thinking pacing so player can follow engine play comfortably
+        const elapsed = Date.now() - thinkStartTime;
+        const naturalThinkingDelay = Math.max(0, 650 - elapsed);
+        if (naturalThinkingDelay > 0) {
+          await new Promise((res) => setTimeout(res, naturalThinkingDelay));
+        }
+        if (engineSessionRef.current !== sessionId) return;
+
+        const engineChess = new Chess(currentFen);
+        const piece = engineChess.get(engineMove.from);
+        if (!piece) {
+          const engineColor = engineChess.turn();
+          const engineResult = engineChess.move({
+            from: engineMove.from,
+            to: engineMove.to,
+            promotion: engineMove.promotion || 'q',
+          });
+          if (timeControl && timeControl.minutes !== null && engineClockRef.current) {
+            if (!completeEngineClockMove(engineColor)) return;
+          } else {
+            activeClockColorRef.current = engineColor === 'w' ? 'b' : 'w';
+            lastClockTickRef.current = Date.now();
+          }
+          if (engineResult.captured) chessAudio.playCapture();
+          else chessAudio.playMove();
+
+          setBoardFen(engineChess.fen());
+          setEngineGameHistory((prev) => [
+            ...prev,
+            { san: engineResult.san, from: engineResult.from, to: engineResult.to },
+          ]);
+          setLastEngineMove({ from: engineResult.from, to: engineResult.to });
+          setEngineEvalBar(engineMove.evalScore);
+          if (engineChess.isGameOver()) {
+            if (engineChess.isCheckmate()) setGameResult('engine');
+            else setGameResult('draw');
+          }
+          setIsEngineThinking(false);
+          return;
+        }
+
+        // Secondary rook piece if move is castling
+        let secondaryPiece: EnginePieceAnimationState['secondaryPiece'] = undefined;
+        const rookMove = getCastlingRookMove(piece, engineMove.from, engineMove.to);
+        if (rookMove) {
+          const rookPiece = engineChess.get(rookMove.from);
+          if (rookPiece) {
+            secondaryPiece = {
+              piece: { type: rookPiece.type, color: rookPiece.color },
+              from: rookMove.from,
+              to: rookMove.to,
+            };
+          }
+        }
+
+        // Mount the animated piece at its origin position
+        setAnimatingEnginePiece({
+          piece: { type: piece.type, color: piece.color },
+          from: engineMove.from,
+          to: engineMove.to,
+          isMoving: false,
+          secondaryPiece,
+        });
+        // Immediately highlight origin square so player can clearly see which piece is being moved
+        setLastEngineMove({ from: engineMove.from, to: engineMove.to });
+
+        // Trigger the smooth gliding CSS transition in the next frame
+        await new Promise((res) => setTimeout(res, 25));
+        if (engineSessionRef.current !== sessionId) return;
+        setAnimatingEnginePiece((prev) => (prev ? { ...prev, isMoving: true } : null));
+
+        // Wait for the slide transition to smoothly land on destination square (480ms)
+        await new Promise((res) => setTimeout(res, 500));
+        if (engineSessionRef.current !== sessionId) return;
+
+        // Finalize move on chess engine instance
+        const engineColor = engineChess.turn();
+        const engineResult = engineChess.move({
+          from: engineMove.from,
+          to: engineMove.to,
+          promotion: engineMove.promotion || 'q',
+        });
+
+        // Switch active clocks
+        if (timeControl && timeControl.minutes !== null && engineClockRef.current) {
+          if (!completeEngineClockMove(engineColor)) {
+            setAnimatingEnginePiece(null);
+            setIsEngineThinking(false);
+            return;
+          }
+        } else {
+          activeClockColorRef.current = engineColor === 'w' ? 'b' : 'w';
+          lastClockTickRef.current = Date.now();
+        }
+
+        // Audible move feedback at arrival
+        if (engineResult.captured) chessAudio.playCapture();
+        else chessAudio.playMove();
+
+        // Apply updated board state
+        setBoardFen(engineChess.fen());
+        setEngineGameHistory((prev) => [
+          ...prev,
+          { san: engineResult.san, from: engineResult.from, to: engineResult.to },
+        ]);
+        setLastEngineMove({ from: engineResult.from, to: engineResult.to });
+        setEngineEvalBar(engineMove.evalScore);
+
+        if (engineChess.isGameOver()) {
+          if (engineChess.isCheckmate()) {
+            setGameResult('engine');
+          } else {
+            setGameResult('draw');
+          }
+        }
+      } catch {
+        // Handle exception cleanly
+      } finally {
+        if (engineSessionRef.current === sessionId) {
+          setAnimatingEnginePiece(null);
+          setIsEngineThinking(false);
+        }
+      }
+    },
+    [engineLevel, completeEngineClockMove]
+  );
+
   // Play Engine Square Click (play against Stockfish)
   const handleSquareClickPlayEngine = async (square: Square) => {
-    if (!engineGameStarted || isEngineThinking || isDrawPending || gameResult || !syncEngineClock()) return;
+    if (!engineGameStarted || isEngineThinking || animatingEnginePiece !== null || isDrawPending || gameResult || !syncEngineClock()) return;
 
     const file = square.charCodeAt(0) - 97;
     const rank = 8 - parseInt(square[1], 10);
@@ -745,42 +925,16 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
         return;
       }
 
-      // Stockfish Engine Response scaled by Level (1 to 18)
+      // Stockfish Engine Response scaled by Level (1 to 18) with natural thinking & smooth piece animation
       setIsEngineThinking(true);
-      try {
-        const engineMove = await getStockfish18Move(fenAfterPlayer, engineLevel);
-        const engineChess = new Chess(fenAfterPlayer);
-        const engineColor = engineChess.turn();
-        const engineResult = engineChess.move({
-          from: engineMove.from,
-          to: engineMove.to,
-          promotion: engineMove.promotion || 'q',
-        });
-        if (!completeEngineClockMove(engineColor)) return;
-
-        if (engineResult.captured) chessAudio.playCapture();
-        else chessAudio.playMove();
-
-        setBoardFen(engineChess.fen());
-        setEngineGameHistory((prev) => [
-          ...prev,
-          { san: engineResult.san, from: engineResult.from, to: engineResult.to },
-        ]);
-        setLastEngineMove({ from: engineResult.from, to: engineResult.to });
-        setEngineEvalBar(engineMove.evalScore);
-
-        if (engineChess.isGameOver()) {
-          if (engineChess.isCheckmate()) {
-            setGameResult('engine');
-          } else {
-            setGameResult('draw');
-          }
-        }
-      } catch {
-        // Handle engine exception
-      } finally {
-        setIsEngineThinking(false);
-      }
+      const thinkStartTime = Date.now();
+      const currentSession = engineSessionRef.current;
+      void executeEngineMoveWithAnimation(
+        fenAfterPlayer,
+        engineTimeControl,
+        currentSession,
+        thinkStartTime
+      );
     } catch {
       setSelectedSquare(null);
     }
@@ -1244,6 +1398,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   // ----------------------------------------------------
   // Leaves any running game and shows the given wizard step.
   const openEngineSetup = (step: EngineSetupStep) => {
+    engineSessionRef.current += 1;
+    setAnimatingEnginePiece(null);
+    setIsEngineThinking(false);
     setEngineGameStarted(false);
     setEngineClock(null);
     engineClockRef.current = null;
@@ -1310,43 +1467,24 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
 
     if (color === 'b') {
       setIsEngineThinking(true);
-      setTimeout(async () => {
-        try {
-          const move = await getStockfish18Move(START_FEN, engineLevel);
-          if (timeControl.minutes !== null && engineClockRef.current) {
-            const elapsed = Math.max(0, Date.now() - lastClockTickRef.current);
-            const whiteTime = Math.max(0, engineClockRef.current.w - elapsed);
-            if (whiteTime === 0) {
-              engineClockRef.current = { ...engineClockRef.current, w: 0 };
-              setEngineClock(engineClockRef.current);
-              setGameResult('player');
-              return;
-            }
-            engineClockRef.current = {
-              ...engineClockRef.current,
-              w: whiteTime + timeControl.incrementSeconds * 1000,
-            };
-            setEngineClock(engineClockRef.current);
-          }
-          activeClockColorRef.current = 'b';
-          lastClockTickRef.current = Date.now();
-          chess.move({ from: move.from, to: move.to, promotion: move.promotion });
-          setBoardFen(chess.fen());
-          setEngineGameHistory([{ san: move.san, from: move.from, to: move.to }]);
-          setLastEngineMove({ from: move.from, to: move.to });
-          setEngineEvalBar(move.evalScore);
-          chessAudio.playMove();
-        } catch {
-          // ignore
-        } finally {
-          setIsEngineThinking(false);
-        }
-      }, 400);
+      const thinkStartTime = Date.now();
+      const currentSession = engineSessionRef.current;
+      setTimeout(() => {
+        void executeEngineMoveWithAnimation(
+          START_FEN,
+          timeControl,
+          currentSession,
+          thinkStartTime
+        );
+      }, 350);
     }
-  }, [completeEngineClockMove, engineLevel]);
+  }, [executeEngineMoveWithAnimation]);
 
   const handleResignEngineGame = () => {
-    if (isEngineThinking || isDrawPending || gameResult) return;
+    if (isDrawPending || gameResult) return;
+    engineSessionRef.current += 1;
+    setAnimatingEnginePiece(null);
+    setIsEngineThinking(false);
     setSelectedSquare(null);
     setDidPlayerResign(true);
     setGameResult('engine');
@@ -1357,7 +1495,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
   const takebackFloor = playerColor === 'w' ? 0 : 1;
 
   const canTakeback =
-    engineGameStarted && !gameResult && !isEngineThinking && engineGameHistory.length > takebackFloor &&
+    engineGameStarted && !gameResult && !isEngineThinking && animatingEnginePiece === null && engineGameHistory.length > takebackFloor &&
     currentTurn === playerColor;
 
   const handleUndoMoveEngine = () => {
@@ -1500,6 +1638,63 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
       </button>
     </div>
   );
+
+  const renderAnimatingPiece = () => {
+    if (!animatingEnginePiece) return null;
+    const fromCoords = getGridCoords(animatingEnginePiece.from, isFlipped);
+    const toCoords = getGridCoords(animatingEnginePiece.to, isFlipped);
+    const targetCol = animatingEnginePiece.isMoving ? toCoords.col : fromCoords.col;
+    const targetRow = animatingEnginePiece.isMoving ? toCoords.row : fromCoords.row;
+
+    const sec = animatingEnginePiece.secondaryPiece;
+    const secFrom = sec ? getGridCoords(sec.from, isFlipped) : null;
+    const secTo = sec ? getGridCoords(sec.to, isFlipped) : null;
+    const secTargetCol = sec && secFrom && secTo ? (animatingEnginePiece.isMoving ? secTo.col : secFrom.col) : 0;
+    const secTargetRow = sec && secFrom && secTo ? (animatingEnginePiece.isMoving ? secTo.row : secFrom.row) : 0;
+
+    return (
+      <div className="pointer-events-none absolute inset-0 z-30">
+        <div
+          className="absolute flex items-center justify-center p-0.5 will-change-transform"
+          style={{
+            width: '12.5%',
+            height: '12.5%',
+            left: `${targetCol * 12.5}%`,
+            top: `${targetRow * 12.5}%`,
+            transition: animatingEnginePiece.isMoving
+              ? 'left 480ms cubic-bezier(0.25, 1, 0.5, 1), top 480ms cubic-bezier(0.25, 1, 0.5, 1), transform 480ms cubic-bezier(0.25, 1, 0.5, 1)'
+              : 'none',
+            transform: animatingEnginePiece.isMoving ? 'scale(1.14)' : 'scale(1)',
+            filter: animatingEnginePiece.isMoving
+              ? 'drop-shadow(0 12px 14px rgba(0, 0, 0, 0.45)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3))'
+              : 'none',
+          }}
+        >
+          <ChessPiece type={animatingEnginePiece.piece.type} color={animatingEnginePiece.piece.color} />
+        </div>
+        {sec && secFrom && secTo && (
+          <div
+            className="absolute flex items-center justify-center p-0.5 will-change-transform"
+            style={{
+              width: '12.5%',
+              height: '12.5%',
+              left: `${secTargetCol * 12.5}%`,
+              top: `${secTargetRow * 12.5}%`,
+              transition: animatingEnginePiece.isMoving
+                ? 'left 480ms cubic-bezier(0.25, 1, 0.5, 1), top 480ms cubic-bezier(0.25, 1, 0.5, 1), transform 480ms cubic-bezier(0.25, 1, 0.5, 1)'
+                : 'none',
+              transform: animatingEnginePiece.isMoving ? 'scale(1.08)' : 'scale(1)',
+              filter: animatingEnginePiece.isMoving
+                ? 'drop-shadow(0 12px 14px rgba(0, 0, 0, 0.45)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3))'
+                : 'none',
+            }}
+          >
+            <ChessPiece type={sec.piece.type} color={sec.piece.color} />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -1947,6 +2142,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                           : 'ring-2 ring-red-400 ring-inset bg-red-500/30'
                         : '';
                     const isCheckedKing = checkedKingSquare === square;
+                    const isPieceHiddenForAnimation =
+                      animatingEnginePiece &&
+                      (animatingEnginePiece.from === square || animatingEnginePiece.secondaryPiece?.from === square);
 
                     return (
                       <div
@@ -1974,7 +2172,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                         }`}
                       >
                         {/* Piece Display */}
-                        {piece && (
+                        {piece && !isPieceHiddenForAnimation && (
                           <div className="w-full h-full p-0.5">
                             <ChessPiece type={piece.type} color={piece.color} />
                           </div>
@@ -2109,15 +2307,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                 </svg>
               )}
 
-              {/* Engine Thinking Overlay */}
-              {isEngineThinking && (
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-white z-30">
-                  <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-                  <span className="text-xs font-bold text-cyan-300 tracking-wider">
-                    Stockfish Level {engineLevel} is calculating...
-                  </span>
-                </div>
-              )}
+              {/* Moving Engine Piece Animation Layer */}
+              {renderAnimatingPiece()}
 
             </div>
 
@@ -3626,9 +3817,20 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-300 border border-cyan-500/30">
                               Lvl {engineLevel}
                             </span>
+                            {isEngineThinking && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                                Thinking...
+                              </span>
+                            )}
                           </div>
-                          <div className="text-[10px] text-zinc-400 font-mono" style={{ color: 'var(--text-color-muted)' }}>
-                            {getEloForLevel(engineLevel).elo} Elo {isEngineThinking ? '• Calculating...' : ''}
+                          <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1" style={{ color: 'var(--text-color-muted)' }}>
+                            <span>{getEloForLevel(engineLevel).elo} Elo</span>
+                            {isEngineThinking && (
+                              <span className="text-cyan-400 font-sans font-medium flex items-center gap-0.5">
+                                • Calculating move...
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -3679,6 +3881,9 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             const isEngineMoveFrom = lastEngineMove?.from === square;
                             const isEngineMoveTo = lastEngineMove?.to === square;
                             const isCheckedKing = checkedKingSquare === square;
+                            const isPieceHiddenForAnimation =
+                              animatingEnginePiece &&
+                              (animatingEnginePiece.from === square || animatingEnginePiece.secondaryPiece?.from === square);
 
                             return (
                               <div
@@ -3694,7 +3899,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                                   isCheckedKing ? 'engine-checked-king' : ''
                                 }`}
                               >
-                                {piece && (
+                                {piece && !isPieceHiddenForAnimation && (
                                   <div className="w-full h-full p-0.5 pointer-events-none">
                                     <ChessPiece type={piece.type} color={piece.color} />
                                   </div>
@@ -3746,15 +3951,8 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                         )}
                       </div>
 
-                      {/* Engine Thinking Overlay */}
-                      {isEngineThinking && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-white z-30">
-                          <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-                          <span className="text-xs font-bold text-cyan-300 tracking-wider">
-                            Stockfish Level {engineLevel} is calculating...
-                          </span>
-                        </div>
-                      )}
+                      {/* Moving Engine Piece Animation Layer */}
+                      {renderAnimatingPiece()}
                     </div>
 
                     {/* Player Bar */}
@@ -3827,7 +4025,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             id="btn-play-resign"
                             type="button"
                             onClick={handleResignEngineGame}
-                            disabled={isEngineThinking || isDrawPending}
+                            disabled={isDrawPending}
                             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-800/80 bg-rose-950/70 px-3 py-2.5 text-xs font-bold text-rose-200 transition-colors hover:bg-rose-900 disabled:opacity-40 cursor-pointer shadow-sm"
                           >
                             <Flag className="h-4 w-4" />
@@ -3837,7 +4035,7 @@ export const PracticeModeModal: React.FC<PracticeModeModalProps> = ({
                             id="btn-play-draw"
                             type="button"
                             onClick={handleOfferDraw}
-                            disabled={isEngineThinking || isDrawPending || currentTurn !== playerColor}
+                            disabled={isEngineThinking || animatingEnginePiece !== null || isDrawPending || currentTurn !== playerColor}
                             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-700/60 bg-amber-950/50 px-3 py-2.5 text-xs font-bold text-amber-200 transition-colors hover:bg-amber-900/70 disabled:opacity-40 cursor-pointer shadow-sm"
                           >
                             <Swords className="h-4 w-4" />
