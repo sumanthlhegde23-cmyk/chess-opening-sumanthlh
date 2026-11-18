@@ -197,14 +197,27 @@ export const MoveExplanationPanel: React.FC<MoveExplanationPanelProps> = ({
 
           <button
             id="toggle-sound-btn"
-            onClick={() => {
-              onToggleSound();
-              chessAudio.playMove();
-            }}
-            title={soundEnabled ? 'Mute Sound' : 'Enable Sound'}
-            className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700/50 text-zinc-400 hover:text-zinc-200 transition-colors"
+            type="button"
+            onClick={onToggleSound}
+            aria-pressed={soundEnabled}
+            title={soundEnabled ? 'AI Voice Coach: ON (Click to Mute)' : 'AI Voice Coach: OFF (Click to Enable)'}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all ${
+              soundEnabled
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-950/20 hover:bg-amber-500/30'
+                : 'bg-zinc-800/60 text-zinc-500 hover:text-zinc-300 border-zinc-700/50 hover:bg-zinc-700'
+            }`}
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
+            {soundEnabled ? (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline text-[11px] font-semibold text-amber-300">Voice ON</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="hidden sm:inline text-[11px] font-medium text-zinc-400">Voice OFF</span>
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -246,12 +246,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </select>
           </div>
 
-          {/* Sound Toggle */}
+          {/* Sound & AI Voice Coach Toggle */}
           <button
             id="navbar-sound-toggle-btn"
+            type="button"
             onClick={onToggleSound}
-            title={soundEnabled ? 'Mute Sound' : 'Enable Sound'}
-            className="p-1.5 rounded-lg bg-[#181a20] border border-zinc-800 hover:bg-[#20242e] text-zinc-300 transition-colors"
+            aria-pressed={soundEnabled}
+            title={soundEnabled ? 'AI Voice Coach & Sound: ON (Click to Mute)' : 'AI Voice Coach & Sound: OFF (Click to Enable)'}
+            className={`p-1.5 rounded-lg border transition-colors ${
+              soundEnabled
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+                : 'bg-[#181a20] border-zinc-800 hover:bg-[#20242e] text-zinc-500 hover:text-zinc-300'
+            }`}
           >
             {soundEnabled ? (
               <Volume2 className="w-4 h-4 text-amber-400" />

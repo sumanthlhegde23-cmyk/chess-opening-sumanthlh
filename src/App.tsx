@@ -18,6 +18,7 @@ import { LockedVariationModal } from './components/LockedVariationModal';
 import { PracticeModeModal } from './components/PracticeModeModal';
 import { ChatWithAiWindow } from './components/ChatWithAiWindow';
 import { chessAudio } from './utils/sound';
+import { aiVoiceCoach } from './utils/aiVoiceCoach';
 import { getGamesForVariation } from './data/grandmasterGames';
 import { getGrandmasterGameExplanations } from './utils/gameExplainer';
 import { GrandmasterShowcaseHeader } from './components/GrandmasterShowcaseHeader';
@@ -95,7 +96,7 @@ export default function App() {
   const [colorMode, setColorMode] = useState<'dark' | 'light'>(() =>
     localStorage.getItem('chess-openings-color-mode') === 'light' ? 'light' : 'dark'
   );
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => aiVoiceCoach.isEnabled());
   const [language, setLanguage] = useState<LanguageCode>(() => {
     const storedLanguage = localStorage.getItem('chess-openings-language');
     return isSupportedLanguage(storedLanguage) ? storedLanguage : 'en';
@@ -465,6 +466,7 @@ export default function App() {
   }, [activeGmGame, currentVariation]);
 
   const navigateToScreen = useCallback((screen: 'home' | 'openings' | 'variations' | 'study') => {
+    aiVoiceCoach.stop();
     window.history.pushState(
       { chessAppScreen: 'main-menu', navigationScreen: screen },
       '',
@@ -476,6 +478,7 @@ export default function App() {
   // When opening changes, default to its first variation and reset move index
   // NOTE: Selecting an opening is passive browsing — no streak awarded here.
   const handleSelectOpening = useCallback((openingId: string) => {
+    aiVoiceCoach.stop();
     setSelectedOpeningId(openingId);
     setUserProfile((profile) => profile.learnedOpeningIds.includes(openingId)
       ? profile
@@ -498,6 +501,7 @@ export default function App() {
   // When variation changes, reset move index
   // NOTE: Selecting a variation is passive browsing — no streak awarded here.
   const handleSelectVariation = useCallback((variationId: string) => {
+    aiVoiceCoach.stop();
     setSelectedVariationId(variationId);
     setUserProfile((profile) => profile.learnedVariationIds.includes(variationId)
       ? profile
@@ -569,6 +573,10 @@ export default function App() {
       const nextStep = prev.stepIndex + direction;
       if (nextStep < 0 || nextStep >= prev.moves.length) return prev;
       chessAudio.playMove();
+      const stepMove = prev.moves[nextStep];
+      if (stepMove) {
+        aiVoiceCoach.speakRefutationStep(stepMove.san, stepMove.turn, nextStep, prev.analysis);
+      }
       return {
         ...prev,
         stepIndex: nextStep,
@@ -589,6 +597,7 @@ export default function App() {
 
   const handleResetDeviation = useCallback(() => {
     setUserDeviation(null);
+    aiVoiceCoach.stop();
     chessAudio.playMove();
   }, []);
 
@@ -647,6 +656,7 @@ export default function App() {
 
   const handleStopRefutation = useCallback(() => {
     setActiveRefutation(null);
+    aiVoiceCoach.stop();
   }, []);
 
   const handleStepRefutation = useCallback((direction: 1 | -1) => {
@@ -667,6 +677,7 @@ export default function App() {
     setSoundEnabled((prev) => {
       const next = !prev;
       chessAudio.setEnabled(next);
+      aiVoiceCoach.setEnabled(next);
       return next;
     });
   }, []);
@@ -682,6 +693,9 @@ export default function App() {
             if (prev < activeGmGame.moves.length - 1) {
               const nextIdx = prev + 1;
               chessAudio.playMove();
+              if (activeGmExplanations && activeGmExplanations[nextIdx]) {
+                aiVoiceCoach.speakCustomMove(activeGmExplanations[nextIdx]);
+              }
               return nextIdx;
             } else {
               setIsPlaying(false);
@@ -693,6 +707,7 @@ export default function App() {
             if (prev < currentVariation.moves.length - 1) {
               const nextIdx = prev + 1;
               chessAudio.playMove();
+              aiVoiceCoach.speakBookMove(currentVariation, nextIdx);
               return nextIdx;
             } else {
               setIsPlaying(false);
@@ -713,7 +728,7 @@ export default function App() {
         clearInterval(playTimerRef.current);
       }
     };
-  }, [isPlaying, playSpeed, viewMode, activeGmGame, currentVariation.moves.length]);
+  }, [isPlaying, playSpeed, viewMode, activeGmGame, activeGmExplanations, currentVariation]);
 
   // Current FEN calculation (supports main line, GM games, off-book deviation continuation, and curated refutation demo)
   const currentFen = useMemo(() => {
@@ -864,6 +879,7 @@ export default function App() {
               isAutoPlaying: false,
             });
             chessAudio.playMove();
+            aiVoiceCoach.speakDeviation(analysis, currentVariation);
             return;
           }
         } catch (e) {
@@ -878,7 +894,9 @@ export default function App() {
           recordQualifyingActivity();
         }
         setUserDeviation(null);
-        setCurrentMoveIndex((prev) => Math.min(currentVariation.moves.length - 1, prev + 1));
+        const nextIdx = Math.min(currentVariation.moves.length - 1, currentMoveIndex + 1);
+        setCurrentMoveIndex(nextIdx);
+        aiVoiceCoach.speakBookMove(currentVariation, nextIdx);
       } else {
         // INCORRECT MOVE:
         // Do NOT reject it! Provide why that was a bad move and further lines if he played with that sequence!
@@ -943,6 +961,7 @@ export default function App() {
             isAutoPlaying: false,
           });
           chessAudio.playMove();
+          aiVoiceCoach.speakDeviation(analysis, currentVariation);
         } catch (e) {
           console.error('Failed to parse deviation move:', e);
         }
@@ -955,6 +974,8 @@ export default function App() {
       currentVariation,
       currentOpening,
       expectedNextMove,
+      trainingMode,
+      recordQualifyingActivity,
     ]
   );
 
@@ -964,12 +985,22 @@ export default function App() {
       setUserDeviation(null);
       if (viewMode === 'grandmaster') {
         setGmMoveIndex(index);
+        if (index >= 0 && activeGmExplanations && activeGmExplanations[index]) {
+          aiVoiceCoach.speakCustomMove(activeGmExplanations[index]);
+        } else {
+          aiVoiceCoach.stop();
+        }
       } else {
         setCurrentMoveIndex(index);
+        if (index >= 0) {
+          aiVoiceCoach.speakBookMove(currentVariation, index);
+        } else {
+          aiVoiceCoach.stop();
+        }
       }
       chessAudio.playMove();
     },
-    [viewMode]
+    [viewMode, activeGmExplanations, currentVariation]
   );
 
   const handleJumpToTurningPoint = useCallback(() => {
