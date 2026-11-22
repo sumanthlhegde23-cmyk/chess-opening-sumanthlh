@@ -484,22 +484,36 @@ export const SOUND_SYSTEMS: SoundSystemDefinition[] = [
     },
     playCapture: (ctx: AudioContext) => {
       const t = ctx.currentTime;
-      // Aggressive slide-and-strike
-      playFilteredNoise(ctx, t, 0.03, 'bandpass', 900, 2.0, 0.32);
+      // 1. Initial sharp piece-on-piece collision crack
+      playFilteredNoise(ctx, t, 0.018, 'bandpass', 1800, 2.2, 0.38);
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(240, t);
-      osc.frequency.exponentialRampToValueAtTime(45, t + 0.14);
+      // 2. High-speed displacement clack (piece knocking off square)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(340, t);
+      osc1.frequency.exponentialRampToValueAtTime(110, t + 0.06);
+      gain1.gain.setValueAtTime(0.38, t);
+      gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(t);
+      osc1.stop(t + 0.07);
 
-      gain.gain.setValueAtTime(0.46, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      // 3. Tournament weighted piece table slam + clock hit impact (+28ms)
+      playFilteredNoise(ctx, t + 0.028, 0.022, 'highpass', 2600, 1.8, 0.3);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.15);
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(160, t + 0.028);
+      osc2.frequency.exponentialRampToValueAtTime(38, t + 0.15);
+      gain2.gain.setValueAtTime(0.45, t + 0.028);
+      gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(t + 0.028);
+      osc2.stop(t + 0.17);
     },
   },
 ];
