@@ -239,6 +239,14 @@
   --tw-ring-color: rgb(var(--lm-emerald-rgb) / 1) !important;
 }
 
+[data-color-mode="light"] [class~="ring-lime-400"] {
+  --tw-ring-color: rgb(var(--lm-lime-rgb) / 1) !important;
+}
+
+[data-color-mode="light"] [class~="ring-purple-400"] {
+  --tw-ring-color: rgb(var(--lm-purple-rgb) / 1) !important;
+}
+
 [data-color-mode="light"] [class~="ring-red-500/30"] {
   --tw-ring-color: rgb(var(--lm-red-rgb) / 0.39) !important;
 }
@@ -271,6 +279,10 @@
 
 [data-color-mode="light"] [class~="bg-[#333d4f]"] {
   background-color: color-mix(in srgb, rgb(51 61 79) 7%, #ffffff) !important;
+}
+
+[data-color-mode="light"] [class~="bg-[#405d43]"] {
+  background-color: color-mix(in srgb, rgb(64 93 67) 7%, #ffffff) !important;
 }
 
 [data-color-mode="light"] [class~="bg-amber-950/40"] {
@@ -504,7 +516,6 @@
 [data-color-mode="light"] [class~="bg-[#171922]"],
 [data-color-mode="light"] [class~="bg-[#181a20]"],
 [data-color-mode="light"] [class~="bg-[#1e1417]"],
-[data-color-mode="light"] [class~="bg-zinc-850"],
 [data-color-mode="light"] [class~="bg-zinc-900"] {
   background-color: var(--lm-card) !important;
 }
@@ -591,6 +602,7 @@
 [data-color-mode="light"] [class~="border-amber-300/50"],
 [data-color-mode="light"] [class~="border-amber-400/50"],
 [data-color-mode="light"] [class~="border-amber-500/50"],
+[data-color-mode="light"] [class~="hover:border-amber-400/50"]:hover,
 [data-color-mode="light"] [class~="hover:border-amber-500/50"]:hover {
   border-color: rgb(var(--lm-amber-rgb) / 0.65) !important;
 }
@@ -604,6 +616,7 @@
 
 [data-color-mode="light"] [class~="border-amber-400/80"],
 [data-color-mode="light"] [class~="border-amber-400/90"],
+[data-color-mode="light"] [class~="border-amber-500/70"],
 [data-color-mode="light"] [class~="focus:border-amber-500/70"]:focus,
 [data-color-mode="light"] [class~="hover:border-amber-400/70"]:hover,
 [data-color-mode="light"] [class~="hover:border-amber-500/70"]:hover {
@@ -821,6 +834,8 @@
 
 [data-color-mode="light"] [class~="border-[#14171f]"],
 [data-color-mode="light"] [class~="border-[#1a202c]"],
+[data-color-mode="light"] [class~="border-[#1c2e1f]"],
+[data-color-mode="light"] [class~="border-[#27272a]"],
 [data-color-mode="light"] [class~="border-[#272b35]"],
 [data-color-mode="light"] [class~="border-zinc-700"],
 [data-color-mode="light"] [class~="border-zinc-700/40"],
@@ -856,6 +871,7 @@
 [data-color-mode="light"] [class~="text-amber-300/80"],
 [data-color-mode="light"] [class~="text-amber-300/90"],
 [data-color-mode="light"] [class~="text-amber-400"],
+[data-color-mode="light"] [class~="text-amber-400/70"],
 [data-color-mode="light"] [class~="text-amber-400/80"],
 [data-color-mode="light"] [class~="text-amber-400/90"],
 [data-color-mode="light"] [class~="text-amber-500"] {
@@ -874,6 +890,7 @@
 [data-color-mode="light"] [class~="text-cyan-200/80"],
 [data-color-mode="light"] [class~="text-cyan-300"],
 [data-color-mode="light"] [class~="text-cyan-400"],
+[data-color-mode="light"] [class~="text-cyan-400/70"],
 [data-color-mode="light"] [class~="text-cyan-400/90"],
 [data-color-mode="light"] [class~="text-cyan-500"] {
   color: var(--lm-cyan) !important;
@@ -887,6 +904,7 @@
 [data-color-mode="light"] [class~="text-emerald-300"],
 [data-color-mode="light"] [class~="text-emerald-300/90"],
 [data-color-mode="light"] [class~="text-emerald-400"],
+[data-color-mode="light"] [class~="text-emerald-400/70"],
 [data-color-mode="light"] [class~="text-emerald-400/80"] {
   color: var(--lm-emerald) !important;
 }
@@ -898,6 +916,7 @@
 [data-color-mode="light"] .group:hover [class~="group-hover:text-purple-300"],
 [data-color-mode="light"] [class~="hover:text-purple-300"]:hover,
 [data-color-mode="light"] [class~="text-[#bf82ff]"],
+[data-color-mode="light"] [class~="text-[#ecfccb]"],
 [data-color-mode="light"] [class~="text-purple-300"],
 [data-color-mode="light"] [class~="text-purple-400"] {
   color: var(--lm-purple) !important;

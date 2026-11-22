@@ -92,7 +92,10 @@ export default function App() {
   const [activeRefutation, setActiveRefutation] = useState<ActiveRefutationState | null>(null);
   const [userDeviation, setUserDeviation] = useState<UserDeviationState | null>(null);
   const [flipped, setFlipped] = useState<boolean>(false);
-  const [boardTheme, setBoardTheme] = useState<string>('maple');
+  const [boardTheme, setBoardTheme] = useState<string>(() => {
+    return localStorage.getItem('chess-openings-board-theme') || 'maple';
+  });
+  const [soundSystem, setSoundSystem] = useState<string>(() => chessAudio.getCurrentSoundSystem());
   const [colorMode, setColorMode] = useState<'dark' | 'light'>(() =>
     localStorage.getItem('chess-openings-color-mode') === 'light' ? 'light' : 'dark'
   );
@@ -199,6 +202,12 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('chess-openings-board-theme', boardTheme);
+    } catch {}
+  }, [boardTheme]);
 
   useEffect(() => {
     localStorage.setItem('chess-openings-color-mode', colorMode);
@@ -1047,6 +1056,11 @@ export default function App() {
         translationStatus={translationStatus}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
+        soundSystem={soundSystem}
+        onChangeSoundSystem={(sys) => {
+          setSoundSystem(sys);
+          chessAudio.setSoundSystem(sys);
+        }}
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenPremium={() => handleOpenPremiumModal(paidPlanTier === '999' ? '999' : '699')}
         onReplayAppTour={() => startOnboarding('tour')}
